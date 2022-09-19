@@ -2,24 +2,25 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
 use eframe::egui;
-use moc::deser::fits::{MocQtyType, MocType};
+use moc::deser::fits::{from_fits_ivoa, MocIdxType, MocQtyType, MocType};
 use moc::idx::Idx;
 use moc::moc::range::op::convert::convert_to_u64;
 use moc::moc::range::RangeMOC;
 use moc::moc::{CellMOCIntoIterator, CellMOCIterator, RangeMOCIterator};
 use moc::qty::Hpx;
+use rfd::AsyncFileDialog;
 use std::error::Error;
 use std::io::Cursor;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-
-#[cfg(target_arch = "wasm32")]
-use rfd::AsyncFileDialog;
+use wasm_bindgen::prelude::wasm_bindgen;
+use wasm_bindgen::JsValue;
+use web_sys::console::log;
 
 #[derive(Default)]
 pub struct FileApp {
     names: Arc<Mutex<Vec<String>>>,
-    data: Arc<Mutex<Vec<Vec<u8>>>>,
+    data: Arc<Mutex<Vec<InternalMoc>>>,
     picked_path: Option<Vec<String>>,
 }
 
@@ -82,19 +83,19 @@ impl FileApp {
         }
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn fileclick(&mut self) -> Option<Vec<PathBuf>> {
-        if let Some(path) = rfd::FileDialog::new()
-            .add_filter("MOCs", &["fits", "ascii", "json", "txt"])
-            .pick_files()
-        {
-            return Some(path);
-        } else {
-            return None;
-        }
-    }
+    // #[cfg(not(target_arch = "wasm32"))]
+    // pub fn fileclick(&mut self) -> Option<Vec<PathBuf>> {
+    //     if let Some(path) = rfd::FileDialog::new()
+    //         .add_filter("MOCs", &["fits", "ascii", "json", "txt"])
+    //         .pick_files()
+    //     {
+    //         return Some(path);
+    //     } else {
+    //         return None;
+    //     }
+    // }
 
-    #[cfg(target_arch = "wasm32")]
+    //#[cfg(target_arch = "wasm32")]
     pub fn fileclick(&mut self) -> Option<Vec<PathBuf>> {
         use eframe::epaint::text::cursor;
 
@@ -107,7 +108,7 @@ impl FileApp {
         Self::execute(async move {
             let file = task.await;
             let mut names: Vec<String> = Default::default();
-            let mut data: Vec<Vec<u8>> = Default::default();
+            let mut data: Vec<InternalMoc> = Default::default();
 
             if let Some(file) = file {
                 // If you care about wasm support you just read() the file
@@ -117,7 +118,18 @@ impl FileApp {
                     names.push(file_name);
                     //Reads file contents and adds it to the data
                     let file_content = path.read().await;
-                    data.push(file_content);
+                    data.push(
+                        match from_fits_ivoa(Cursor::new(file_content.as_ref()))
+                            .map_err(|e| JsValue::from_str(&e.to_string()))
+                            .unwrap()
+                        {
+                            MocIdxType::U16(moc) => from_fits(moc),
+                            MocIdxType::U32(moc) => from_fits(moc),
+                            MocIdxType::U64(moc) => from_fits(moc),
+                        }
+                        .map_err(|e| JsValue::from_str(&e.to_string()))
+                        .unwrap(),
+                    );
                 }
                 *(names_cpy.lock().unwrap()) = names;
                 *(data_cpy.lock().unwrap()) = data;
@@ -125,7 +137,7 @@ impl FileApp {
         });
         None
     }
-    #[cfg(target_arch = "wasm32")]
+    //#[cfg(target_arch = "wasm32")]
     fn execute<F: std::future::Future<Output = ()> + 'static>(f: F) {
         wasm_bindgen_futures::spawn_local(f);
     }
