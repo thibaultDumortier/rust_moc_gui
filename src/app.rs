@@ -2,6 +2,14 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
 use eframe::egui;
+use moc::deser::fits::{MocQtyType, MocType};
+use moc::idx::Idx;
+use moc::moc::range::op::convert::convert_to_u64;
+use moc::moc::range::RangeMOC;
+use moc::moc::{CellMOCIntoIterator, CellMOCIterator, RangeMOCIterator};
+use moc::qty::Hpx;
+use std::error::Error;
+use std::io::Cursor;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
@@ -11,6 +19,7 @@ use rfd::AsyncFileDialog;
 #[derive(Default)]
 pub struct FileApp {
     names: Arc<Mutex<Vec<String>>>,
+    data: Arc<Mutex<Vec<Vec<u8>>>>,
     picked_path: Option<Vec<String>>,
 }
 
@@ -53,6 +62,7 @@ impl FileApp {
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
         FileApp {
             names: Arc::new(Mutex::new(Default::default())),
+            data: Arc::new(Mutex::new(Default::default())),
             picked_path: None,
         }
     }
@@ -86,22 +96,31 @@ impl FileApp {
 
     #[cfg(target_arch = "wasm32")]
     pub fn fileclick(&mut self) -> Option<Vec<PathBuf>> {
+        use eframe::epaint::text::cursor;
+
         let task = AsyncFileDialog::new()
             .add_filter("MOCs", &["fits", "ascii", "json", "txt"])
             .pick_files();
         let names_cpy = self.names.clone();
+        let data_cpy = self.data.clone();
 
         Self::execute(async move {
             let file = task.await;
             let mut names: Vec<String> = Default::default();
+            let mut data: Vec<Vec<u8>> = Default::default();
 
             if let Some(file) = file {
                 // If you care about wasm support you just read() the file
                 for path in file {
+                    //Reads name and adds it to be shown to user
                     let file_name = path.file_name();
                     names.push(file_name);
+                    //Reads file contents and adds it to the data
+                    let file_content = path.read().await;
+                    data.push(file_content);
                 }
                 *(names_cpy.lock().unwrap()) = names;
+                *(data_cpy.lock().unwrap()) = data;
             }
         });
         None
@@ -110,4 +129,29 @@ impl FileApp {
     fn execute<F: std::future::Future<Output = ()> + 'static>(f: F) {
         wasm_bindgen_futures::spawn_local(f);
     }
+}
+
+type SMOC = RangeMOC<u64, Hpx<u64>>;
+enum InternalMoc {
+    Space(SMOC),
+}
+fn from_fits<T: Idx>(moc: MocQtyType<T, Cursor<&[u8]>>) -> Result<InternalMoc, Box<dyn Error>> {
+    match moc {
+        MocQtyType::Hpx(moc) => from_fits_hpx(moc),
+        MocQtyType::Time(_) => todo!(),
+        MocQtyType::TimeHpx(_) => todo!(),
+    }
+}
+
+fn from_fits_hpx<T: Idx>(
+    moc: MocType<T, Hpx<T>, Cursor<&[u8]>>,
+) -> Result<InternalMoc, Box<dyn Error>> {
+    let moc: SMOC = match moc {
+        MocType::Ranges(moc) => convert_to_u64::<T, Hpx<T>, _, Hpx<u64>>(moc).into_range_moc(),
+        MocType::Cells(moc) => {
+            convert_to_u64::<T, Hpx<T>, _, Hpx<u64>>(moc.into_cell_moc_iter().ranges())
+                .into_range_moc()
+        }
+    };
+    Ok(InternalMoc::Space(moc))
 }
