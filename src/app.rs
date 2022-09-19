@@ -3,6 +3,7 @@
 
 use eframe::egui;
 use moc::deser::fits::{from_fits_ivoa, MocIdxType, MocQtyType, MocType};
+use moc::elemset::range::MocRanges;
 use moc::idx::Idx;
 use moc::moc::range::op::convert::convert_to_u64;
 use moc::moc::range::RangeMOC;
@@ -13,14 +14,18 @@ use std::error::Error;
 use std::io::Cursor;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsValue;
-use web_sys::console::log;
+
+#[derive(Default, Clone)]
+pub struct Uploaded_files {
+    name: String,
+    data: InternalMoc,
+    chosen: bool,
+}
 
 #[derive(Default)]
 pub struct FileApp {
-    names: Arc<Mutex<Vec<String>>>,
-    data: Arc<Mutex<Vec<InternalMoc>>>,
+    files: Arc<Mutex<Vec<Uploaded_files>>>,
     picked_path: Option<Vec<String>>,
 }
 
@@ -37,22 +42,23 @@ impl eframe::App for FileApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.label("Pick a file!");
 
-            #[cfg(not(target_arch = "wasm32"))]
-            if let Some(picked_path) = &self.picked_path {
-                for str in picked_path {
-                    ui.horizontal(|ui| {
-                        ui.label("Picked file:");
-                        ui.monospace(str);
-                    });
-                }
-            }
-            #[cfg(target_arch = "wasm32")]
+            // #[cfg(not(target_arch = "wasm32"))]
+            // if let Some(picked_path) = &self.picked_path {
+            //     for str in picked_path {
+            //         ui.horizontal(|ui| {
+            //             ui.label("Picked file:");
+            //             ui.monospace(str);
+            //         });
+            //     }
+            // }
+            //#[cfg(target_arch = "wasm32")]
             {
-                let names = &self.names.lock().unwrap().to_vec();
-                for str in names {
+                let files = self.files.lock().unwrap().to_vec();
+                for mut file in files {
                     ui.horizontal(|ui| {
                         ui.label("Picked file:");
-                        ui.monospace(str);
+                        ui.monospace(file.name.as_str());
+                        ui.checkbox(&mut file.chosen, "choose")
                     });
                 }
             }
@@ -62,8 +68,7 @@ impl eframe::App for FileApp {
 impl FileApp {
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
         FileApp {
-            names: Arc::new(Mutex::new(Default::default())),
-            data: Arc::new(Mutex::new(Default::default())),
+            files: Arc::new(Mutex::new(Default::default())),
             picked_path: None,
         }
     }
@@ -97,42 +102,38 @@ impl FileApp {
 
     //#[cfg(target_arch = "wasm32")]
     pub fn fileclick(&mut self) -> Option<Vec<PathBuf>> {
-        use eframe::epaint::text::cursor;
 
         let task = AsyncFileDialog::new()
             .add_filter("MOCs", &["fits", "ascii", "json", "txt"])
             .pick_files();
-        let names_cpy = self.names.clone();
-        let data_cpy = self.data.clone();
+        let files_cpy = self.files.clone();
 
         Self::execute(async move {
-            let file = task.await;
-            let mut names: Vec<String> = Default::default();
-            let mut data: Vec<InternalMoc> = Default::default();
+            let handle = task.await;
+            let mut files: Vec<Uploaded_files> = Default::default();
 
-            if let Some(file) = file {
+            if let Some(handle) = handle {
                 // If you care about wasm support you just read() the file
-                for path in file {
+                for path in handle {
+                    let mut file = Uploaded_files::default();
                     //Reads name and adds it to be shown to user
                     let file_name = path.file_name();
-                    names.push(file_name);
+                    file.name = file_name;
                     //Reads file contents and adds it to the data
                     let file_content = path.read().await;
-                    data.push(
-                        match from_fits_ivoa(Cursor::new(file_content.as_ref()))
-                            .map_err(|e| JsValue::from_str(&e.to_string()))
-                            .unwrap()
-                        {
-                            MocIdxType::U16(moc) => from_fits(moc),
-                            MocIdxType::U32(moc) => from_fits(moc),
-                            MocIdxType::U64(moc) => from_fits(moc),
-                        }
+                    file.data = match from_fits_ivoa(Cursor::new(file_content.as_ref()))
                         .map_err(|e| JsValue::from_str(&e.to_string()))
-                        .unwrap(),
-                    );
+                        .unwrap()
+                    {
+                        MocIdxType::U16(moc) => from_fits(moc),
+                        MocIdxType::U32(moc) => from_fits(moc),
+                        MocIdxType::U64(moc) => from_fits(moc),
+                    }
+                    .map_err(|e| JsValue::from_str(&e.to_string()))
+                    .unwrap();
+                    files.push(file);
                 }
-                *(names_cpy.lock().unwrap()) = names;
-                *(data_cpy.lock().unwrap()) = data;
+                *(files_cpy.lock().unwrap()) = files;
             }
         });
         None
@@ -144,9 +145,17 @@ impl FileApp {
 }
 
 type SMOC = RangeMOC<u64, Hpx<u64>>;
+
+#[derive(Clone)]
 enum InternalMoc {
     Space(SMOC),
 }
+impl Default for InternalMoc {
+    fn default() -> Self {
+        InternalMoc::Space(SMOC::new(0, MocRanges::default()))
+    }
+}
+
 fn from_fits<T: Idx>(moc: MocQtyType<T, Cursor<&[u8]>>) -> Result<InternalMoc, Box<dyn Error>> {
     match moc {
         MocQtyType::Hpx(moc) => from_fits_hpx(moc),
