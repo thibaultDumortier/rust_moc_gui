@@ -1,0 +1,63 @@
+[package]
+name = "rust_moc_gui"    
+version = "0.1.0"
+authors = ["Thibault Dumortier"]
+edition = "2021"
+rust-version = "1.60"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+
+[dependencies]
+egui = "0.19.0"
+eframe = { version = "0.19.0", features = ["persistence"] }
+rfd = "0.10"
+moc = "0.8.0"
+wasm-bindgen = { version = "0.2.78", features = ["serde-serialize"]  }
+wasm-bindgen-futures = "0.4.28"
+js-sys = "0.3.52"
+unreachable = "0.1" 
+serde = { version = "1.0.80", features = ["derive"] }
+healpix = { package = "cdshealpix", version = "0.6.3" }
+console_error_panic_hook = "0.1.7"
+
+[dependencies.web-sys]
+version = "0.3.52"
+features = [
+  'console',
+  'Blob',
+  'BlobPropertyBag',
+  'Document',
+  'Element',
+  'Event',
+  'File',
+  'FileList',
+  'FileReader',
+  'Headers',
+  'HtmlAnchorElement',
+  'HtmlElement',
+  'HtmlInputElement',
+  'HtmlUListElement',
+  'Node',
+  'Request',
+  'RequestInit',
+  'RequestMode',
+  'Response',
+  'Url',
+  'Window',
+]
+
+# native:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tracing-subscriber = "0.3"
+
+# web:
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+console_error_panic_hook = "0.1.6"
+tracing-wasm = "0.2"
+
+[profile.release]
+opt-level = 2 # fast and small wasm
+
+
+[patch.crates-io]
