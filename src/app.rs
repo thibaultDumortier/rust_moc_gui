@@ -17,7 +17,7 @@ use std::sync::{Arc, Mutex};
 use wasm_bindgen::JsValue;
 
 #[derive(Default, Clone)]
-pub struct Uploaded_files {
+pub struct UploadedFiles {
     name: String,
     data: InternalMoc,
     chosen: bool,
@@ -25,7 +25,7 @@ pub struct Uploaded_files {
 
 #[derive(Default)]
 pub struct FileApp {
-    files: Arc<Mutex<Vec<Uploaded_files>>>,
+    files: Arc<Mutex<Vec<UploadedFiles>>>,
     picked_path: Option<Vec<String>>,
 }
 
@@ -58,7 +58,15 @@ impl eframe::App for FileApp {
                     ui.horizontal(|ui| {
                         ui.label("Picked file:");
                         ui.monospace(file.name.as_str());
-                        ui.checkbox(&mut file.chosen, "choose")
+                        if !file.chosen {
+                            if ui.button("chose").clicked() {
+                                file.chosen = true;
+                            }
+                        } else if file.chosen {
+                            if ui.button("cancel").clicked() {
+                                file.chosen = false;
+                            }
+                        }
                     });
                 }
             }
@@ -102,7 +110,6 @@ impl FileApp {
 
     //#[cfg(target_arch = "wasm32")]
     pub fn fileclick(&mut self) -> Option<Vec<PathBuf>> {
-
         let task = AsyncFileDialog::new()
             .add_filter("MOCs", &["fits", "ascii", "json", "txt"])
             .pick_files();
@@ -110,12 +117,12 @@ impl FileApp {
 
         Self::execute(async move {
             let handle = task.await;
-            let mut files: Vec<Uploaded_files> = Default::default();
+            let mut files: Vec<UploadedFiles> = Default::default();
 
             if let Some(handle) = handle {
                 // If you care about wasm support you just read() the file
                 for path in handle {
-                    let mut file = Uploaded_files::default();
+                    let mut file = UploadedFiles::default();
                     //Reads name and adds it to be shown to user
                     let file_name = path.file_name();
                     file.name = file_name;
