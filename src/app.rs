@@ -3,44 +3,54 @@
 
 use core::fmt;
 use eframe::egui;
+use egui::Ui;
 use moc::deser::fits::{from_fits_ivoa, MocIdxType, MocQtyType, MocType};
 use moc::elemset::range::MocRanges;
 use moc::idx::Idx;
 use moc::moc::range::op::convert::convert_to_u64;
 use moc::moc::range::RangeMOC;
-use moc::moc::{CellMOCIntoIterator, CellMOCIterator, RangeMOCIterator};
+use moc::moc::{CellMOCIntoIterator, CellMOCIterator, RangeMOCIntoIterator, RangeMOCIterator};
 use moc::qty::Hpx;
 use rfd::AsyncFileDialog;
 use std::error::Error;
 use std::io::Cursor;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use unreachable::UncheckedResultExt;
 use wasm_bindgen::JsValue;
 
-enum Op {
+pub enum Op2 {
     AND,
     OR,
 }
-impl Default for Op {
+impl Default for Op2 {
     fn default() -> Self {
-        Op::AND
+        Op2::AND
     }
 }
-impl fmt::Display for Op {
+impl fmt::Display for Op2 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::AND => write!(f, "AND"),
-            Self::OR => write!(f, "OR"),
+            Self::AND => write!(f, "Intersection"),
+            Self::OR => write!(f, "Union"),
         }
     }
 }
-impl PartialEq for Op {
+impl PartialEq for Op2 {
     fn ne(&self, other: &Self) -> bool {
         !self.eq(other)
     }
 
     fn eq(&self, other: &Self) -> bool {
         true
+    }
+}
+impl Op2 {
+    fn perform_Op2_on_smoc(self, left: &SMOC, right: &SMOC) -> Result<SMOC, String> {
+        match self {
+            Op2::AND => Ok(left.and(right)),
+            Op2::OR => Ok(left.or(right)),
+        }
     }
 }
 
@@ -64,7 +74,8 @@ pub struct FileApp {
     files: Arc<Mutex<Vec<UploadedFiles>>>,
     picked_path: Option<Vec<String>>,
     picked_file: Option<UploadedFiles>,
-    operation: Op,
+    picked_second_file: Option<UploadedFiles>,
+    Op2eration: Op2,
 }
 
 impl eframe::App for FileApp {
@@ -78,39 +89,19 @@ impl eframe::App for FileApp {
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            // An operation choice
-            let mut sel_text = "pick one".to_string();
-            if self.picked_file.is_some() {
-                sel_text = format!("{}", self.picked_file.as_ref().unwrap().name);
-            }
-            egui::ComboBox::from_id_source("operation_cbox")
-                .selected_text("pick an operation")
+            // An Op2eration combo box including Intersection and Union
+            let mut sel_text = format!("{}", self.Op2eration);
+            egui::ComboBox::from_id_source("Op2eration_cbox")
+                .selected_text(sel_text)
                 .show_ui(ui, |ui| {
-                    ui.selectable_value(&mut self.operation, Op::AND, "AND");
-                    ui.selectable_value(&mut self.operation, Op::OR, "OR");
+                    ui.selectable_value(&mut self.Op2eration, Op2::AND, "Intersection");
+                    ui.selectable_value(&mut self.Op2eration, Op2::OR, "Union");
                 });
 
             //A file choosing combobox
-            if self.files.lock().unwrap().to_vec().is_empty() {
-                ui.label("Pick a file!");
-            } else {
-                let files = self.files.lock().unwrap().to_vec();
-
-                let mut sel_text = "pick one".to_string();
-                if self.picked_file.is_some() {
-                    sel_text = format!("{}", self.picked_file.as_ref().unwrap().name);
-                }
-                egui::ComboBox::from_id_source("file_cbox")
-                    .selected_text(sel_text)
-                    .show_ui(ui, |ui| {
-                        for file in files {
-                            ui.selectable_value(
-                                &mut self.picked_file,
-                                Some(file.clone()),
-                                file.name,
-                            );
-                        }
-                    });
+            match self.Op2eration {
+                Op2::AND => self.two_moc_Op2(ui, Op2::AND),
+                Op2::OR => todo!(),
             }
             // #[cfg(not(target_arch = "wasm32"))]
             // if let Some(picked_path) = &self.picked_path {
@@ -148,10 +139,11 @@ impl FileApp {
             files: Arc::new(Mutex::new(Default::default())),
             picked_path: None,
             picked_file: None,
-            operation: Op::default(),
+            picked_second_file: None,
+            Op2eration: Op2::default(),
         }
     }
-    fn bar_contents(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+    fn bar_contents(&mut self, ui: &mut Ui, _frame: &mut eframe::Frame) {
         egui::widgets::global_dark_light_mode_switch(ui);
 
         ui.separator();
@@ -167,8 +159,61 @@ impl FileApp {
         }
     }
 
+    pub fn two_moc_Op2(&mut self, ui: &mut Ui, Op2: Op2) {
+        if self.files.lock().unwrap().to_vec().is_empty() {
+            ui.label("Pick a file!");
+        } else {
+            let files = self.files.lock().unwrap().to_vec();
+
+            let mut sel_text = "pick one".to_string();
+            let mut sel_text_2 = "pick one".to_string();
+            if self.picked_file.is_some() {
+                sel_text = format!("{}", self.picked_file.as_ref().unwrap().name);
+            }
+            if self.picked_second_file.is_some() {
+                sel_text_2 = format!("{}", self.picked_second_file.as_ref().unwrap().name);
+            }
+            egui::ComboBox::from_id_source("file_cbox")
+                .selected_text(sel_text.as_str())
+                .show_ui(ui, |ui| {
+                    for file in &files {
+                        ui.selectable_value(
+                            &mut self.picked_file,
+                            Some(file.clone()),
+                            file.clone().name,
+                        );
+                    }
+                });
+            egui::ComboBox::from_id_source("file_cbox_2")
+                .selected_text(sel_text_2.as_str())
+                .show_ui(ui, |ui| {
+                    for file in &files {
+                        ui.selectable_value(
+                            &mut self.picked_second_file,
+                            Some(file.clone()),
+                            file.clone().name,
+                        );
+                    }
+                });
+            if ui.button("Do Operation").clicked() {
+                let l = self.picked_file.clone().unwrap().data.unwrap();
+                let r = self.picked_second_file.clone().unwrap().data.unwrap();
+                let res;
+                res = match (l, r) {
+                    (InternalMoc::Space(l), InternalMoc::Space(r)) => {
+                        Op2.perform_Op2_on_smoc(&l, &r).map(InternalMoc::Space)
+                    }
+                    _ => Err(String::from(
+                        "Both type of both MOCs must be the same, except in fold Operations",
+                    )),
+                };
+                ui.label(format!("{:?}", res.unwrap().to_fits().to_vec()));
+            };
+        }
+    }
+
     // #[cfg(not(target_arch = "wasm32"))]
-    // pub fn fileclick(&mut self) -> Option<Vec<PathBuf>> {
+    // pub fn fileclick(&mut self) -> Op2tion<Vec<PathBuf>> {
     //     if let Some(path) = rfd::FileDialog::new()
     //         .add_filter("MOCs", &["fits", "ascii", "json", "txt"])
     //         .pick_files()
@@ -233,6 +278,23 @@ enum InternalMoc {
 impl Default for InternalMoc {
     fn default() -> Self {
         InternalMoc::Space(SMOC::new(0, MocRanges::default()))
+    }
+}
+impl InternalMoc {
+    pub(crate) fn to_fits(&self) -> Box<[u8]> {
+        let mut buf: Vec<u8> = Default::default();
+        // Uses unsafe [unchecked_unwrap_ok](https://docs.rs/unreachable/1.0.0/unreachable/trait.UncheckedResultExt.html)
+        // for wasm size optimisation.
+        // We do it because no I/O error can occurs since we are writing in memory.
+        unsafe {
+            match self {
+                InternalMoc::Space(moc) => moc
+                    .into_range_moc_iter()
+                    .to_fits_ivoa(None, None, &mut buf)
+                    .unchecked_unwrap_ok(),
+            }
+        }
+        buf.into_boxed_slice()
     }
 }
 
