@@ -8,7 +8,6 @@ use std::sync::{Once, RwLock};
 use js_sys::Array;
 use wasm_bindgen::JsValue;
 
-use super::common::InternalMoc;
 use super::{MocInfo, MocQType};
 
 /// Fonction used only once to init the store

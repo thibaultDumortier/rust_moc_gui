@@ -1,7 +1,7 @@
 #![warn(clippy::all)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
-use core::fmt;
+use crate::op2::*;
 use eframe::egui;
 use egui::Ui;
 use moc::deser::fits::{from_fits_ivoa, MocIdxType, MocQtyType, MocType};
@@ -18,41 +18,6 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use unreachable::UncheckedResultExt;
 use wasm_bindgen::JsValue;
-
-pub enum Op2 {
-    AND,
-    OR,
-}
-impl Default for Op2 {
-    fn default() -> Self {
-        Op2::AND
-    }
-}
-impl fmt::Display for Op2 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::AND => write!(f, "Intersection"),
-            Self::OR => write!(f, "Union"),
-        }
-    }
-}
-impl PartialEq for Op2 {
-    fn ne(&self, other: &Self) -> bool {
-        !self.eq(other)
-    }
-
-    fn eq(&self, other: &Self) -> bool {
-        true
-    }
-}
-impl Op2 {
-    fn perform_Op2_on_smoc(self, left: &SMOC, right: &SMOC) -> Result<SMOC, String> {
-        match self {
-            Op2::AND => Ok(left.and(right)),
-            Op2::OR => Ok(left.or(right)),
-        }
-    }
-}
 
 #[derive(Default, Clone)]
 pub struct UploadedFiles {
@@ -75,7 +40,7 @@ pub struct FileApp {
     picked_path: Option<Vec<String>>,
     picked_file: Option<UploadedFiles>,
     picked_second_file: Option<UploadedFiles>,
-    Op2eration: Op2,
+    operation: Op2,
 }
 
 impl eframe::App for FileApp {
@@ -90,46 +55,19 @@ impl eframe::App for FileApp {
 
         egui::CentralPanel::default().show(ctx, |ui| {
             // An Op2eration combo box including Intersection and Union
-            let mut sel_text = format!("{}", self.Op2eration);
+            let sel_text = format!("{}", self.operation);
             egui::ComboBox::from_id_source("Op2eration_cbox")
                 .selected_text(sel_text)
                 .show_ui(ui, |ui| {
-                    ui.selectable_value(&mut self.Op2eration, Op2::AND, "Intersection");
-                    ui.selectable_value(&mut self.Op2eration, Op2::OR, "Union");
+                    ui.selectable_value(&mut self.operation, Op2::AND, "Intersection");
+                    ui.selectable_value(&mut self.operation, Op2::OR, "Union");
                 });
 
             //A file choosing combobox
-            match self.Op2eration {
-                Op2::AND => self.two_moc_Op2(ui, Op2::AND),
+            match self.operation {
+                Op2::AND => self.two_moc_op2(ui, Op2::AND),
                 Op2::OR => todo!(),
             }
-            // #[cfg(not(target_arch = "wasm32"))]
-            // if let Some(picked_path) = &self.picked_path {
-            //     for str in picked_path {
-            //         ui.horizontal(|ui| {
-            //             ui.label("Picked file:");
-            //             ui.monospace(str);
-            //         });
-            //     }
-            // }
-            //#[cfg(target_arch = "wasm32")]
-            //{
-
-            /*for mut file in files {
-                ui.horizontal(|ui| {
-                    ui.label("Picked file:");
-                    ui.monospace(file.name.as_str());
-                    if !file.chosen {
-                        if ui.button("choose").clicked() {
-                            file.chosen = true;
-                        }
-                    } else if file.chosen {
-                        if ui.button("cancel").clicked() {
-                            file.chosen = false;
-                        }
-                    }
-                });
-            }*/
         });
     }
 }
@@ -140,7 +78,7 @@ impl FileApp {
             picked_path: None,
             picked_file: None,
             picked_second_file: None,
-            Op2eration: Op2::default(),
+            operation: Op2::default(),
         }
     }
     fn bar_contents(&mut self, ui: &mut Ui, _frame: &mut eframe::Frame) {
@@ -159,7 +97,7 @@ impl FileApp {
         }
     }
 
-    pub fn two_moc_Op2(&mut self, ui: &mut Ui, Op2: Op2) {
+    pub fn two_moc_op2(&mut self, ui: &mut Ui, op2: Op2) {
         if self.files.lock().unwrap().to_vec().is_empty() {
             ui.label("Pick a file!");
         } else {
@@ -201,28 +139,13 @@ impl FileApp {
                 let res;
                 res = match (l, r) {
                     (InternalMoc::Space(l), InternalMoc::Space(r)) => {
-                        Op2.perform_Op2_on_smoc(&l, &r).map(InternalMoc::Space)
+                        op2.perform_op2_on_smoc(&l, &r).map(InternalMoc::Space)
                     }
-                    _ => Err(String::from(
-                        "Both type of both MOCs must be the same, except in fold Operations",
-                    )),
                 };
                 ui.label(format!("{:?}", res.unwrap().to_fits().to_vec()));
             };
         }
     }
-
-    // #[cfg(not(target_arch = "wasm32"))]
-    // pub fn fileclick(&mut self) -> Op2tion<Vec<PathBuf>> {
-    //     if let Some(path) = rfd::FileDialog::new()
-    //         .add_filter("MOCs", &["fits", "ascii", "json", "txt"])
-    //         .pick_files()
-    //     {
-    //         return Some(path);
-    //     } else {
-    //         return None;
-    //     }
-    // }
 
     //#[cfg(target_arch = "wasm32")]
     pub fn fileclick(&mut self) -> Option<Vec<PathBuf>> {
@@ -269,10 +192,10 @@ impl FileApp {
     }
 }
 
-type SMOC = RangeMOC<u64, Hpx<u64>>;
+pub(crate) type SMOC = RangeMOC<u64, Hpx<u64>>;
 
 #[derive(Clone)]
-enum InternalMoc {
+pub(crate) enum InternalMoc {
     Space(SMOC),
 }
 impl Default for InternalMoc {
