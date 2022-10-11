@@ -1,23 +1,26 @@
 #![warn(clippy::all)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
+use crate::commons::*;
 use crate::op2::*;
+
 use eframe::egui;
 use egui::Ui;
-use moc::deser::fits::{from_fits_ivoa, MocIdxType, MocQtyType, MocType};
-use moc::elemset::range::MocRanges;
-use moc::idx::Idx;
-use moc::moc::range::op::convert::convert_to_u64;
-use moc::moc::range::RangeMOC;
-use moc::moc::{CellMOCIntoIterator, CellMOCIterator, RangeMOCIntoIterator, RangeMOCIterator};
-use moc::qty::Hpx;
+use moc::deser::fits::{from_fits_ivoa, MocIdxType};
 use rfd::AsyncFileDialog;
-use std::error::Error;
 use std::io::Cursor;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use unreachable::UncheckedResultExt;
+use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsValue;
+
+#[wasm_bindgen]
+extern "C" {
+    // Use `js_namespace` here to bind `console.log(..)` instead of just
+    // `log(..)`
+    #[wasm_bindgen(js_namespace = console)]
+    fn log(s: &str);
+}
 
 #[derive(Default, Clone)]
 pub struct UploadedFiles {
@@ -65,7 +68,7 @@ impl eframe::App for FileApp {
 
             //A file choosing combobox
             match self.operation {
-                Op2::AND => self.two_moc_op2(ui, Op2::AND),
+                Op2::AND => self.moc_op2(ui, Op2::AND),
                 Op2::OR => todo!(),
             }
         });
@@ -97,7 +100,46 @@ impl FileApp {
         }
     }
 
-    pub fn two_moc_op2(&mut self, ui: &mut Ui, op2: Op2) {
+    pub fn moc_op1(&mut self, ui: &mut Ui, op2: Op2) {
+        if self.files.lock().unwrap().to_vec().is_empty() {
+            ui.label("Pick a file!");
+        } else {
+            let files = self.files.lock().unwrap().to_vec();
+
+            let mut sel_text = "pick one".to_string();
+            let mut sel_text_2 = "pick one".to_string();
+            if self.picked_file.is_some() {
+                sel_text = format!("{}", self.picked_file.as_ref().unwrap().name);
+            }
+            if self.picked_second_file.is_some() {
+                sel_text_2 = format!("{}", self.picked_second_file.as_ref().unwrap().name);
+            }
+            egui::ComboBox::from_id_source("file_cbox")
+                .selected_text(sel_text.as_str())
+                .show_ui(ui, |ui| {
+                    for file in &files {
+                        ui.selectable_value(
+                            &mut self.picked_file,
+                            Some(file.clone()),
+                            file.clone().name,
+                        );
+                    }
+                });
+            if ui.button("Do Operation").clicked() {
+                let l = self.picked_file.clone().unwrap().data.unwrap();
+                let r = self.picked_second_file.clone().unwrap().data.unwrap();
+                let res;
+                res = match (l, r) {
+                    (InternalMoc::Space(l), InternalMoc::Space(r)) => {
+                        op2.perform_op2_on_smoc(&l, &r).map(InternalMoc::Space)
+                    }
+                };
+                log(&format!("{:?}", res.unwrap().to_fits().to_vec()));
+            };
+        }
+    }
+
+    pub fn moc_op2(&mut self, ui: &mut Ui, op2: Op2) {
         if self.files.lock().unwrap().to_vec().is_empty() {
             ui.label("Pick a file!");
         } else {
@@ -142,7 +184,7 @@ impl FileApp {
                         op2.perform_op2_on_smoc(&l, &r).map(InternalMoc::Space)
                     }
                 };
-                ui.label(format!("{:?}", res.unwrap().to_fits().to_vec()));
+                log(&format!("{:?}", res.unwrap().to_fits().to_vec()));
             };
         }
     }
@@ -190,54 +232,4 @@ impl FileApp {
     fn execute<F: std::future::Future<Output = ()> + 'static>(f: F) {
         wasm_bindgen_futures::spawn_local(f);
     }
-}
-
-pub(crate) type SMOC = RangeMOC<u64, Hpx<u64>>;
-
-#[derive(Clone)]
-pub(crate) enum InternalMoc {
-    Space(SMOC),
-}
-impl Default for InternalMoc {
-    fn default() -> Self {
-        InternalMoc::Space(SMOC::new(0, MocRanges::default()))
-    }
-}
-impl InternalMoc {
-    pub(crate) fn to_fits(&self) -> Box<[u8]> {
-        let mut buf: Vec<u8> = Default::default();
-        // Uses unsafe [unchecked_unwrap_ok](https://docs.rs/unreachable/1.0.0/unreachable/trait.UncheckedResultExt.html)
-        // for wasm size optimisation.
-        // We do it because no I/O error can occurs since we are writing in memory.
-        unsafe {
-            match self {
-                InternalMoc::Space(moc) => moc
-                    .into_range_moc_iter()
-                    .to_fits_ivoa(None, None, &mut buf)
-                    .unchecked_unwrap_ok(),
-            }
-        }
-        buf.into_boxed_slice()
-    }
-}
-
-fn from_fits<T: Idx>(moc: MocQtyType<T, Cursor<&[u8]>>) -> Result<InternalMoc, Box<dyn Error>> {
-    match moc {
-        MocQtyType::Hpx(moc) => from_fits_hpx(moc),
-        MocQtyType::Time(_) => todo!(),
-        MocQtyType::TimeHpx(_) => todo!(),
-    }
-}
-
-fn from_fits_hpx<T: Idx>(
-    moc: MocType<T, Hpx<T>, Cursor<&[u8]>>,
-) -> Result<InternalMoc, Box<dyn Error>> {
-    let moc: SMOC = match moc {
-        MocType::Ranges(moc) => convert_to_u64::<T, Hpx<T>, _, Hpx<u64>>(moc).into_range_moc(),
-        MocType::Cells(moc) => {
-            convert_to_u64::<T, Hpx<T>, _, Hpx<u64>>(moc.into_cell_moc_iter().ranges())
-                .into_range_moc()
-        }
-    };
-    Ok(InternalMoc::Space(moc))
 }
