@@ -185,7 +185,7 @@ impl FileApp {
     pub fn moc_op2(&mut self, ui: &mut Ui, op2: Op2) {
         //If no file has been imported yet
         if self.files.lock().unwrap().to_vec().is_empty() {
-            ui.label("Pick a file!");
+            ui.label("Pick at least files!");
         //If files have been imported and can be chosen from
         } else {
             let files = self.files.lock().unwrap().to_vec();
@@ -324,12 +324,20 @@ impl FileApp {
                     "Intersection",
                 );
                 ui.selectable_value(&mut self.operation, Op::Two(Op2::Union), "Union");
+                ui.selectable_value(&mut self.operation, Op::Two(Op2::Difference), "Difference");
+                ui.selectable_value(&mut self.operation, Op::Two(Op2::Minus), "Minus");
+                ui.selectable_value(&mut self.operation, Op::Two(Op2::TFold), "TFold");
+                ui.selectable_value(&mut self.operation, Op::Two(Op2::SFold), "SFold");
             });
 
         //A file choosing combobox
         match operation {
             Op2::Intersection => self.moc_op2(ui, Op2::Intersection),
             Op2::Union => self.moc_op2(ui, Op2::Union),
+            Op2::Difference => self.moc_op2(ui, Op2::Difference),
+            Op2::Minus => self.moc_op2(ui, Op2::Minus),
+            Op2::TFold => self.moc_op2(ui, Op2::TFold),
+            Op2::SFold => self.moc_op2(ui, Op2::SFold),
         }
     }
 }

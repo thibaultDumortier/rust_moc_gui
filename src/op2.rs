@@ -5,6 +5,10 @@ use core::fmt;
 pub enum Op2 {
     Intersection,
     Union,
+    Difference,
+    Minus,
+    TFold,
+    SFold,
 }
 impl Default for Op2 {
     fn default() -> Self {
@@ -16,6 +20,10 @@ impl fmt::Display for Op2 {
         match self {
             Self::Intersection => write!(f, "Intersection"),
             Self::Union => write!(f, "Union"),
+            Self::Difference => write!(f, "Difference"),
+            Self::Minus => write!(f, "Minus"),
+            Self::TFold => write!(f, "TFold"),
+            Self::SFold => write!(f, "SFold"),
         }
     }
 }
@@ -33,6 +41,14 @@ impl Op2 {
         match self {
             Op2::Intersection => Ok(left.and(right)),
             Op2::Union => Ok(left.or(right)),
+            Op2::Difference => Ok(left.xor(right)),
+            Op2::Minus => Ok(left.minus(right)),
+            Op2::TFold => Err(String::from(
+                "TimeFold operation not available on 2 S-MOCs.",
+            )),
+            Op2::SFold => Err(String::from(
+                "SpaceFold operation not available on 2 S-MOCs.",
+            )),
         }
     }
 }
