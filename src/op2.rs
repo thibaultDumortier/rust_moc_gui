@@ -1,20 +1,21 @@
 use crate::commons::*;
 use core::fmt;
 
+#[derive(Clone)]
 pub enum Op2 {
-    AND,
-    OR,
+    Intersection,
+    Union,
 }
 impl Default for Op2 {
     fn default() -> Self {
-        Op2::AND
+        Op2::Intersection
     }
 }
 impl fmt::Display for Op2 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::AND => write!(f, "Intersection"),
-            Self::OR => write!(f, "Union"),
+            Self::Intersection => write!(f, "Intersection"),
+            Self::Union => write!(f, "Union"),
         }
     }
 }
@@ -30,8 +31,8 @@ impl PartialEq for Op2 {
 impl Op2 {
     pub fn perform_op2_on_smoc(self, left: &SMOC, right: &SMOC) -> Result<SMOC, String> {
         match self {
-            Op2::AND => Ok(left.and(right)),
-            Op2::OR => Ok(left.or(right)),
+            Op2::Intersection => Ok(left.and(right)),
+            Op2::Union => Ok(left.or(right)),
         }
     }
 }

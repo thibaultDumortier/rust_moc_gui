@@ -2,6 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
 use crate::commons::*;
+use crate::op1::*;
 use crate::op2::*;
 
 use eframe::egui;
@@ -9,19 +10,18 @@ use egui::Ui;
 use moc::deser::fits::{from_fits_ivoa, MocIdxType};
 use rfd::AsyncFileDialog;
 use std::io::Cursor;
-use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsValue;
 
+//Import javascript log function
 #[wasm_bindgen]
 extern "C" {
-    // Use `js_namespace` here to bind `console.log(..)` instead of just
-    // `log(..)`
     #[wasm_bindgen(js_namespace = console)]
     fn log(s: &str);
 }
 
+//A file like object containing the name of the file and the data from the moc
 #[derive(Default, Clone)]
 pub struct UploadedFiles {
     name: String,
@@ -37,13 +37,42 @@ impl PartialEq for UploadedFiles {
     }
 }
 
+enum Op {
+    One(Op1),
+    Two(Op2),
+}
+impl Default for Op {
+    fn default() -> Self {
+        Op::One(Op1::default())
+    }
+}
+impl PartialEq for Op {
+    fn ne(&self, other: &Self) -> bool {
+        !self.eq(other)
+    }
+
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Op::One(_), Op::One(_)) => true,
+            (Op::One(_), Op::Two(_)) => false,
+            (Op::Two(_), Op::One(_)) => false,
+            (Op::Two(_), Op::Two(_)) => true,
+        }
+    }
+}
+
+//FileApp struct
+/*
+    * files: contains the different uploaded files
+    *
+
+*/
 #[derive(Default)]
 pub struct FileApp {
     files: Arc<Mutex<Vec<UploadedFiles>>>,
-    picked_path: Option<Vec<String>>,
     picked_file: Option<UploadedFiles>,
     picked_second_file: Option<UploadedFiles>,
-    operation: Op2,
+    operation: Op,
 }
 
 impl eframe::App for FileApp {
@@ -57,19 +86,23 @@ impl eframe::App for FileApp {
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            // An Op2eration combo box including Intersection and Union
-            let sel_text = format!("{}", self.operation);
-            egui::ComboBox::from_id_source("Op2eration_cbox")
-                .selected_text(sel_text)
-                .show_ui(ui, |ui| {
-                    ui.selectable_value(&mut self.operation, Op2::AND, "Intersection");
-                    ui.selectable_value(&mut self.operation, Op2::OR, "Union");
-                });
+            ui.horizontal(|ui| {
+                ui.selectable_value(
+                    &mut self.operation,
+                    Op::One(Op1::default()),
+                    "1 moc operation",
+                );
+                ui.selectable_value(
+                    &mut self.operation,
+                    Op::Two(Op2::default()),
+                    "2 mocs operation",
+                );
+            });
+            ui.end_row();
 
-            //A file choosing combobox
-            match self.operation {
-                Op2::AND => self.moc_op2(ui, Op2::AND),
-                Op2::OR => todo!(),
+            match &self.operation {
+                Op::One(o) => self.op_one_ui(ui, o.clone()),
+                Op::Two(t) => self.op_two_ui(ui, t.clone()),
             }
         });
     }
@@ -78,10 +111,9 @@ impl FileApp {
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
         FileApp {
             files: Arc::new(Mutex::new(Default::default())),
-            picked_path: None,
             picked_file: None,
             picked_second_file: None,
-            operation: Op2::default(),
+            operation: Op::default(),
         }
     }
     fn bar_contents(&mut self, ui: &mut Ui, _frame: &mut eframe::Frame) {
@@ -90,30 +122,25 @@ impl FileApp {
         ui.separator();
 
         if ui.button("Open file...").clicked() {
-            if let Some(path) = self.fileclick() {
-                let mut files: Vec<String> = Default::default();
-                for file in path {
-                    files.push(file.to_str().unwrap().to_string());
-                }
-                self.picked_path = Some(files);
-            };
+            assert!(self.fileclick().is_ok());
         }
     }
 
-    pub fn moc_op1(&mut self, ui: &mut Ui, op2: Op2) {
+    //TODO implement DRY principle
+    pub fn moc_op1(&mut self, ui: &mut Ui, op1: Op1) {
+        //If no file has been imported yet
         if self.files.lock().unwrap().to_vec().is_empty() {
             ui.label("Pick a file!");
+        //If files have been imported and can be chosen from
         } else {
             let files = self.files.lock().unwrap().to_vec();
 
+            //Defaults to "pick one" before leaving the user choose which moc he wants to operate on
             let mut sel_text = "pick one".to_string();
-            let mut sel_text_2 = "pick one".to_string();
             if self.picked_file.is_some() {
                 sel_text = format!("{}", self.picked_file.as_ref().unwrap().name);
             }
-            if self.picked_second_file.is_some() {
-                sel_text_2 = format!("{}", self.picked_second_file.as_ref().unwrap().name);
-            }
+            //Combo box containing the different files that can be picked from
             egui::ComboBox::from_id_source("file_cbox")
                 .selected_text(sel_text.as_str())
                 .show_ui(ui, |ui| {
@@ -125,26 +152,28 @@ impl FileApp {
                         );
                     }
                 });
+            //Button launching the operation
             if ui.button("Do Operation").clicked() {
-                let l = self.picked_file.clone().unwrap().data.unwrap();
-                let r = self.picked_second_file.clone().unwrap().data.unwrap();
-                let res;
-                res = match (l, r) {
-                    (InternalMoc::Space(l), InternalMoc::Space(r)) => {
-                        op2.perform_op2_on_smoc(&l, &r).map(InternalMoc::Space)
+                let moc = self.picked_file.clone().unwrap().data.unwrap();
+                let res = match moc {
+                    InternalMoc::Space(moc) => {
+                        op1.perform_op1_on_smoc(&moc).map(InternalMoc::Space)
                     }
                 };
                 log(&format!("{:?}", res.unwrap().to_fits().to_vec()));
             };
         }
     }
-
+    //TODO implement DRY principle
     pub fn moc_op2(&mut self, ui: &mut Ui, op2: Op2) {
+        //If no file has been imported yet
         if self.files.lock().unwrap().to_vec().is_empty() {
             ui.label("Pick a file!");
+        //If files have been imported and can be chosen from
         } else {
             let files = self.files.lock().unwrap().to_vec();
 
+            //If no file has been imported yet
             let mut sel_text = "pick one".to_string();
             let mut sel_text_2 = "pick one".to_string();
             if self.picked_file.is_some() {
@@ -153,6 +182,7 @@ impl FileApp {
             if self.picked_second_file.is_some() {
                 sel_text_2 = format!("{}", self.picked_second_file.as_ref().unwrap().name);
             }
+            //Combo boxes containing the different files that can be picked from
             egui::ComboBox::from_id_source("file_cbox")
                 .selected_text(sel_text.as_str())
                 .show_ui(ui, |ui| {
@@ -175,6 +205,7 @@ impl FileApp {
                         );
                     }
                 });
+            //Button launching the operation
             if ui.button("Do Operation").clicked() {
                 let l = self.picked_file.clone().unwrap().data.unwrap();
                 let r = self.picked_second_file.clone().unwrap().data.unwrap();
@@ -189,8 +220,10 @@ impl FileApp {
         }
     }
 
-    //#[cfg(target_arch = "wasm32")]
-    pub fn fileclick(&mut self) -> Option<Vec<PathBuf>> {
+    /*
+        fileclick: function returning that copies
+    */
+    pub fn fileclick(&mut self) -> Result<(), &str> {
         let task = AsyncFileDialog::new()
             .add_filter("MOCs", &["fits", "ascii", "json", "txt"])
             .pick_files();
@@ -226,10 +259,46 @@ impl FileApp {
                 *(files_cpy.lock().unwrap()) = files;
             }
         });
-        None
+        Ok(())
     }
     //#[cfg(target_arch = "wasm32")]
     fn execute<F: std::future::Future<Output = ()> + 'static>(f: F) {
         wasm_bindgen_futures::spawn_local(f);
+    }
+
+    fn op_one_ui(&mut self, ui: &mut Ui, mut operation: Op1) {
+        // An operation combo box including Intersection and Union
+        let sel_text = format!("{}", operation);
+        egui::ComboBox::from_id_source("Operation_cbox")
+            .selected_text(sel_text)
+            .show_ui(ui, |ui| {
+                ui.selectable_value(&mut operation, Op1::Complement, "Complement");
+            });
+
+        //A file choosing combobox
+        match operation {
+            Op1::Complement => self.moc_op1(ui, Op1::Complement),
+        }
+    }
+
+    fn op_two_ui(&mut self, ui: &mut Ui, operation: Op2) {
+        // An operation combo box including Intersection and Union
+        let sel_text = format!("{}", operation);
+        egui::ComboBox::from_id_source("Operation_cbox")
+            .selected_text(sel_text)
+            .show_ui(ui, |ui| {
+                ui.selectable_value(
+                    &mut self.operation,
+                    Op::Two(Op2::Intersection),
+                    "Intersection",
+                );
+                ui.selectable_value(&mut self.operation, Op::Two(Op2::Union), "Union");
+            });
+
+        //A file choosing combobox
+        match operation {
+            Op2::Intersection => self.moc_op2(ui, Op2::Intersection),
+            Op2::Union => self.moc_op2(ui, Op2::Union),
+        }
     }
 }
