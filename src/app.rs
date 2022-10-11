@@ -73,6 +73,7 @@ pub struct FileApp {
     picked_file: Option<UploadedFiles>,
     picked_second_file: Option<UploadedFiles>,
     operation: Op,
+    deg: u8,
 }
 
 impl eframe::App for FileApp {
@@ -114,6 +115,7 @@ impl FileApp {
             picked_file: None,
             picked_second_file: None,
             operation: Op::default(),
+            deg: 0,
         }
     }
     fn bar_contents(&mut self, ui: &mut Ui, _frame: &mut eframe::Frame) {
@@ -127,7 +129,7 @@ impl FileApp {
     }
 
     //TODO implement DRY principle
-    pub fn moc_op1(&mut self, ui: &mut Ui, op1: Op1) {
+    pub fn moc_op1(&mut self, ui: &mut Ui, mut op1: Op1) {
         //If no file has been imported yet
         if self.files.lock().unwrap().to_vec().is_empty() {
             ui.label("Pick a file!");
@@ -152,8 +154,23 @@ impl FileApp {
                         );
                     }
                 });
+            let mut deg = false;
+            match op1 {
+                Op1::Degrade { new_depth: _ } => deg = true,
+                _ => deg = false,
+            }
+
+            if deg {
+                ui.add(egui::Slider::new(&mut self.deg, 0..=25));
+            }
+
             //Button launching the operation
             if ui.button("Do Operation").clicked() {
+                if deg {
+                    op1 = Op1::Degrade {
+                        new_depth: self.deg,
+                    }
+                }
                 let moc = self.picked_file.clone().unwrap().data.unwrap();
                 let res = match moc {
                     InternalMoc::Space(moc) => {
@@ -266,18 +283,32 @@ impl FileApp {
         wasm_bindgen_futures::spawn_local(f);
     }
 
-    fn op_one_ui(&mut self, ui: &mut Ui, mut operation: Op1) {
+    fn op_one_ui(&mut self, ui: &mut Ui, operation: Op1) {
         // An operation combo box including Intersection and Union
         let sel_text = format!("{}", operation);
         egui::ComboBox::from_id_source("Operation_cbox")
             .selected_text(sel_text)
             .show_ui(ui, |ui| {
-                ui.selectable_value(&mut operation, Op1::Complement, "Complement");
+                ui.selectable_value(&mut self.operation, Op::One(Op1::Complement), "Complement");
+                ui.selectable_value(
+                    &mut self.operation,
+                    Op::One(Op1::Degrade { new_depth: 0 }),
+                    "Degrade",
+                );
+                ui.selectable_value(&mut self.operation, Op::One(Op1::Extend), "Extend");
+                ui.selectable_value(&mut self.operation, Op::One(Op1::Contract), "Contract");
+                ui.selectable_value(&mut self.operation, Op::One(Op1::ExtBorder), "ExtBorder");
+                ui.selectable_value(&mut self.operation, Op::One(Op1::IntBorder), "IntBorder");
             });
 
         //A file choosing combobox
         match operation {
             Op1::Complement => self.moc_op1(ui, Op1::Complement),
+            Op1::Degrade { new_depth } => self.moc_op1(ui, Op1::Degrade { new_depth }),
+            Op1::Extend => self.moc_op1(ui, Op1::Extend),
+            Op1::Contract => self.moc_op1(ui, Op1::Contract),
+            Op1::ExtBorder => self.moc_op1(ui, Op1::ExtBorder),
+            Op1::IntBorder => self.moc_op1(ui, Op1::IntBorder),
         }
     }
 
