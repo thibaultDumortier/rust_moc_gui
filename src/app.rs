@@ -77,12 +77,20 @@ pub struct FileApp {
 }
 
 impl eframe::App for FileApp {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+    /*
+        update: function of FileApp struct from eframe::App
+        Description: A function updating the state of the application
+        Parameters:
+            ctx: &equi::Context, the app's context
+            frame is unused but mandatory
+        Returns: ()
+    */
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::TopBottomPanel::top("top_bar").show(ctx, |ui| {
             egui::trace!(ui);
             ui.horizontal_wrapped(|ui| {
                 ui.visuals_mut().button_frame = false;
-                self.bar_contents(ui, frame);
+                self.bar_contents(ui);
             });
         });
 
@@ -109,7 +117,13 @@ impl eframe::App for FileApp {
     }
 }
 impl FileApp {
-    pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
+    /*
+        new: function of FileApp struct
+        Description: A function handling the contents of the top bar
+        Parameters: None
+        Returns: FileApp
+    */
+    pub fn new() -> Self {
         FileApp {
             files: Arc::new(Mutex::new(Default::default())),
             picked_file: None,
@@ -118,7 +132,15 @@ impl FileApp {
             deg: 0,
         }
     }
-    fn bar_contents(&mut self, ui: &mut Ui, _frame: &mut eframe::Frame) {
+
+    /*
+        bar_contents: function of FileApp struct
+        Description: A function handling the contents of the top bar
+        Parameters:
+            ui: Ui, the ui from the app
+        Returns: ()
+    */
+    fn bar_contents(&mut self, ui: &mut Ui) {
         egui::widgets::global_dark_light_mode_switch(ui);
 
         ui.separator();
@@ -128,38 +150,34 @@ impl FileApp {
         }
     }
 
-    //TODO implement DRY principle
+    /*
+        moc_op1: function of FileApp struct
+        Description: A function handling operations on a moc launched by the app
+        Parameters:
+            ui: Ui, the ui from the app
+            op1: Op1, operation enumerator of the selected operation
+        Returns: ()
+    */
     pub fn moc_op1(&mut self, ui: &mut Ui, mut op1: Op1) {
         //If no file has been imported yet
         if self.files.lock().unwrap().to_vec().is_empty() {
             ui.label("Pick a file!");
         //If files have been imported and can be chosen from
         } else {
-            let files = self.files.lock().unwrap().to_vec();
-
             //Defaults to "pick one" before leaving the user choose which moc he wants to operate on
             let mut sel_text = "pick one".to_string();
             if self.picked_file.is_some() {
                 sel_text = format!("{}", self.picked_file.as_ref().unwrap().name);
             }
             //Combo box containing the different files that can be picked from
-            egui::ComboBox::from_id_source("file_cbox")
-                .selected_text(sel_text.as_str())
-                .show_ui(ui, |ui| {
-                    for file in &files {
-                        ui.selectable_value(
-                            &mut self.picked_file,
-                            Some(file.clone()),
-                            file.clone().name,
-                        );
-                    }
-                });
-            let mut deg = false;
+            self.make_cbox(ui, sel_text.as_str(), "file_cbox", None);
+
+            //In case of degrade option ask for new depth
+            let deg: bool;
             match op1 {
                 Op1::Degrade { new_depth: _ } => deg = true,
                 _ => deg = false,
             }
-
             if deg {
                 ui.add(egui::Slider::new(&mut self.deg, 0..=25));
             }
@@ -177,19 +195,25 @@ impl FileApp {
                         op1.perform_op1_on_smoc(&moc).map(InternalMoc::Space)
                     }
                 };
-                log(&format!("{:?}", res.unwrap().to_fits().to_vec()));
+                log(&format!("{:?}", res.unwrap().to_fits()));
             };
         }
     }
-    //TODO implement DRY principle
+
+    /*
+        moc_op2: function of FileApp struct
+        Description: A function handling operations on 2 mocs launched by the app
+        Parameters:
+            ui: Ui, the ui from the app
+            op2: Op2, operation enumerator of the selected operation
+        Returns: ()
+    */
     pub fn moc_op2(&mut self, ui: &mut Ui, op2: Op2) {
         //If no file has been imported yet
         if self.files.lock().unwrap().to_vec().is_empty() {
-            ui.label("Pick at least files!");
+            ui.label("Pick at least 2 files!");
         //If files have been imported and can be chosen from
         } else {
-            let files = self.files.lock().unwrap().to_vec();
-
             //If no file has been imported yet
             let mut sel_text = "pick one".to_string();
             let mut sel_text_2 = "pick one".to_string();
@@ -200,28 +224,10 @@ impl FileApp {
                 sel_text_2 = format!("{}", self.picked_second_file.as_ref().unwrap().name);
             }
             //Combo boxes containing the different files that can be picked from
-            egui::ComboBox::from_id_source("file_cbox")
-                .selected_text(sel_text.as_str())
-                .show_ui(ui, |ui| {
-                    for file in &files {
-                        ui.selectable_value(
-                            &mut self.picked_file,
-                            Some(file.clone()),
-                            file.clone().name,
-                        );
-                    }
-                });
-            egui::ComboBox::from_id_source("file_cbox_2")
-                .selected_text(sel_text_2.as_str())
-                .show_ui(ui, |ui| {
-                    for file in &files {
-                        ui.selectable_value(
-                            &mut self.picked_second_file,
-                            Some(file.clone()),
-                            file.clone().name,
-                        );
-                    }
-                });
+            ui.horizontal(|ui| {
+                self.make_cbox(ui, sel_text.as_str(), "file_cbox", None);
+                self.make_cbox(ui, sel_text_2.as_str(), "file_cbox_2", Some(1));
+            });
             //Button launching the operation
             if ui.button("Do Operation").clicked() {
                 let l = self.picked_file.clone().unwrap().data.unwrap();
@@ -232,13 +238,16 @@ impl FileApp {
                         op2.perform_op2_on_smoc(&l, &r).map(InternalMoc::Space)
                     }
                 };
-                log(&format!("{:?}", res.unwrap().to_fits().to_vec()));
+                log(&format!("{:?}", res.unwrap().to_fits()));
             };
         }
     }
 
     /*
-        fileclick: function returning that copies
+        fileclick: function of FileApp struct
+        Description: A function handling the clicking of the "open file" button
+        Parameters: None
+        Returns: a simple result for Ok or Error
     */
     pub fn fileclick(&mut self) -> Result<(), &str> {
         let task = AsyncFileDialog::new()
@@ -278,11 +287,18 @@ impl FileApp {
         });
         Ok(())
     }
-    //#[cfg(target_arch = "wasm32")]
     fn execute<F: std::future::Future<Output = ()> + 'static>(f: F) {
         wasm_bindgen_futures::spawn_local(f);
     }
 
+    /*
+        op_one_ui: function of FileApp struct
+        Description: A function handling operations on a moc launched by the app
+        Parameters:
+            ui: Ui, the ui from the app
+            operation: Op1, operation enumerator of the selected operation
+        Returns: ()
+    */
     fn op_one_ui(&mut self, ui: &mut Ui, operation: Op1) {
         // An operation combo box including Intersection and Union
         let sel_text = format!("{}", operation);
@@ -312,6 +328,14 @@ impl FileApp {
         }
     }
 
+    /*
+        op_two_ui: function of FileApp struct
+        Description: A function handling operations on 2 mocs launched by the app
+        Parameters:
+            ui: Ui, the ui from the app
+            operation: Op2, operation enumerator of the selected operation
+        Returns: ()
+    */
     fn op_two_ui(&mut self, ui: &mut Ui, operation: Op2) {
         // An operation combo box including Intersection and Union
         let sel_text = format!("{}", operation);
@@ -339,5 +363,39 @@ impl FileApp {
             Op2::TFold => self.moc_op2(ui, Op2::TFold),
             Op2::SFold => self.moc_op2(ui, Op2::SFold),
         }
+    }
+
+    /*
+        make_cbox: function of FileApp struct
+        Description: A function creating comboboxes
+        Parameters:
+            ui: Ui, the ui from the app
+            sel_text: &str, the text to show in the combo box
+            id: &str, the combobox gui ID
+            op: Option<u8>, to know if there needs to be multiple selected mocs.
+        Returns: ()
+    */
+    fn make_cbox(&mut self, ui: &mut Ui, sel_text: &str, id: &str, op: Option<u8>) {
+        let files = self.files.lock().unwrap().to_vec();
+
+        egui::ComboBox::from_id_source(id)
+            .selected_text(sel_text)
+            .show_ui(ui, |ui| {
+                for file in &files {
+                    if op.is_none() {
+                        ui.selectable_value(
+                            &mut self.picked_file,
+                            Some(file.clone()),
+                            file.clone().name,
+                        );
+                    } else {
+                        ui.selectable_value(
+                            &mut self.picked_second_file,
+                            Some(file.clone()),
+                            file.clone().name,
+                        );
+                    }
+                }
+            });
     }
 }
