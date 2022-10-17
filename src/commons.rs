@@ -12,15 +12,15 @@ use moc::{
 };
 use unreachable::UncheckedResultExt;
 
-pub(crate) type SMOC = RangeMOC<u64, Hpx<u64>>;
+pub(crate) type Smoc = RangeMOC<u64, Hpx<u64>>;
 
 #[derive(Clone)]
 pub(crate) enum InternalMoc {
-    Space(SMOC),
+    Space(Smoc),
 }
 impl Default for InternalMoc {
     fn default() -> Self {
-        InternalMoc::Space(SMOC::new(0, MocRanges::default()))
+        InternalMoc::Space(Smoc::new(0, MocRanges::default()))
     }
 }
 impl InternalMoc {
@@ -52,7 +52,7 @@ pub(crate) fn from_fits<T: Idx>(moc: MocQtyType<T, Cursor<&[u8]>>) -> Result<Int
 fn from_fits_hpx<T: Idx>(
     moc: MocType<T, Hpx<T>, Cursor<&[u8]>>,
 ) -> Result<InternalMoc, Box<dyn Error>> {
-    let moc: SMOC = match moc {
+    let moc: Smoc = match moc {
         MocType::Ranges(moc) => convert_to_u64::<T, Hpx<T>, _, Hpx<u64>>(moc).into_range_moc(),
         MocType::Cells(moc) => {
             convert_to_u64::<T, Hpx<T>, _, Hpx<u64>>(moc.into_cell_moc_iter().ranges())

@@ -28,16 +28,12 @@ impl fmt::Display for Op2 {
     }
 }
 impl PartialEq for Op2 {
-    fn ne(&self, other: &Self) -> bool {
-        !self.eq(other)
-    }
-
     fn eq(&self, _other: &Self) -> bool {
         true
     }
 }
 impl Op2 {
-    pub fn perform_op2_on_smoc(self, left: &SMOC, right: &SMOC) -> Result<SMOC, String> {
+    pub fn perform_op2_on_smoc(self, left: &Smoc, right: &Smoc) -> Result<Smoc, String> {
         match self {
             Op2::Intersection => Ok(left.and(right)),
             Op2::Union => Ok(left.or(right)),

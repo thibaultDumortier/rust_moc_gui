@@ -28,16 +28,12 @@ impl fmt::Display for Op1 {
     }
 }
 impl PartialEq for Op1 {
-    fn ne(&self, other: &Self) -> bool {
-        !self.eq(other)
-    }
-
     fn eq(&self, _other: &Self) -> bool {
         true
     }
 }
 impl Op1 {
-    pub fn perform_op1_on_smoc(self, moc: &SMOC) -> Result<SMOC, String> {
+    pub fn perform_op1_on_smoc(self, moc: &Smoc) -> Result<Smoc, String> {
         match self {
             Op1::Complement => Ok(moc.not()),
             Op1::Degrade { new_depth } => Ok(moc.degraded(new_depth)),

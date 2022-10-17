@@ -28,15 +28,12 @@ pub struct UploadedFiles {
     data: Option<InternalMoc>,
 }
 impl PartialEq for UploadedFiles {
-    fn ne(&self, other: &Self) -> bool {
-        !self.eq(other)
-    }
-
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name
     }
 }
 
+//An operation enumerator
 enum Op {
     One(Op1),
     Two(Op2),
@@ -47,10 +44,6 @@ impl Default for Op {
     }
 }
 impl PartialEq for Op {
-    fn ne(&self, other: &Self) -> bool {
-        !self.eq(other)
-    }
-
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Op::One(_), Op::One(_)) => true,
@@ -62,11 +55,6 @@ impl PartialEq for Op {
 }
 
 //FileApp struct
-/*
-    * files: contains the different uploaded files
-    *
-
-*/
 #[derive(Default)]
 pub struct FileApp {
     files: Arc<Mutex<Vec<UploadedFiles>>>,
@@ -167,17 +155,13 @@ impl FileApp {
             //Defaults to "pick one" before leaving the user choose which moc he wants to operate on
             let mut sel_text = "pick one".to_string();
             if self.picked_file.is_some() {
-                sel_text = format!("{}", self.picked_file.as_ref().unwrap().name);
+                sel_text = self.picked_file.as_ref().unwrap().name.to_string();
             }
             //Combo box containing the different files that can be picked from
             self.make_cbox(ui, sel_text.as_str(), "file_cbox", None);
 
             //In case of degrade option ask for new depth
-            let deg: bool;
-            match op1 {
-                Op1::Degrade { new_depth: _ } => deg = true,
-                _ => deg = false,
-            }
+            let deg = matches!(op1, Op1::Degrade { new_depth: _ });
             if deg {
                 ui.add(egui::Slider::new(&mut self.deg, 0..=25));
             }
@@ -218,10 +202,10 @@ impl FileApp {
             let mut sel_text = "pick one".to_string();
             let mut sel_text_2 = "pick one".to_string();
             if self.picked_file.is_some() {
-                sel_text = format!("{}", self.picked_file.as_ref().unwrap().name);
+                sel_text = self.picked_file.as_ref().unwrap().name.to_string();
             }
             if self.picked_second_file.is_some() {
-                sel_text_2 = format!("{}", self.picked_second_file.as_ref().unwrap().name);
+                sel_text_2 = self.picked_second_file.as_ref().unwrap().name.to_string();
             }
             //Combo boxes containing the different files that can be picked from
             ui.horizontal(|ui| {
@@ -232,8 +216,7 @@ impl FileApp {
             if ui.button("Do Operation").clicked() {
                 let l = self.picked_file.clone().unwrap().data.unwrap();
                 let r = self.picked_second_file.clone().unwrap().data.unwrap();
-                let res;
-                res = match (l, r) {
+                let res = match (l, r) {
                     (InternalMoc::Space(l), InternalMoc::Space(r)) => {
                         op2.perform_op2_on_smoc(&l, &r).map(InternalMoc::Space)
                     }
