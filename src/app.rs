@@ -7,12 +7,9 @@ use crate::op2::*;
 
 use eframe::egui;
 use egui::Ui;
-use moc::deser::fits::{from_fits_ivoa, MocIdxType};
 use rfd::AsyncFileDialog;
-use std::io::Cursor;
 use std::sync::{Arc, Mutex};
 use wasm_bindgen::prelude::wasm_bindgen;
-use wasm_bindgen::JsValue;
 
 //Import javascript log function
 #[wasm_bindgen]
@@ -46,8 +43,8 @@ impl Default for Op {
 impl PartialEq for Op {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Op::One(_), Op::One(_)) => true,
-            (Op::Two(_), Op::Two(_)) => true,
+            (Op::One(a), Op::One(b)) => a.eq(b),
+            (Op::Two(a), Op::Two(b)) => a.eq(b),
             _ => false,
         }
     }
@@ -184,6 +181,12 @@ impl FileApp {
                         InternalMoc::Space(moc) => {
                             op1.perform_op1_on_smoc(&moc).map(InternalMoc::Space)
                         }
+                        InternalMoc::Time(moc) => {
+                            op1.perform_op_on_tmoc(&moc).map(InternalMoc::Time)
+                        }
+                        InternalMoc::TimeSpace(moc) => {
+                            op1.perform_op_on_stmoc(&moc).map(InternalMoc::TimeSpace)
+                        }
                     };
                     match self.writing {
                         MocWType::Fits => log(&format!("{:?}", res.unwrap().to_fits())),
@@ -237,6 +240,21 @@ impl FileApp {
                         (InternalMoc::Space(l), InternalMoc::Space(r)) => {
                             op2.perform_op2_on_smoc(&l, &r).map(InternalMoc::Space)
                         }
+                        (InternalMoc::Time(l), InternalMoc::Time(r)) => {
+                            op2.perform_op2_on_tmoc(&l, &r).map(InternalMoc::Time)
+                        }
+                        (InternalMoc::TimeSpace(l), InternalMoc::TimeSpace(r)) => {
+                            op2.perform_op2_on_stmoc(&l, &r).map(InternalMoc::TimeSpace)
+                        }
+                        (InternalMoc::Space(l), InternalMoc::TimeSpace(r)) => {
+                            op2.perform_space_fold(&l, &r).map(InternalMoc::Time)
+                        }
+                        (InternalMoc::Time(l), InternalMoc::TimeSpace(r)) => {
+                            op2.perform_time_fold(&l, &r).map(InternalMoc::Space)
+                        }
+                        _ => Err(String::from(
+                            "Both type of both MOCs must be the same, except in fold operations",
+                        )),
                     };
                     match self.writing {
                         MocWType::Fits => log(&format!("{:?}", res.unwrap().to_fits())),
@@ -274,16 +292,16 @@ impl FileApp {
                     //Reads file contents and adds it to the data
                     let file_content = path.read().await;
                     file.data = Some(
-                        match from_fits_ivoa(Cursor::new(file_content.as_ref()))
-                            .map_err(|e| JsValue::from_str(&e.to_string()))
-                            .unwrap()
-                        {
-                            MocIdxType::U16(moc) => from_fits(moc),
-                            MocIdxType::U32(moc) => from_fits(moc),
-                            MocIdxType::U64(moc) => from_fits(moc),
-                        }
-                        .map_err(|e| JsValue::from_str(&e.to_string()))
-                        .unwrap(),
+                        from_fits(&file_content).unwrap(), // match from_fits_ivoa(Cursor::new(file_content.as_ref()))
+                                                           //     .map_err(|e| JsValue::from_str(&e.to_string()))
+                                                           //     .unwrap()
+                                                           // {
+                                                           //     MocIdxType::U16(moc) => from_fits(moc),
+                                                           //     MocIdxType::U32(moc) => from_fits(moc),
+                                                           //     MocIdxType::U64(moc) => from_fits(moc),
+                                                           // }
+                                                           // .map_err(|e| JsValue::from_str(&e.to_string()))
+                                                           // .unwrap(),
                     );
                     files.push(file);
                 }

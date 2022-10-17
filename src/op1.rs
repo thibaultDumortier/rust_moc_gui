@@ -51,4 +51,44 @@ impl Op1 {
             Op1::IntBorder => Ok(moc.internal_border()),
         }
     }
+    pub fn perform_op_on_tmoc(self, moc: &Tmoc) -> Result<Tmoc, String> {
+        match self {
+            Op1::Complement => Ok(moc.not()),
+            Op1::Degrade { new_depth } => Ok(moc.degraded(new_depth)),
+            Op1::Extend => Err(String::from(
+                "Extend border not implemented (yet) for T-MOCs.",
+            )),
+            Op1::Contract => Err(String::from(
+                "Contract border not implemented (yet) for T-MOCs.",
+            )),
+            Op1::ExtBorder => Err(String::from(
+                "External border not implemented (yet) for T-MOCs.",
+            )),
+            Op1::IntBorder => Err(String::from(
+                "Internal border not implemented (yet) for T-MOCs.",
+            )),
+        }
+    }
+    pub fn perform_op_on_stmoc(self, _moc: &Stmoc) -> Result<Stmoc, String> {
+        match self {
+            Op1::Complement => Err(String::from(
+                "Complement not implemented (yet) for ST-MOCs.",
+            )),
+            Op1::Degrade { new_depth: _ } => {
+                Err(String::from("Degrade not implemented (yet) for ST-MOCs."))
+            }
+            Op1::Extend => Err(String::from(
+                "Extend border not implemented (yet) for ST-MOCs.",
+            )),
+            Op1::Contract => Err(String::from(
+                "Contract border not implemented (yet) for ST-MOCs.",
+            )),
+            Op1::ExtBorder => Err(String::from(
+                "External border not implemented (yet) for ST-MOCs.",
+            )),
+            Op1::IntBorder => Err(String::from(
+                "Internal border not implemented (yet) for ST-MOCs.",
+            )),
+        }
+    }
 }

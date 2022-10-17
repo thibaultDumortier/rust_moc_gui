@@ -1,23 +1,35 @@
 use core::fmt;
-use std::{error::Error, io::Cursor};
+use std::io::Cursor;
 
+use crate::load::{from_fits_gen, from_fits_u64};
 use moc::{
-    deser::fits::{MocQtyType, MocType},
+    deser::fits::{from_fits_ivoa, ranges2d_to_fits_ivoa, MocIdxType},
     elemset::range::MocRanges,
-    idx::Idx,
     moc::{
-        range::{op::convert::convert_to_u64, RangeMOC},
-        CellMOCIntoIterator, CellMOCIterator, RangeMOCIntoIterator, RangeMOCIterator, CellOrCellRangeMOCIterator,
+        range::RangeMOC, CellMOCIterator, CellOrCellRangeMOCIterator, RangeMOCIntoIterator,
+        RangeMOCIterator,
     },
-    qty::Hpx,
+    moc2d::{
+        range::RangeMOC2, CellMOC2IntoIterator, CellMOC2Iterator, CellOrCellRangeMOC2IntoIterator,
+        CellOrCellRangeMOC2Iterator, RangeMOC2IntoIterator,
+    },
+    qty::{Hpx, Time},
 };
 use unreachable::UncheckedResultExt;
+use wasm_bindgen::JsValue;
 
+/// Convenient type for Space-MOCs
 pub(crate) type Smoc = RangeMOC<u64, Hpx<u64>>;
+/// Convenient type for Time-MOCs
+pub(crate) type Tmoc = RangeMOC<u64, Time<u64>>;
+/// Convenient type for SpaceTime-MOCs
+pub(crate) type Stmoc = RangeMOC2<u64, Time<u64>, u64, Hpx<u64>>;
 
 #[derive(Clone)]
 pub(crate) enum InternalMoc {
     Space(Smoc),
+    Time(Tmoc),
+    TimeSpace(Stmoc),
 }
 impl Default for InternalMoc {
     fn default() -> Self {
@@ -36,6 +48,14 @@ impl InternalMoc {
                     .into_range_moc_iter()
                     .to_fits_ivoa(None, None, &mut buf)
                     .unchecked_unwrap_ok(),
+                InternalMoc::Time(moc) => moc
+                    .into_range_moc_iter()
+                    .to_fits_ivoa(None, None, &mut buf)
+                    .unchecked_unwrap_ok(),
+                InternalMoc::TimeSpace(moc) => {
+                    ranges2d_to_fits_ivoa(moc.into_range_moc2_iter(), None, None, &mut buf)
+                        .unchecked_unwrap_ok()
+                }
             }
         }
         buf.into_boxed_slice()
@@ -53,6 +73,16 @@ impl InternalMoc {
                     .cells()
                     .to_json_aladin(fold, &mut buf)
                     .unchecked_unwrap_ok(),
+                InternalMoc::Time(moc) => moc
+                    .into_range_moc_iter()
+                    .cells()
+                    .to_json_aladin(fold, &mut buf)
+                    .unchecked_unwrap_ok(),
+                InternalMoc::TimeSpace(moc) => moc
+                    .into_range_moc2_iter()
+                    .into_cell_moc2_iter()
+                    .to_json_aladin(&fold, &mut buf)
+                    .unchecked_unwrap_ok(),
             }
         }
         unsafe { String::from_utf8_unchecked(buf) }
@@ -69,6 +99,17 @@ impl InternalMoc {
                     .into_range_moc_iter()
                     .cells()
                     .cellranges()
+                    .to_ascii_ivoa(fold, false, &mut buf)
+                    .unchecked_unwrap_ok(),
+                InternalMoc::Time(moc) => moc
+                    .into_range_moc_iter()
+                    .cells()
+                    .cellranges()
+                    .to_ascii_ivoa(fold, false, &mut buf)
+                    .unchecked_unwrap_ok(),
+                InternalMoc::TimeSpace(moc) => moc
+                    .into_range_moc2_iter()
+                    .into_cellcellrange_moc2_iter()
                     .to_ascii_ivoa(fold, false, &mut buf)
                     .unchecked_unwrap_ok(),
             }
@@ -98,25 +139,14 @@ impl fmt::Display for MocWType {
     }
 }
 
-pub(crate) fn from_fits<T: Idx>(
-    moc: MocQtyType<T, Cursor<&[u8]>>,
-) -> Result<InternalMoc, Box<dyn Error>> {
-    match moc {
-        MocQtyType::Hpx(moc) => from_fits_hpx(moc),
-        MocQtyType::Time(_) => todo!(),
-        MocQtyType::TimeHpx(_) => todo!(),
-    }
-}
-
-fn from_fits_hpx<T: Idx>(
-    moc: MocType<T, Hpx<T>, Cursor<&[u8]>>,
-) -> Result<InternalMoc, Box<dyn Error>> {
-    let moc: Smoc = match moc {
-        MocType::Ranges(moc) => convert_to_u64::<T, Hpx<T>, _, Hpx<u64>>(moc).into_range_moc(),
-        MocType::Cells(moc) => {
-            convert_to_u64::<T, Hpx<T>, _, Hpx<u64>>(moc.into_cell_moc_iter().ranges())
-                .into_range_moc()
+pub(crate) fn from_fits(data: &[u8]) -> Result<InternalMoc, JsValue> {
+    // Build the MOC
+    let moc =
+        match from_fits_ivoa(Cursor::new(data)).map_err(|e| JsValue::from_str(&e.to_string()))? {
+            MocIdxType::U16(moc) => from_fits_gen(moc),
+            MocIdxType::U32(moc) => from_fits_gen(moc),
+            MocIdxType::U64(moc) => from_fits_u64(moc),
         }
-    };
-    Ok(InternalMoc::Space(moc))
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+    Ok(moc)
 }
