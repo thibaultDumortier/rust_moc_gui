@@ -28,8 +28,16 @@ impl fmt::Display for Op2 {
     }
 }
 impl PartialEq for Op2 {
-    fn eq(&self, _other: &Self) -> bool {
-        true
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Op2::Intersection, Op2::Intersection) => true,
+            (Op2::Union, Op2::Union) => true,
+            (Op2::Difference, Op2::Difference) => true,
+            (Op2::Minus, Op2::Minus) => true,
+            (Op2::TFold, Op2::TFold) => true,
+            (Op2::SFold, Op2::SFold) => true,
+            _ => false,
+        }
     }
 }
 impl Op2 {

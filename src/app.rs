@@ -47,9 +47,8 @@ impl PartialEq for Op {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Op::One(_), Op::One(_)) => true,
-            (Op::One(_), Op::Two(_)) => false,
-            (Op::Two(_), Op::One(_)) => false,
             (Op::Two(_), Op::Two(_)) => true,
+            _ => false,
         }
     }
 }
@@ -62,6 +61,7 @@ pub struct FileApp {
     picked_second_file: Option<UploadedFiles>,
     operation: Op,
     deg: u8,
+    writing: MocWType,
 }
 
 impl eframe::App for FileApp {
@@ -118,6 +118,7 @@ impl FileApp {
             picked_second_file: None,
             operation: Op::default(),
             deg: 0,
+            writing: MocWType::default(),
         }
     }
 
@@ -158,7 +159,10 @@ impl FileApp {
                 sel_text = self.picked_file.as_ref().unwrap().name.to_string();
             }
             //Combo box containing the different files that can be picked from
-            self.make_cbox(ui, sel_text.as_str(), "file_cbox", None);
+            ui.horizontal(|ui| {
+                ui.label("Moc : ");
+                self.make_cbox(ui, sel_text.as_str(), "file_cbox", None);
+            });
 
             //In case of degrade option ask for new depth
             let deg = matches!(op1, Op1::Degrade { new_depth: _ });
@@ -167,20 +171,27 @@ impl FileApp {
             }
 
             //Button launching the operation
-            if ui.button("Do Operation").clicked() {
-                if deg {
-                    op1 = Op1::Degrade {
-                        new_depth: self.deg,
+            ui.horizontal(|ui| {
+                self.ui_writing_type(ui);
+                if ui.button("Launch").clicked() {
+                    if deg {
+                        op1 = Op1::Degrade {
+                            new_depth: self.deg,
+                        }
                     }
-                }
-                let moc = self.picked_file.clone().unwrap().data.unwrap();
-                let res = match moc {
-                    InternalMoc::Space(moc) => {
-                        op1.perform_op1_on_smoc(&moc).map(InternalMoc::Space)
+                    let moc = self.picked_file.clone().unwrap().data.unwrap();
+                    let res = match moc {
+                        InternalMoc::Space(moc) => {
+                            op1.perform_op1_on_smoc(&moc).map(InternalMoc::Space)
+                        }
+                    };
+                    match self.writing {
+                        MocWType::Fits => log(&format!("{:?}", res.unwrap().to_fits())),
+                        MocWType::Json => log(&res.unwrap().to_json(None)),
+                        MocWType::Ascii => log(&res.unwrap().to_ascii(None)),
                     }
                 };
-                log(&format!("{:?}", res.unwrap().to_fits()));
-            };
+            });
         }
     }
 
@@ -209,20 +220,31 @@ impl FileApp {
             }
             //Combo boxes containing the different files that can be picked from
             ui.horizontal(|ui| {
+                ui.label("First moc :");
                 self.make_cbox(ui, sel_text.as_str(), "file_cbox", None);
+                ui.label("Second moc :");
                 self.make_cbox(ui, sel_text_2.as_str(), "file_cbox_2", Some(1));
             });
             //Button launching the operation
-            if ui.button("Do Operation").clicked() {
-                let l = self.picked_file.clone().unwrap().data.unwrap();
-                let r = self.picked_second_file.clone().unwrap().data.unwrap();
-                let res = match (l, r) {
-                    (InternalMoc::Space(l), InternalMoc::Space(r)) => {
-                        op2.perform_op2_on_smoc(&l, &r).map(InternalMoc::Space)
+            ui.horizontal(|ui| {
+                self.ui_writing_type(ui);
+                if ui.button("Launch").clicked() {
+                    let l = self.picked_file.clone().unwrap().data.unwrap();
+                    log(&l.to_json(None));
+                    let r = self.picked_second_file.clone().unwrap().data.unwrap();
+                    log(&r.to_json(None));
+                    let res = match (l, r) {
+                        (InternalMoc::Space(l), InternalMoc::Space(r)) => {
+                            op2.perform_op2_on_smoc(&l, &r).map(InternalMoc::Space)
+                        }
+                    };
+                    match self.writing {
+                        MocWType::Fits => log(&format!("{:?}", res.unwrap().to_fits())),
+                        MocWType::Json => log(&res.unwrap().to_json(None)),
+                        MocWType::Ascii => log(&res.unwrap().to_ascii(None)),
                     }
                 };
-                log(&format!("{:?}", res.unwrap().to_fits()));
-            };
+            });
         }
     }
 
@@ -285,20 +307,28 @@ impl FileApp {
     fn op_one_ui(&mut self, ui: &mut Ui, operation: Op1) {
         // An operation combo box including Intersection and Union
         let sel_text = format!("{}", operation);
-        egui::ComboBox::from_id_source("Operation_cbox")
-            .selected_text(sel_text)
-            .show_ui(ui, |ui| {
-                ui.selectable_value(&mut self.operation, Op::One(Op1::Complement), "Complement");
-                ui.selectable_value(
-                    &mut self.operation,
-                    Op::One(Op1::Degrade { new_depth: 0 }),
-                    "Degrade",
-                );
-                ui.selectable_value(&mut self.operation, Op::One(Op1::Extend), "Extend");
-                ui.selectable_value(&mut self.operation, Op::One(Op1::Contract), "Contract");
-                ui.selectable_value(&mut self.operation, Op::One(Op1::ExtBorder), "ExtBorder");
-                ui.selectable_value(&mut self.operation, Op::One(Op1::IntBorder), "IntBorder");
-            });
+
+        ui.horizontal(|ui| {
+            ui.label("Operation :");
+            egui::ComboBox::from_id_source("Operation_cbox")
+                .selected_text(sel_text)
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(
+                        &mut self.operation,
+                        Op::One(Op1::Complement),
+                        "Complement",
+                    );
+                    ui.selectable_value(
+                        &mut self.operation,
+                        Op::One(Op1::Degrade { new_depth: 0 }),
+                        "Degrade",
+                    );
+                    ui.selectable_value(&mut self.operation, Op::One(Op1::Extend), "Extend");
+                    ui.selectable_value(&mut self.operation, Op::One(Op1::Contract), "Contract");
+                    ui.selectable_value(&mut self.operation, Op::One(Op1::ExtBorder), "ExtBorder");
+                    ui.selectable_value(&mut self.operation, Op::One(Op1::IntBorder), "IntBorder");
+                });
+        });
 
         //A file choosing combobox
         match operation {
@@ -322,20 +352,27 @@ impl FileApp {
     fn op_two_ui(&mut self, ui: &mut Ui, operation: Op2) {
         // An operation combo box including Intersection and Union
         let sel_text = format!("{}", operation);
-        egui::ComboBox::from_id_source("Operation_cbox")
-            .selected_text(sel_text)
-            .show_ui(ui, |ui| {
-                ui.selectable_value(
-                    &mut self.operation,
-                    Op::Two(Op2::Intersection),
-                    "Intersection",
-                );
-                ui.selectable_value(&mut self.operation, Op::Two(Op2::Union), "Union");
-                ui.selectable_value(&mut self.operation, Op::Two(Op2::Difference), "Difference");
-                ui.selectable_value(&mut self.operation, Op::Two(Op2::Minus), "Minus");
-                ui.selectable_value(&mut self.operation, Op::Two(Op2::TFold), "TFold");
-                ui.selectable_value(&mut self.operation, Op::Two(Op2::SFold), "SFold");
-            });
+        ui.horizontal(|ui| {
+            ui.label("Operation :");
+            egui::ComboBox::from_id_source("Operation_cbox")
+                .selected_text(sel_text)
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(
+                        &mut self.operation,
+                        Op::Two(Op2::Intersection),
+                        "Intersection",
+                    );
+                    ui.selectable_value(&mut self.operation, Op::Two(Op2::Union), "Union");
+                    ui.selectable_value(
+                        &mut self.operation,
+                        Op::Two(Op2::Difference),
+                        "Difference",
+                    );
+                    ui.selectable_value(&mut self.operation, Op::Two(Op2::Minus), "Minus");
+                    ui.selectable_value(&mut self.operation, Op::Two(Op2::TFold), "TFold");
+                    ui.selectable_value(&mut self.operation, Op::Two(Op2::SFold), "SFold");
+                });
+        });
 
         //A file choosing combobox
         match operation {
@@ -379,6 +416,35 @@ impl FileApp {
                         );
                     }
                 }
+            });
+    }
+
+    /*
+        ui_writing_type: function of FileApp struct
+        Description: A function that creates a simple combobox to select the type of output
+        Parameters:
+            ui: Ui, the ui from the app
+        Returns: ()
+    */
+    fn ui_writing_type(&mut self, ui: &mut Ui) {
+        egui::ComboBox::from_id_source("writing_cbox")
+            .selected_text(self.writing.to_string())
+            .show_ui(ui, |ui| {
+                ui.selectable_value(
+                    &mut self.writing,
+                    MocWType::Fits,
+                    MocWType::Fits.to_string(),
+                );
+                ui.selectable_value(
+                    &mut self.writing,
+                    MocWType::Json,
+                    MocWType::Json.to_string(),
+                );
+                ui.selectable_value(
+                    &mut self.writing,
+                    MocWType::Ascii,
+                    MocWType::Ascii.to_string(),
+                );
             });
     }
 }
