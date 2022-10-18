@@ -1,7 +1,7 @@
 use core::fmt;
 use std::io::Cursor;
 
-use crate::load::{from_fits_gen, from_fits_u64};
+use crate::load_fits::{from_fits_gen, from_fits_u64};
 use moc::{
     deser::fits::{from_fits_ivoa, ranges2d_to_fits_ivoa, MocIdxType},
     elemset::range::MocRanges,
@@ -24,6 +24,27 @@ pub(crate) type Smoc = RangeMOC<u64, Hpx<u64>>;
 pub(crate) type Tmoc = RangeMOC<u64, Time<u64>>;
 /// Convenient type for SpaceTime-MOCs
 pub(crate) type Stmoc = RangeMOC2<u64, Time<u64>, u64, Hpx<u64>>;
+
+#[derive(PartialEq, Clone)]
+pub(crate) enum Qty {
+    Space,
+    Time,
+    Timespace,
+}
+impl Default for Qty {
+    fn default() -> Self {
+        Qty::Space
+    }
+}
+impl fmt::Display for Qty {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Qty::Space => write!(f, "Space"),
+            Qty::Time => write!(f, "Time"),
+            Qty::Timespace => write!(f, "Timespace"),
+        }
+    }
+}
 
 #[derive(Clone)]
 pub(crate) enum InternalMoc {

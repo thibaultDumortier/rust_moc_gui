@@ -2,13 +2,17 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
 use crate::commons::*;
+use crate::load_ascii::*;
+use crate::load_json::*;
 use crate::op1::*;
 use crate::op2::*;
 
 use eframe::egui;
 use egui::Ui;
 use rfd::AsyncFileDialog;
+use std::str::from_utf8_unchecked;
 use std::sync::{Arc, Mutex};
+use unreachable::UncheckedOptionExt;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 //Import javascript log function
@@ -59,6 +63,7 @@ pub struct FileApp {
     operation: Op,
     deg: u8,
     writing: MocWType,
+    moct: Qty,
 }
 
 impl eframe::App for FileApp {
@@ -91,6 +96,18 @@ impl eframe::App for FileApp {
                     Op::Two(Op2::default()),
                     "2 mocs operation",
                 );
+                ui.label("Moc type :");
+                egui::ComboBox::from_id_source("moc_type_cbox")
+                    .selected_text(self.moct.to_string())
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(&mut self.moct, Qty::Space, Qty::Space.to_string());
+                        ui.selectable_value(&mut self.moct, Qty::Time, Qty::Time.to_string());
+                        ui.selectable_value(
+                            &mut self.moct,
+                            Qty::Timespace,
+                            Qty::Timespace.to_string(),
+                        );
+                    });
             });
             ui.end_row();
 
@@ -116,6 +133,7 @@ impl FileApp {
             operation: Op::default(),
             deg: 0,
             writing: MocWType::default(),
+            moct: Qty::default(),
         }
     }
 
@@ -277,32 +295,54 @@ impl FileApp {
             .add_filter("MOCs", &["fits", "ascii", "json", "txt"])
             .pick_files();
         let files_cpy = self.files.clone();
+        let moct = self.moct.clone();
 
         Self::execute(async move {
             let handle = task.await;
             let mut files: Vec<UploadedFiles> = Default::default();
 
             if let Some(handle) = handle {
-                // If you care about wasm support you just read() the file
+                //If you care about wasm support you just read() the file
                 for path in handle {
                     let mut file = UploadedFiles::default();
                     //Reads name and adds it to be shown to user
                     let file_name = path.file_name();
-                    file.name = file_name;
+                    let (name, ext) = unsafe { file_name.rsplit_once('.').unchecked_unwrap() };
+                    file.name = name.to_string();
                     //Reads file contents and adds it to the data
                     let file_content = path.read().await;
-                    file.data = Some(
-                        from_fits(&file_content).unwrap(), // match from_fits_ivoa(Cursor::new(file_content.as_ref()))
-                                                           //     .map_err(|e| JsValue::from_str(&e.to_string()))
-                                                           //     .unwrap()
-                                                           // {
-                                                           //     MocIdxType::U16(moc) => from_fits(moc),
-                                                           //     MocIdxType::U32(moc) => from_fits(moc),
-                                                           //     MocIdxType::U64(moc) => from_fits(moc),
-                                                           // }
-                                                           // .map_err(|e| JsValue::from_str(&e.to_string()))
-                                                           // .unwrap(),
-                    );
+                    let res = match ext {
+                        "fits" => from_fits(&file_content),
+                        "json" => match moct {
+                            Qty::Space => {
+                                smoc_from_json(unsafe { from_utf8_unchecked(&file_content) })
+                            }
+                            Qty::Time => {
+                                tmoc_from_json(unsafe { from_utf8_unchecked(&file_content) })
+                            }
+                            Qty::Timespace => {
+                                stmoc_from_json(unsafe { from_utf8_unchecked(&file_content) })
+                            }
+                        },
+                        "txt" | "ascii" => match moct {
+                            Qty::Space => {
+                                smoc_from_ascii(unsafe { from_utf8_unchecked(&file_content) })
+                            }
+                            Qty::Time => {
+                                tmoc_from_ascii(unsafe { from_utf8_unchecked(&file_content) })
+                            }
+                            Qty::Timespace => {
+                                stmoc_from_ascii(unsafe { from_utf8_unchecked(&file_content) })
+                            }
+                        },
+                        _ => unreachable!(), // since file_input.set_attribute("accept", ".fits, .json, .ascii, .txt");
+                    };
+                    match res {
+                        Err(e) => log(&e
+                            .as_string()
+                            .unwrap_or_else(|| String::from("Error parsing file"))),
+                        o => file.data = Some(o.unwrap()),
+                    };
                     files.push(file);
                 }
                 *(files_cpy.lock().unwrap()) = files;
