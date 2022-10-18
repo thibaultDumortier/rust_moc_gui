@@ -15,10 +15,10 @@ Once this has been done the user can choose the input and simply launch the oper
 By default the application will choose 1 MOC operation, with space MOCs and will output using the ivoa fits standard.
 
 ## Features
-[X] Allows the user to choose different files containing a MOC
-[X] The user can launch an operation on a MOC
-[X] The user can launch an operation between 2 MOCs
-[X] All 1 moc operation are implemented
-[X] All 2 moc opertaions are implemented
-[X] The user can import space, time and spacetime MOCs
-[X] The user can choose the type of output
+- [X] Allows the user to choose different files containing a MOC
+- [X] The user can launch an operation on a MOC
+- [X] The user can launch an operation between 2 MOCs
+- [X] All 1 moc operation are implemented
+- [X] All 2 moc opertaions are implemented
+- [X] The user can import space, time and spacetime MOCs
+- [X] The user can choose the type of output
