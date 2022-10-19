@@ -14,6 +14,7 @@ use std::str::from_utf8_unchecked;
 use std::sync::{Arc, Mutex};
 use unreachable::UncheckedOptionExt;
 use wasm_bindgen::prelude::wasm_bindgen;
+use wasm_bindgen::JsValue;
 
 //Import javascript log function
 #[wasm_bindgen]
@@ -26,6 +27,8 @@ extern "C" {
 #[derive(Default, Clone)]
 pub struct UploadedFiles {
     name: String,
+    base_content: Vec<u8>,
+    ext: String,
     data: Option<InternalMoc>,
 }
 impl PartialEq for UploadedFiles {
@@ -64,8 +67,8 @@ pub struct FileApp {
     deg: u8,
     writing: MocWType,
     moct: Qty,
+    second_moct: Qty,
 }
-
 impl eframe::App for FileApp {
     /*
         update: function of FileApp struct from eframe::App
@@ -96,18 +99,6 @@ impl eframe::App for FileApp {
                     Op::Two(Op2::default()),
                     "2 mocs operation",
                 );
-                ui.label("Moc type :");
-                egui::ComboBox::from_id_source("moc_type_cbox")
-                    .selected_text(self.moct.to_string())
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(&mut self.moct, Qty::Space, Qty::Space.to_string());
-                        ui.selectable_value(&mut self.moct, Qty::Time, Qty::Time.to_string());
-                        ui.selectable_value(
-                            &mut self.moct,
-                            Qty::Timespace,
-                            Qty::Timespace.to_string(),
-                        );
-                    });
             });
             ui.end_row();
 
@@ -134,6 +125,7 @@ impl FileApp {
             deg: 0,
             writing: MocWType::default(),
             moct: Qty::default(),
+            second_moct: Qty::default(),
         }
     }
 
@@ -178,13 +170,16 @@ impl FileApp {
                 ui.label("Moc : ");
                 self.make_cbox(ui, sel_text.as_str(), "file_cbox", None);
             });
+            ui.horizontal(|ui| {
+                ui.label("Moc type :");
+                self.make_moct_cbox(ui, "moct_cbox", None);
+            });
 
             //In case of degrade option ask for new depth
             let deg = matches!(op1, Op1::Degrade { new_depth: _ });
             if deg {
                 ui.add(egui::Slider::new(&mut self.deg, 0..=25));
             }
-
             //Button launching the operation
             ui.horizontal(|ui| {
                 self.ui_writing_type(ui);
@@ -246,14 +241,27 @@ impl FileApp {
                 ui.label("Second moc :");
                 self.make_cbox(ui, sel_text_2.as_str(), "file_cbox_2", Some(1));
             });
+            ui.horizontal(|ui| {
+                ui.label("Moc type : ");
+                self.make_moct_cbox(ui, "moct_cbox", None);
+                ui.label("Moc type : ");
+                self.make_moct_cbox(ui, "moct_cbox_2", Some(1));
+            });
+
             //Button launching the operation
             ui.horizontal(|ui| {
                 self.ui_writing_type(ui);
                 if ui.button("Launch").clicked() {
-                    let l = self.picked_file.clone().unwrap().data.unwrap();
-                    log(&l.to_json(None));
-                    let r = self.picked_second_file.clone().unwrap().data.unwrap();
-                    log(&r.to_json(None));
+                    let l = FileApp::ext_type_reading(
+                        self.picked_file.as_ref().unwrap(),
+                        self.moct.clone(),
+                    )
+                    .unwrap();
+                    let r = FileApp::ext_type_reading(
+                        self.picked_second_file.as_ref().unwrap(),
+                        self.second_moct.clone(),
+                    )
+                    .unwrap();
                     let res = match (l, r) {
                         (InternalMoc::Space(l), InternalMoc::Space(r)) => {
                             op2.perform_op2_on_smoc(&l, &r).map(InternalMoc::Space)
@@ -295,7 +303,6 @@ impl FileApp {
             .add_filter("MOCs", &["fits", "ascii", "json", "txt"])
             .pick_files();
         let files_cpy = self.files.clone();
-        let moct = self.moct.clone();
 
         Self::execute(async move {
             let handle = task.await;
@@ -309,34 +316,11 @@ impl FileApp {
                     let file_name = path.file_name();
                     let (name, ext) = unsafe { file_name.rsplit_once('.').unchecked_unwrap() };
                     file.name = name.to_string();
+                    file.ext = ext.to_string();
                     //Reads file contents and adds it to the data
                     let file_content = path.read().await;
-                    let res = match ext {
-                        "fits" => from_fits(&file_content),
-                        "json" => match moct {
-                            Qty::Space => {
-                                smoc_from_json(unsafe { from_utf8_unchecked(&file_content) })
-                            }
-                            Qty::Time => {
-                                tmoc_from_json(unsafe { from_utf8_unchecked(&file_content) })
-                            }
-                            Qty::Timespace => {
-                                stmoc_from_json(unsafe { from_utf8_unchecked(&file_content) })
-                            }
-                        },
-                        "txt" | "ascii" => match moct {
-                            Qty::Space => {
-                                smoc_from_ascii(unsafe { from_utf8_unchecked(&file_content) })
-                            }
-                            Qty::Time => {
-                                tmoc_from_ascii(unsafe { from_utf8_unchecked(&file_content) })
-                            }
-                            Qty::Timespace => {
-                                stmoc_from_ascii(unsafe { from_utf8_unchecked(&file_content) })
-                            }
-                        },
-                        _ => unreachable!(), // since file_input.set_attribute("accept", ".fits, .json, .ascii, .txt");
-                    };
+                    file.base_content = file_content.clone();
+                    let res = FileApp::ext_type_reading(&file, Qty::default());
                     match res {
                         Err(e) => log(&e
                             .as_string()
@@ -478,6 +462,39 @@ impl FileApp {
     }
 
     /*
+        make_cbox: function of FileApp struct
+        Description: A function creating a moc type combobox
+        Parameters:
+            ui: Ui, the ui from the app
+            id: &str, the combobox gui ID
+            op: Option<u8>, to know if there needs to be multiple selected mocs.
+        Returns: ()
+    */
+    fn make_moct_cbox(&mut self, ui: &mut Ui, id: &str, op: Option<u8>) {
+        egui::ComboBox::from_id_source(id)
+            .selected_text(if op.is_none() {
+                self.moct.to_string()
+            } else {
+                self.second_moct.to_string()
+            })
+            .show_ui(ui, |ui| {
+                if op.is_none() {
+                    ui.selectable_value(&mut self.moct, Qty::Space, Qty::Space.to_string());
+                    ui.selectable_value(&mut self.moct, Qty::Time, Qty::Time.to_string());
+                    ui.selectable_value(&mut self.moct, Qty::Timespace, Qty::Timespace.to_string());
+                } else {
+                    ui.selectable_value(&mut self.second_moct, Qty::Space, Qty::Space.to_string());
+                    ui.selectable_value(&mut self.second_moct, Qty::Time, Qty::Time.to_string());
+                    ui.selectable_value(
+                        &mut self.second_moct,
+                        Qty::Timespace,
+                        Qty::Timespace.to_string(),
+                    );
+                }
+            });
+    }
+
+    /*
         ui_writing_type: function of FileApp struct
         Description: A function that creates a simple combobox to select the type of output
         Parameters:
@@ -504,5 +521,26 @@ impl FileApp {
                     MocWType::Ascii.to_string(),
                 );
             });
+    }
+
+    fn ext_type_reading(file: &UploadedFiles, moct: Qty) -> Result<InternalMoc, JsValue> {
+        match file.ext.as_str() {
+            "fits" => from_fits(&file.base_content),
+            "json" => match moct {
+                Qty::Space => smoc_from_json(unsafe { from_utf8_unchecked(&file.base_content) }),
+                Qty::Time => tmoc_from_json(unsafe { from_utf8_unchecked(&file.base_content) }),
+                Qty::Timespace => {
+                    stmoc_from_json(unsafe { from_utf8_unchecked(&file.base_content) })
+                }
+            },
+            "txt" | "ascii" => match moct {
+                Qty::Space => smoc_from_ascii(unsafe { from_utf8_unchecked(&file.base_content) }),
+                Qty::Time => tmoc_from_ascii(unsafe { from_utf8_unchecked(&file.base_content) }),
+                Qty::Timespace => {
+                    stmoc_from_ascii(unsafe { from_utf8_unchecked(&file.base_content) })
+                }
+            },
+            _ => unreachable!(), // since file_input.set_attribute("accept", ".fits, .json, .ascii, .txt");
+        }
     }
 }

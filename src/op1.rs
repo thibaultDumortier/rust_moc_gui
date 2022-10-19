@@ -29,15 +29,15 @@ impl fmt::Display for Op1 {
 }
 impl PartialEq for Op1 {
     fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Op1::Complement, Op1::Complement) => true,
-            (Op1::Degrade { new_depth: _ }, Op1::Degrade { new_depth: _ }) => true,
-            (Op1::Extend, Op1::Extend) => true,
-            (Op1::Contract, Op1::Contract) => true,
-            (Op1::ExtBorder, Op1::ExtBorder) => true,
-            (Op1::IntBorder, Op1::IntBorder) => true,
-            _ => false,
-        }
+        matches!(
+            (self, other),
+            (Op1::Complement, Op1::Complement)
+                | (Op1::Degrade { new_depth: _ }, Op1::Degrade { new_depth: _ })
+                | (Op1::Extend, Op1::Extend)
+                | (Op1::Contract, Op1::Contract)
+                | (Op1::ExtBorder, Op1::ExtBorder)
+                | (Op1::IntBorder, Op1::IntBorder)
+        )
     }
 }
 impl Op1 {
