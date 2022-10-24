@@ -1,16 +1,19 @@
-use moc::{
-    elemset::range::MocRanges,
-    hpxranges2d::TimeSpaceMoc,
-    moc::range::RangeMOC,
-    moc2d::{range::RangeMOC2, HasTwoMaxDepth, RangeMOC2IntoIterator},
-    qty::{Hpx, Time},
-};
-
-use crate::commons::*;
 use core::fmt;
 
-#[derive(Clone)]
-pub enum Op2 {
+use wasm_bindgen::JsValue;
+
+use moc::elemset::range::MocRanges;
+use moc::hpxranges2d::TimeSpaceMoc;
+use moc::moc::range::RangeMOC;
+use moc::moc2d::range::RangeMOC2;
+use moc::moc2d::{HasTwoMaxDepth, RangeMOC2IntoIterator};
+use moc::qty::{Hpx, Time};
+
+use super::commons::{InternalMoc, Smoc, Stmoc, Tmoc};
+use super::store;
+
+#[derive(Copy, Clone)]
+pub(crate) enum Op2 {
     Intersection,
     Union,
     Difference,
@@ -35,6 +38,7 @@ impl fmt::Display for Op2 {
         }
     }
 }
+
 impl PartialEq for Op2 {
     fn eq(&self, other: &Self) -> bool {
         matches!(
@@ -48,8 +52,9 @@ impl PartialEq for Op2 {
         )
     }
 }
+
 impl Op2 {
-    pub fn perform_op2_on_smoc(self, left: &Smoc, right: &Smoc) -> Result<Smoc, String> {
+    fn perform_op_on_smoc(self, left: &Smoc, right: &Smoc) -> Result<Smoc, String> {
         match self {
             Op2::Intersection => Ok(left.and(right)),
             Op2::Union => Ok(left.or(right)),
@@ -64,7 +69,7 @@ impl Op2 {
         }
     }
 
-    pub fn perform_op2_on_tmoc(self, left: &Tmoc, right: &Tmoc) -> Result<Tmoc, String> {
+    fn perform_op_on_tmoc(self, left: &Tmoc, right: &Tmoc) -> Result<Tmoc, String> {
         match self {
             Op2::Intersection => Ok(left.and(right)),
             Op2::Union => Ok(left.or(right)),
@@ -79,7 +84,7 @@ impl Op2 {
         }
     }
 
-    pub fn perform_op2_on_stmoc(self, left: &Stmoc, right: &Stmoc) -> Result<Stmoc, String> {
+    fn perform_op_on_stmoc(self, left: &Stmoc, right: &Stmoc) -> Result<Stmoc, String> {
         let (time_depth_l, hpx_depth_l) = (left.depth_max_1(), left.depth_max_2());
         let (time_depth_r, hpx_depth_r) = (right.depth_max_1(), right.depth_max_2());
         // Here we loose time by performing a conversion!! (TODO implement operations on RangeMOC2!)
@@ -114,7 +119,7 @@ impl Op2 {
         ))
     }
 
-    pub fn perform_space_fold(self, left: &Smoc, right: &Stmoc) -> Result<Tmoc, String> {
+    fn perform_space_fold(self, left: &Smoc, right: &Stmoc) -> Result<Tmoc, String> {
         if !matches!(self, Op2::SFold) {
             Err(String::from(
                 "Operation SpaceFold expected on S-MOC vs ST-MOC.",
@@ -129,7 +134,7 @@ impl Op2 {
         }
     }
 
-    pub fn perform_time_fold(self, left: &Tmoc, right: &Stmoc) -> Result<Smoc, String> {
+    fn perform_time_fold(self, left: &Tmoc, right: &Stmoc) -> Result<Smoc, String> {
         if !matches!(self, Op2::TFold) {
             Err(String::from(
                 "Operation TimeFold expected on T-MOC vs ST-MOC.",
@@ -143,4 +148,38 @@ impl Op2 {
             Ok(RangeMOC::new(hpx_depth, sranges))
         }
     }
+}
+
+/// Performs the given operation on the given MOCs and store the resulting MOC in the store.
+pub(crate) fn op2(
+    left_name: &str,
+    right_name: &str,
+    op: Op2,
+    res_name: &str,
+) -> Result<(), JsValue> {
+    store::op2(
+        left_name,
+        right_name,
+        move |left, right| match (left, right) {
+            (InternalMoc::Space(l), InternalMoc::Space(r)) => {
+                op.perform_op_on_smoc(l, r).map(InternalMoc::Space)
+            }
+            (InternalMoc::Time(l), InternalMoc::Time(r)) => {
+                op.perform_op_on_tmoc(l, r).map(InternalMoc::Time)
+            }
+            (InternalMoc::TimeSpace(l), InternalMoc::TimeSpace(r)) => {
+                op.perform_op_on_stmoc(l, r).map(InternalMoc::TimeSpace)
+            }
+            (InternalMoc::Space(l), InternalMoc::TimeSpace(r)) => {
+                op.perform_space_fold(l, r).map(InternalMoc::Time)
+            }
+            (InternalMoc::Time(l), InternalMoc::TimeSpace(r)) => {
+                op.perform_time_fold(l, r).map(InternalMoc::Space)
+            }
+            _ => Err(String::from(
+                "Both type of both MOCs must be the same, except in fold operations",
+            )),
+        },
+        res_name,
+    )
 }

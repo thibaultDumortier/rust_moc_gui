@@ -6,7 +6,7 @@ use moc::{
 };
 use wasm_bindgen::JsValue;
 
-use crate::commons::InternalMoc;
+use crate::commons::{InternalMoc, Qty};
 
 pub(crate) fn smoc_from_ascii(data: &str) -> Result<InternalMoc, JsValue> {
     let cellcellranges =

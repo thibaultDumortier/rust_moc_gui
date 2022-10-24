@@ -2,17 +2,14 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
 use crate::commons::*;
-use crate::load_ascii::*;
-use crate::load_json::*;
 use crate::op1::*;
 use crate::op2::*;
+use crate::store::get_store;
+use crate::store::list_mocs;
 
 use eframe::egui;
+use egui::menu;
 use egui::Ui;
-use rfd::AsyncFileDialog;
-use std::str::from_utf8_unchecked;
-use std::sync::{Arc, Mutex};
-use unreachable::UncheckedOptionExt;
 use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsValue;
 
@@ -23,24 +20,11 @@ extern "C" {
     fn log(s: &str);
 }
 
-//A file like object containing the name of the file and the data from the moc
-#[derive(Default, Clone)]
-pub struct UploadedFiles {
-    name: String,
-    base_content: Vec<u8>,
-    ext: String,
-    data: Option<InternalMoc>,
-}
-impl PartialEq for UploadedFiles {
-    fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
-    }
-}
-
 //An operation enumerator
 enum Op {
     One(Op1),
     Two(Op2),
+    Opnone,
 }
 impl Default for Op {
     fn default() -> Self {
@@ -60,14 +44,11 @@ impl PartialEq for Op {
 //FileApp struct
 #[derive(Default)]
 pub struct FileApp {
-    files: Arc<Mutex<Vec<UploadedFiles>>>,
-    picked_file: Option<UploadedFiles>,
-    picked_second_file: Option<UploadedFiles>,
+    picked_file: Option<String>,
+    picked_second_file: Option<String>,
     operation: Op,
     deg: u8,
     writing: MocWType,
-    moct: Qty,
-    second_moct: Qty,
 }
 impl eframe::App for FileApp {
     /*
@@ -89,15 +70,16 @@ impl eframe::App for FileApp {
 
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.horizontal(|ui| {
+                ui.selectable_value(&mut self.operation, Op::Opnone, "MOC list");
                 ui.selectable_value(
                     &mut self.operation,
                     Op::One(Op1::default()),
-                    "1 moc operation",
+                    "1 MOC operation",
                 );
                 ui.selectable_value(
                     &mut self.operation,
                     Op::Two(Op2::default()),
-                    "2 mocs operation",
+                    "2 MOCs operation",
                 );
             });
             ui.end_row();
@@ -105,6 +87,7 @@ impl eframe::App for FileApp {
             match &self.operation {
                 Op::One(o) => self.op_one_ui(ui, o.clone()),
                 Op::Two(t) => self.op_two_ui(ui, t.clone()),
+                Op::Opnone => self.list_ui(ui),
             }
         });
     }
@@ -118,14 +101,11 @@ impl FileApp {
     */
     pub fn new() -> Self {
         FileApp {
-            files: Arc::new(Mutex::new(Default::default())),
             picked_file: None,
             picked_second_file: None,
             operation: Op::default(),
             deg: 0,
             writing: MocWType::default(),
-            moct: Qty::default(),
-            second_moct: Qty::default(),
         }
     }
 
@@ -141,201 +121,37 @@ impl FileApp {
 
         ui.separator();
 
-        if ui.button("Open file...").clicked() {
-            assert!(self.fileclick().is_ok());
-        }
-    }
-
-    /*
-        moc_op1: function of FileApp struct
-        Description: A function handling operations on a moc launched by the app
-        Parameters:
-            ui: Ui, the ui from the app
-            op1: Op1, operation enumerator of the selected operation
-        Returns: ()
-    */
-    pub fn moc_op1(&mut self, ui: &mut Ui, mut op1: Op1) {
-        //If no file has been imported yet
-        if self.files.lock().unwrap().to_vec().is_empty() {
-            ui.label("Pick a file!");
-        //If files have been imported and can be chosen from
-        } else {
-            //Defaults to "pick one" before leaving the user choose which moc he wants to operate on
-            let mut sel_text = "pick one".to_string();
-            if self.picked_file.is_some() {
-                sel_text = self.picked_file.as_ref().unwrap().name.to_string();
-            }
-            //Combo box containing the different files that can be picked from
-            ui.horizontal(|ui| {
-                ui.label("Moc : ");
-                self.make_cbox(ui, sel_text.as_str(), "file_cbox", None);
-            });
-            ui.horizontal(|ui| {
-                ui.label("Moc type :");
-                self.make_moct_cbox(ui, "moct_cbox", None);
-            });
-
-            //In case of degrade option ask for new depth
-            let deg = matches!(op1, Op1::Degrade { new_depth: _ });
-            if deg {
-                ui.add(egui::Slider::new(&mut self.deg, 0..=25));
-            }
-            //Button launching the operation
-            ui.horizontal(|ui| {
-                self.ui_writing_type(ui);
-                if ui.button("Launch").clicked() {
-                    if deg {
-                        op1 = Op1::Degrade {
-                            new_depth: self.deg,
-                        }
+        menu::bar(ui, |ui| {
+            ui.menu_button("Files", |ui| {
+                ui.menu_button("Load", |ui| {
+                    if ui.button("FITS").clicked() {
+                        assert!(load(&["fits"], Qty::Space).is_ok());
                     }
-                    let moc = self.picked_file.clone().unwrap().data.unwrap();
-                    let res = match moc {
-                        InternalMoc::Space(moc) => {
-                            op1.perform_op1_on_smoc(&moc).map(InternalMoc::Space)
+                    ui.menu_button("JSON", |ui| {
+                        if ui.button("Space").clicked() {
+                            assert!(load(&["json"], Qty::Space).is_ok());
                         }
-                        InternalMoc::Time(moc) => {
-                            op1.perform_op_on_tmoc(&moc).map(InternalMoc::Time)
+                        if ui.button("Time").clicked() {
+                            assert!(load(&["json"], Qty::Time).is_ok());
                         }
-                        InternalMoc::TimeSpace(moc) => {
-                            op1.perform_op_on_stmoc(&moc).map(InternalMoc::TimeSpace)
+                        if ui.button("Spacetime").clicked() {
+                            assert!(load(&["json"], Qty::Timespace).is_ok());
                         }
-                    };
-                    match self.writing {
-                        MocWType::Fits => log(&format!("{:?}", res.unwrap().to_fits())),
-                        MocWType::Json => log(&res.unwrap().to_json(None)),
-                        MocWType::Ascii => log(&res.unwrap().to_ascii(None)),
-                    }
-                };
+                    });
+                    ui.menu_button("ASCII", |ui| {
+                        if ui.button("Space").clicked() {
+                            assert!(load(&["ascii", "txt"], Qty::Space).is_ok());
+                        }
+                        if ui.button("Time").clicked() {
+                            assert!(load(&["ascii", "txt"], Qty::Time).is_ok());
+                        }
+                        if ui.button("Spacetime").clicked() {
+                            assert!(load(&["ascii", "txt"], Qty::Timespace).is_ok());
+                        }
+                    });
+                })
             });
-        }
-    }
-
-    /*
-        moc_op2: function of FileApp struct
-        Description: A function handling operations on 2 mocs launched by the app
-        Parameters:
-            ui: Ui, the ui from the app
-            op2: Op2, operation enumerator of the selected operation
-        Returns: ()
-    */
-    pub fn moc_op2(&mut self, ui: &mut Ui, op2: Op2) {
-        //If no file has been imported yet
-        if self.files.lock().unwrap().to_vec().is_empty() {
-            ui.label("Pick at least 2 files!");
-        //If files have been imported and can be chosen from
-        } else {
-            //If no file has been imported yet
-            let mut sel_text = "pick one".to_string();
-            let mut sel_text_2 = "pick one".to_string();
-            if self.picked_file.is_some() {
-                sel_text = self.picked_file.as_ref().unwrap().name.to_string();
-            }
-            if self.picked_second_file.is_some() {
-                sel_text_2 = self.picked_second_file.as_ref().unwrap().name.to_string();
-            }
-            //Combo boxes containing the different files that can be picked from
-            ui.horizontal(|ui| {
-                ui.label("First moc :");
-                self.make_cbox(ui, sel_text.as_str(), "file_cbox", None);
-                ui.label("Second moc :");
-                self.make_cbox(ui, sel_text_2.as_str(), "file_cbox_2", Some(1));
-            });
-            ui.horizontal(|ui| {
-                ui.label("Moc type : ");
-                self.make_moct_cbox(ui, "moct_cbox", None);
-                ui.label("Moc type : ");
-                self.make_moct_cbox(ui, "moct_cbox_2", Some(1));
-            });
-
-            //Button launching the operation
-            ui.horizontal(|ui| {
-                self.ui_writing_type(ui);
-                if ui.button("Launch").clicked() {
-                    let l = FileApp::ext_type_reading(
-                        self.picked_file.as_ref().unwrap(),
-                        self.moct.clone(),
-                    )
-                    .unwrap();
-                    let r = FileApp::ext_type_reading(
-                        self.picked_second_file.as_ref().unwrap(),
-                        self.second_moct.clone(),
-                    )
-                    .unwrap();
-                    let res = match (l, r) {
-                        (InternalMoc::Space(l), InternalMoc::Space(r)) => {
-                            op2.perform_op2_on_smoc(&l, &r).map(InternalMoc::Space)
-                        }
-                        (InternalMoc::Time(l), InternalMoc::Time(r)) => {
-                            op2.perform_op2_on_tmoc(&l, &r).map(InternalMoc::Time)
-                        }
-                        (InternalMoc::TimeSpace(l), InternalMoc::TimeSpace(r)) => {
-                            op2.perform_op2_on_stmoc(&l, &r).map(InternalMoc::TimeSpace)
-                        }
-                        (InternalMoc::Space(l), InternalMoc::TimeSpace(r)) => {
-                            op2.perform_space_fold(&l, &r).map(InternalMoc::Time)
-                        }
-                        (InternalMoc::Time(l), InternalMoc::TimeSpace(r)) => {
-                            op2.perform_time_fold(&l, &r).map(InternalMoc::Space)
-                        }
-                        _ => Err(String::from(
-                            "Both type of both MOCs must be the same, except in fold operations",
-                        )),
-                    };
-                    match self.writing {
-                        MocWType::Fits => log(&format!("{:?}", res.unwrap().to_fits())),
-                        MocWType::Json => log(&res.unwrap().to_json(None)),
-                        MocWType::Ascii => log(&res.unwrap().to_ascii(None)),
-                    }
-                };
-            });
-        }
-    }
-
-    /*
-        fileclick: function of FileApp struct
-        Description: A function handling the clicking of the "open file" button
-        Parameters: None
-        Returns: a simple result for Ok or Error
-    */
-    pub fn fileclick(&mut self) -> Result<(), &str> {
-        let task = AsyncFileDialog::new()
-            .add_filter("MOCs", &["fits", "ascii", "json", "txt"])
-            .pick_files();
-        let files_cpy = self.files.clone();
-
-        Self::execute(async move {
-            let handle = task.await;
-            let mut files: Vec<UploadedFiles> = Default::default();
-
-            if let Some(handle) = handle {
-                //If you care about wasm support you just read() the file
-                for path in handle {
-                    let mut file = UploadedFiles::default();
-                    //Reads name and adds it to be shown to user
-                    let file_name = path.file_name();
-                    let (name, ext) = unsafe { file_name.rsplit_once('.').unchecked_unwrap() };
-                    file.name = name.to_string();
-                    file.ext = ext.to_string();
-                    //Reads file contents and adds it to the data
-                    let file_content = path.read().await;
-                    file.base_content = file_content.clone();
-                    let res = FileApp::ext_type_reading(&file, Qty::default());
-                    match res {
-                        Err(e) => log(&e
-                            .as_string()
-                            .unwrap_or_else(|| String::from("Error parsing file"))),
-                        o => file.data = Some(o.unwrap()),
-                    };
-                    files.push(file);
-                }
-                *(files_cpy.lock().unwrap()) = files;
-            }
         });
-        Ok(())
-    }
-    fn execute<F: std::future::Future<Output = ()> + 'static>(f: F) {
-        wasm_bindgen_futures::spawn_local(f);
     }
 
     /*
@@ -369,6 +185,12 @@ impl FileApp {
                     ui.selectable_value(&mut self.operation, Op::One(Op1::Contract), "Contract");
                     ui.selectable_value(&mut self.operation, Op::One(Op1::ExtBorder), "ExtBorder");
                     ui.selectable_value(&mut self.operation, Op::One(Op1::IntBorder), "IntBorder");
+                    ui.selectable_value(&mut self.operation, Op::One(Op1::Split), "Split");
+                    ui.selectable_value(
+                        &mut self.operation,
+                        Op::One(Op1::SplitIndirect),
+                        "SplitIndirect",
+                    );
                 });
         });
 
@@ -380,6 +202,8 @@ impl FileApp {
             Op1::Contract => self.moc_op1(ui, Op1::Contract),
             Op1::ExtBorder => self.moc_op1(ui, Op1::ExtBorder),
             Op1::IntBorder => self.moc_op1(ui, Op1::IntBorder),
+            Op1::Split => todo!(),
+            Op1::SplitIndirect => todo!(),
         }
     }
 
@@ -428,6 +252,105 @@ impl FileApp {
     }
 
     /*
+        moc_op1: function of FileApp struct
+        Description: A function handling operations on a moc launched by the app
+        Parameters:
+            ui: Ui, the ui from the app
+            op1: Op1, operation enumerator of the selected operation
+        Returns: ()
+    */
+    fn moc_op1(&mut self, ui: &mut Ui, mut op: Op1) {
+        //If no file has been imported yet
+        if list_mocs().unwrap().length() == 0 {
+            ui.label("Pick a file!");
+        //If files have been imported and can be chosen from
+        } else {
+            //Defaults to "pick one" before leaving the user choose which moc he wants to operate on
+            let mut sel_text = "pick one".to_string();
+            if self.picked_file.is_some() {
+                sel_text = self.picked_file.clone().unwrap();
+            }
+            //Combo box containing the different files that can be picked from
+            ui.horizontal(|ui| {
+                ui.label("Moc : ");
+                self.make_cbox(ui, sel_text.as_str(), "file_cbox", None);
+            });
+
+            //In case of degrade option ask for new depth
+            let deg = matches!(op, Op1::Degrade { new_depth: _ });
+            if deg {
+                ui.add(egui::Slider::new(&mut self.deg, 0..=25));
+            }
+            //Button launching the operation
+            ui.horizontal(|ui| {
+                self.ui_writing_type(ui);
+                if ui.button("Launch").clicked() {
+                    if deg {
+                        op = Op1::Degrade {
+                            new_depth: self.deg,
+                        }
+                    }
+                    let moc = self.picked_file.clone().unwrap();
+                    op1(&moc, op, "result");
+                };
+            });
+        }
+    }
+
+    /*
+        moc_op2: function of FileApp struct
+        Description: A function handling operations on 2 mocs launched by the app
+        Parameters:
+            ui: Ui, the ui from the app
+            op2: Op2, operation enumerator of the selected operation
+        Returns: ()
+    */
+    fn moc_op2(&mut self, ui: &mut Ui, op: Op2) {
+        //If no file has been imported yet
+        if list_mocs().unwrap().length() < 2 {
+            ui.label("Pick at least 2 files!");
+        //If files have been imported and can be chosen from
+        } else {
+            //If no file has been imported yet
+            let mut sel_text = "pick one".to_string();
+            let mut sel_text_2 = "pick one".to_string();
+            if self.picked_file.is_some() {
+                sel_text = self.picked_file.clone().unwrap();
+            }
+            if self.picked_second_file.is_some() {
+                sel_text_2 = self.picked_second_file.clone().unwrap();
+            }
+            //Combo boxes containing the different files that can be picked from
+            ui.horizontal(|ui| {
+                ui.label("First moc :");
+                self.make_cbox(ui, &sel_text, "file_cbox", None);
+            });
+            ui.horizontal(|ui| {
+                ui.label("Second moc :");
+                self.make_cbox(ui, &sel_text_2, "file_cbox_2", Some(1));
+            });
+
+            //Button launching the operation
+            ui.horizontal(|ui| {
+                self.ui_writing_type(ui);
+                if ui.button("Launch").clicked() {
+                    let l = self.picked_file.as_ref().unwrap();
+                    let r = self.picked_second_file.as_ref().unwrap();
+                    op2(&l, &r, op, "result");
+                };
+            });
+        }
+    }
+
+    fn list_ui(&mut self, ui: &mut Ui) {
+        for file in get_store().read().unwrap().iter() {
+            ui.horizontal(|ui| {
+                ui.label(file.0);
+            });
+        }
+    }
+
+    /*
         make_cbox: function of FileApp struct
         Description: A function creating comboboxes
         Parameters:
@@ -438,58 +361,23 @@ impl FileApp {
         Returns: ()
     */
     fn make_cbox(&mut self, ui: &mut Ui, sel_text: &str, id: &str, op: Option<u8>) {
-        let files = self.files.lock().unwrap().to_vec();
-
         egui::ComboBox::from_id_source(id)
             .selected_text(sel_text)
             .show_ui(ui, |ui| {
-                for file in &files {
+                for file in get_store().read().unwrap().iter() {
                     if op.is_none() {
                         ui.selectable_value(
                             &mut self.picked_file,
-                            Some(file.clone()),
-                            file.clone().name,
+                            Some(file.0.to_string()),
+                            file.0,
                         );
                     } else {
                         ui.selectable_value(
                             &mut self.picked_second_file,
-                            Some(file.clone()),
-                            file.clone().name,
+                            Some(file.0.to_string()),
+                            file.0,
                         );
                     }
-                }
-            });
-    }
-
-    /*
-        make_cbox: function of FileApp struct
-        Description: A function creating a moc type combobox
-        Parameters:
-            ui: Ui, the ui from the app
-            id: &str, the combobox gui ID
-            op: Option<u8>, to know if there needs to be multiple selected mocs.
-        Returns: ()
-    */
-    fn make_moct_cbox(&mut self, ui: &mut Ui, id: &str, op: Option<u8>) {
-        egui::ComboBox::from_id_source(id)
-            .selected_text(if op.is_none() {
-                self.moct.to_string()
-            } else {
-                self.second_moct.to_string()
-            })
-            .show_ui(ui, |ui| {
-                if op.is_none() {
-                    ui.selectable_value(&mut self.moct, Qty::Space, Qty::Space.to_string());
-                    ui.selectable_value(&mut self.moct, Qty::Time, Qty::Time.to_string());
-                    ui.selectable_value(&mut self.moct, Qty::Timespace, Qty::Timespace.to_string());
-                } else {
-                    ui.selectable_value(&mut self.second_moct, Qty::Space, Qty::Space.to_string());
-                    ui.selectable_value(&mut self.second_moct, Qty::Time, Qty::Time.to_string());
-                    ui.selectable_value(
-                        &mut self.second_moct,
-                        Qty::Timespace,
-                        Qty::Timespace.to_string(),
-                    );
                 }
             });
     }
@@ -521,26 +409,5 @@ impl FileApp {
                     MocWType::Ascii.to_string(),
                 );
             });
-    }
-
-    fn ext_type_reading(file: &UploadedFiles, moct: Qty) -> Result<InternalMoc, JsValue> {
-        match file.ext.as_str() {
-            "fits" => from_fits(&file.base_content),
-            "json" => match moct {
-                Qty::Space => smoc_from_json(unsafe { from_utf8_unchecked(&file.base_content) }),
-                Qty::Time => tmoc_from_json(unsafe { from_utf8_unchecked(&file.base_content) }),
-                Qty::Timespace => {
-                    stmoc_from_json(unsafe { from_utf8_unchecked(&file.base_content) })
-                }
-            },
-            "txt" | "ascii" => match moct {
-                Qty::Space => smoc_from_ascii(unsafe { from_utf8_unchecked(&file.base_content) }),
-                Qty::Time => tmoc_from_ascii(unsafe { from_utf8_unchecked(&file.base_content) }),
-                Qty::Timespace => {
-                    stmoc_from_ascii(unsafe { from_utf8_unchecked(&file.base_content) })
-                }
-            },
-            _ => unreachable!(), // since file_input.set_attribute("accept", ".fits, .json, .ascii, .txt");
-        }
     }
 }

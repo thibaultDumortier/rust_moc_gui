@@ -1,7 +1,7 @@
 use core::fmt;
-use std::io::Cursor;
+use std::{io::Cursor, str::from_utf8_unchecked};
 
-use crate::load_fits::{from_fits_gen, from_fits_u64};
+use crate::{load_ascii::*, load_fits::*, load_json::*, store::*};
 use moc::{
     deser::fits::{from_fits_ivoa, ranges2d_to_fits_ivoa, MocIdxType},
     elemset::range::MocRanges,
@@ -15,6 +15,7 @@ use moc::{
     },
     qty::{Hpx, Time},
 };
+use rfd::AsyncFileDialog;
 use unreachable::UncheckedResultExt;
 use wasm_bindgen::JsValue;
 
@@ -170,4 +171,59 @@ pub(crate) fn from_fits(data: &[u8]) -> Result<InternalMoc, JsValue> {
         }
         .map_err(|e| JsValue::from_str(&e.to_string()))?;
     Ok(moc)
+}
+
+pub(crate) fn load(rtype: &[&str], moct: Qty) -> Result<(), String> {
+    let task = AsyncFileDialog::new()
+        .add_filter("MOCs", rtype)
+        .pick_files();
+
+    let mut reading = if rtype.contains(&"fits") {
+        "fits"
+    } else if rtype.contains(&"json") {
+        "json"
+    } else if rtype.contains(&"ascii") {
+        "ascii"
+    } else {
+        "error [NOT SUPPOSED TO HAPPEN]"
+    };
+
+    execute(async move {
+        let handle = task.await;
+
+        if let Some(handle) = handle {
+            //If you care about wasm support you just read() the file
+            for path in handle {
+                //Reads name and adds it to be shown to user
+                let file_name = path.file_name();
+                //Reads file contents and adds it to the data
+                let file_content = path.read().await;
+                let res = type_reading(reading, &moct, file_content.as_slice());
+                if res.is_ok() {
+                    add(&file_name, res.unwrap())
+                        .expect("A problem has occured while trying to add the MOC");
+                }
+            }
+        }
+    });
+    Ok(())
+}
+fn execute<F: std::future::Future<Output = ()> + 'static>(f: F) {
+    wasm_bindgen_futures::spawn_local(f);
+}
+fn type_reading(rtype: &str, moct: &Qty, data: &[u8]) -> Result<InternalMoc, JsValue> {
+    match rtype {
+        "fits" => from_fits(data),
+        "json" => match moct {
+            Qty::Space => smoc_from_json(unsafe { from_utf8_unchecked(data) }),
+            Qty::Time => tmoc_from_json(unsafe { from_utf8_unchecked(data) }),
+            Qty::Timespace => stmoc_from_json(unsafe { from_utf8_unchecked(data) }),
+        },
+        "txt" | "ascii" => match moct {
+            Qty::Space => smoc_from_ascii(unsafe { from_utf8_unchecked(data) }),
+            Qty::Time => tmoc_from_ascii(unsafe { from_utf8_unchecked(data) }),
+            Qty::Timespace => stmoc_from_ascii(unsafe { from_utf8_unchecked(data) }),
+        },
+        _ => unreachable!(), // since file_input.set_attribute("accept", ".fits, .json, .ascii, .txt");
+    }
 }
