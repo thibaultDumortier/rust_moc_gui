@@ -1,7 +1,5 @@
 use core::fmt;
 
-use wasm_bindgen::JsValue;
-
 use moc::moc::{CellMOCIntoIterator, CellMOCIterator, RangeMOCIterator};
 
 use super::commons::{InternalMoc, Smoc, Stmoc, Tmoc};
@@ -123,7 +121,7 @@ impl Op1 {
     }
 }
 
-pub(crate) fn op1_count_split(name: &str, indirect_neigh: bool) -> Result<u32, JsValue> {
+pub(crate) fn op1_count_split(name: &str, indirect_neigh: bool) -> Result<u32, String> {
     store::op1_gen(name, move |moc| match moc {
         InternalMoc::Space(m) => Ok(m.split_into_joint_mocs(indirect_neigh).len() as u32),
         InternalMoc::Time(_) => Err(String::from("Split not implemented for T-MOCs.")),
@@ -132,7 +130,7 @@ pub(crate) fn op1_count_split(name: &str, indirect_neigh: bool) -> Result<u32, J
 }
 
 /// Performs the given operation on the given MOC and store the resulting MOC in the store.
-pub(crate) fn op1(name: &str, op: Op1, res_name: &str) -> Result<(), JsValue> {
+pub(crate) fn op1(name: &str, op: Op1, res_name: &str) -> Result<(), String> {
     if op.is_split_4neigh() || op.is_split_8neigh() {
         store::op1_multi_res(
             name,

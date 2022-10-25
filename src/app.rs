@@ -49,7 +49,6 @@ pub struct FileApp {
     picked_second_file: Option<String>,
     operation: Op,
     deg: u8,
-    writing: MocWType,
 }
 impl eframe::App for FileApp {
     /*
@@ -85,6 +84,7 @@ impl eframe::App for FileApp {
             });
             ui.end_row();
 
+            ui.separator();
             match &self.operation {
                 Op::One(o) => self.op_one_ui(ui, o.clone()),
                 Op::Two(t) => self.op_two_ui(ui, t.clone()),
@@ -106,7 +106,6 @@ impl FileApp {
             picked_second_file: None,
             operation: Op::default(),
             deg: 0,
-            writing: MocWType::default(),
         }
     }
 
@@ -284,7 +283,6 @@ impl FileApp {
             }
             //Button launching the operation
             ui.horizontal(|ui| {
-                self.ui_writing_type(ui);
                 if ui.button("Launch").clicked() {
                     if deg {
                         op = Op1::Degrade {
@@ -335,7 +333,6 @@ impl FileApp {
 
             //Button launching the operation
             ui.horizontal(|ui| {
-                self.ui_writing_type(ui);
                 if ui.button("Launch").clicked() {
                     let l = self.picked_file.as_ref().unwrap();
                     let r = self.picked_second_file.as_ref().unwrap();
@@ -408,35 +405,6 @@ impl FileApp {
                         );
                     }
                 }
-            });
-    }
-
-    /*
-        ui_writing_type: function of FileApp struct
-        Description: A function that creates a simple combobox to select the type of output
-        Parameters:
-            ui: Ui, the ui from the app
-        Returns: ()
-    */
-    fn ui_writing_type(&mut self, ui: &mut Ui) {
-        egui::ComboBox::from_id_source("writing_cbox")
-            .selected_text(self.writing.to_string())
-            .show_ui(ui, |ui| {
-                ui.selectable_value(
-                    &mut self.writing,
-                    MocWType::Fits,
-                    MocWType::Fits.to_string(),
-                );
-                ui.selectable_value(
-                    &mut self.writing,
-                    MocWType::Json,
-                    MocWType::Json.to_string(),
-                );
-                ui.selectable_value(
-                    &mut self.writing,
-                    MocWType::Ascii,
-                    MocWType::Ascii.to_string(),
-                );
             });
     }
 }

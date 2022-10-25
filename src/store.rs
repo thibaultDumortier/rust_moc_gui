@@ -31,27 +31,27 @@ pub(crate) fn get_store() -> &'static RwLock<HashMap<String, InternalMoc>> {
 }
 
 /// Add a new MOC to the store
-pub(crate) fn add(name: &str, moc: InternalMoc) -> Result<(), JsValue> {
+pub(crate) fn add(name: &str, moc: InternalMoc) -> Result<(), String> {
     let mut store = get_store()
         .write()
-        .map_err(|_| JsValue::from_str("Write lock poisoned"))?;
+        .map_err(|_| "Write lock poisoned".to_string())?;
     (*store).insert(String::from(name), moc);
     Ok(())
 }
 
-pub(crate) fn drop(name: &str) -> Result<(), JsValue> {
+pub(crate) fn drop(name: &str) -> Result<(), String> {
     let mut store = get_store()
         .write()
-        .map_err(|_| JsValue::from_str("Write lock poisoned"))?;
+        .map_err(|_| "Write lock poisoned".to_string())?;
     (*store).remove(name);
     Ok(())
 }
 
 /// Returns the MOCs identifiers (names)
-pub(crate) fn list_mocs() -> Result<Array, JsValue> {
+pub(crate) fn list_mocs() -> Result<Array, String> {
     Ok(get_store()
         .read()
-        .map_err(|_| JsValue::from_str("Read lock poisoned"))?
+        .map_err(|_| "Read lock poisoned".to_string())?
         .iter()
         .map(|(key, _)| JsValue::from_str(key))
         .collect::<Array>())
@@ -66,7 +66,7 @@ where
 }
 
 /// Perform an operation on a MOC and store the resulting MOC.
-pub(crate) fn op1<F>(name: &str, op: F, res_name: &str) -> Result<(), JsValue>
+pub(crate) fn op1<F>(name: &str, op: F, res_name: &str) -> Result<(), String>
 where
     F: Fn(&InternalMoc) -> Result<InternalMoc, String>,
 {
@@ -75,11 +75,11 @@ where
     let res_moc = {
         let store = store
             .read()
-            .map_err(|_| JsValue::from_str("Read lock poisoned"))?;
+            .map_err(|_| "Read lock poisoned".to_string())?;
         let moc = store
             .get(name)
-            .ok_or_else(|| JsValue::from_str(&format!("MOC '{}' not found", name)))?;
-        op(moc).map_err(|e| JsValue::from_str(&e))?
+            .ok_or_else(|| format!("MOC '{}' not found", name))?;
+        op(moc).map_err(|e| e)?
     };
     // Then write operation.
     // Remark: we could have called directly add(res_name, res_moc)
@@ -87,27 +87,27 @@ where
     //         but we (so far) preferred to spare one `get_store` call
     let mut store = store
         .write()
-        .map_err(|_| JsValue::from_str("Write lock poisoned"))?;
+        .map_err(|_| "Write lock poisoned".to_string())?;
     (*store).insert(String::from(res_name), res_moc);
     Ok(())
 }
 
-pub(crate) fn op1_gen<T, F>(name: &str, op: F) -> Result<T, JsValue>
+pub(crate) fn op1_gen<T, F>(name: &str, op: F) -> Result<T, String>
 where
     F: Fn(&InternalMoc) -> Result<T, String>,
 {
     let store = get_store();
     let store = store
         .read()
-        .map_err(|_| JsValue::from_str("Read lock poisoned"))?;
+        .map_err(|_| "Read lock poisoned".to_string())?;
     let moc = store
         .get(name)
-        .ok_or_else(|| JsValue::from_str(&format!("MOC '{}' not found", name)))?;
-    op(moc).map_err(|e| JsValue::from_str(&e))
+        .ok_or_else(|| format!("MOC '{}' not found", name))?;
+    op(moc).map_err(|e| e)
 }
 
 /// Perform an operation on a MOC and store the resulting MOC.
-pub(crate) fn op1_multi_res<F>(name: &str, op: F, res_name_prefix: &str) -> Result<(), JsValue>
+pub(crate) fn op1_multi_res<F>(name: &str, op: F, res_name_prefix: &str) -> Result<(), String>
 where
     F: Fn(&InternalMoc) -> Result<Vec<InternalMoc>, String>,
 {
@@ -116,11 +116,11 @@ where
     let res_mocs = {
         let store = store
             .read()
-            .map_err(|_| JsValue::from_str("Read lock poisoned"))?;
+            .map_err(|_| "Read lock poisoned".to_string())?;
         let moc = store
             .get(name)
-            .ok_or_else(|| JsValue::from_str(&format!("MOC '{}' not found", name)))?;
-        op(moc).map_err(|e| JsValue::from_str(&e))?
+            .ok_or_else(|| format!("MOC '{}' not found", name))?;
+        op(moc).map_err(|e| e)?
     };
     // Then write operation.
     // Remark: we could have called directly add(res_name, res_moc)
@@ -128,7 +128,7 @@ where
     //         but we (so far) preferred to spare one `get_store` call
     let mut store = store
         .write()
-        .map_err(|_| JsValue::from_str("Write lock poisoned"))?;
+        .map_err(|_| "Write lock poisoned".to_string())?;
     for (i, res_moc) in res_mocs.into_iter().enumerate() {
         (*store).insert(format!("{}_{}", res_name_prefix, i), res_moc);
     }
@@ -150,14 +150,14 @@ where
     let res_moc = {
         let store = store
             .read()
-            .map_err(|_| JsValue::from_str("Read lock poisoned"))?;
+            .map_err(|_| "Read lock poisoned".to_string())?;
         let left = store
             .get(left_name)
-            .ok_or_else(|| JsValue::from_str(&format!("MOC '{}' not found", left_name)))?;
+            .ok_or_else(|| format!("MOC '{}' not found", left_name))?;
         let right = store
             .get(right_name)
-            .ok_or_else(|| JsValue::from_str(&format!("MOC '{}' not found", right_name)))?;
-        op(left, right).map_err(|e| JsValue::from_str(&e))?
+            .ok_or_else(|| format!("MOC '{}' not found", right_name))?;
+        op(left, right).map_err(|e| e)?
     };
     // Then write operation.
     // Remark: we could have called directly add(res_name, res_moc)
@@ -165,7 +165,7 @@ where
     //         but we (so far) preferred to spare one `get_store` call
     let mut store = store
         .write()
-        .map_err(|_| JsValue::from_str("Write lock poisoned"))?;
+        .map_err(|_| "Write lock poisoned".to_string())?;
     (*store).insert(String::from(res_name), res_moc);
     Ok(())
 }

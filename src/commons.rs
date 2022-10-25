@@ -1,8 +1,13 @@
 use core::fmt;
 use std::{io::Cursor, str::from_utf8_unchecked};
 
-use crate::{load_ascii::*, load_fits::*, load_json::*, store::{*, self}};
-use js_sys::{Uint8Array, Array};
+use crate::{
+    load_ascii::*,
+    load_fits::*,
+    load_json::*,
+    store::{self, *},
+};
+use js_sys::{Array, Uint8Array};
 use moc::{
     deser::fits::{from_fits_ivoa, ranges2d_to_fits_ivoa, MocIdxType},
     elemset::range::MocRanges,
@@ -18,8 +23,8 @@ use moc::{
 };
 use rfd::AsyncFileDialog;
 use unreachable::UncheckedResultExt;
-use wasm_bindgen::{JsValue, JsCast};
-use web_sys::{BlobPropertyBag, Blob, Url, HtmlAnchorElement};
+use wasm_bindgen::JsCast;
+use web_sys::{Blob, BlobPropertyBag, HtmlAnchorElement, Url};
 
 /// Convenient type for Space-MOCs
 pub(crate) type Smoc = RangeMOC<u64, Hpx<u64>>;
@@ -142,36 +147,14 @@ impl InternalMoc {
     }
 }
 
-#[derive(PartialEq)]
-pub(crate) enum MocWType {
-    Fits,
-    Json,
-    Ascii,
-}
-impl Default for MocWType {
-    fn default() -> Self {
-        MocWType::Fits
-    }
-}
-impl fmt::Display for MocWType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            MocWType::Fits => write!(f, "Fits"),
-            MocWType::Json => write!(f, "Json"),
-            MocWType::Ascii => write!(f, "Ascii"),
-        }
-    }
-}
-
-pub(crate) fn from_fits(data: &[u8]) -> Result<InternalMoc, JsValue> {
+pub(crate) fn from_fits(data: &[u8]) -> Result<InternalMoc, String> {
     // Build the MOC
-    let moc =
-        match from_fits_ivoa(Cursor::new(data)).map_err(|e| JsValue::from_str(&e.to_string()))? {
-            MocIdxType::U16(moc) => from_fits_gen(moc),
-            MocIdxType::U32(moc) => from_fits_gen(moc),
-            MocIdxType::U64(moc) => from_fits_u64(moc),
-        }
-        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+    let moc = match from_fits_ivoa(Cursor::new(data)).map_err(|e| e.to_string())? {
+        MocIdxType::U16(moc) => from_fits_gen(moc),
+        MocIdxType::U32(moc) => from_fits_gen(moc),
+        MocIdxType::U64(moc) => from_fits_u64(moc),
+    }
+    .map_err(|e| e.to_string())?;
     Ok(moc)
 }
 
@@ -180,7 +163,7 @@ pub(crate) fn load(rtype: &[&str], moct: Qty) -> Result<(), String> {
         .add_filter("MOCs", rtype)
         .pick_files();
 
-    let mut reading = if rtype.contains(&"fits") {
+    let reading = if rtype.contains(&"fits") {
         "fits"
     } else if rtype.contains(&"json") {
         "json"
@@ -213,7 +196,7 @@ pub(crate) fn load(rtype: &[&str], moct: Qty) -> Result<(), String> {
 fn execute<F: std::future::Future<Output = ()> + 'static>(f: F) {
     wasm_bindgen_futures::spawn_local(f);
 }
-fn type_reading(rtype: &str, moct: &Qty, data: &[u8]) -> Result<InternalMoc, JsValue> {
+fn type_reading(rtype: &str, moct: &Qty, data: &[u8]) -> Result<InternalMoc, String> {
     match rtype {
         "fits" => from_fits(data),
         "json" => match moct {
@@ -230,9 +213,9 @@ fn type_reading(rtype: &str, moct: &Qty, data: &[u8]) -> Result<InternalMoc, JsV
     }
 }
 
-pub fn to_ascii_file(name: &str, fold: Option<usize>) -> Result<(), JsValue> {
+pub fn to_ascii_file(name: &str, fold: Option<usize>) -> Result<(), String> {
     let data: String = store::exec(name, move |moc| moc.to_ascii(fold))
-        .ok_or_else(|| JsValue::from_str("MOC not found"))?;
+        .ok_or_else(|| "MOC not found".to_string())?;
     to_file(
         name,
         ".txt",
@@ -241,9 +224,9 @@ pub fn to_ascii_file(name: &str, fold: Option<usize>) -> Result<(), JsValue> {
     )
 }
 
-pub fn to_json_file(name: &str, fold: Option<usize>) -> Result<(), JsValue> {
+pub fn to_json_file(name: &str, fold: Option<usize>) -> Result<(), String> {
     let data: String = store::exec(name, move |moc| moc.to_json(fold))
-        .ok_or_else(|| JsValue::from_str("MOC not found"))?;
+        .ok_or_else(|| "MOC not found".to_string())?;
     to_file(
         name,
         ".json",
@@ -252,13 +235,13 @@ pub fn to_json_file(name: &str, fold: Option<usize>) -> Result<(), JsValue> {
     )
 }
 
-pub fn to_fits_file(name: &str) -> Result<(), JsValue> {
-    let data: Box<[u8]> = store::exec(name, move |moc| moc.to_fits())
-        .ok_or_else(|| JsValue::from_str("MOC not found"))?;
+pub fn to_fits_file(name: &str) -> Result<(), String> {
+    let data: Box<[u8]> =
+        store::exec(name, move |moc| moc.to_fits()).ok_or_else(|| "MOC not found".to_string())?;
     to_file(name, ".fits", "application/fits", data)
 }
 
-fn to_file(name: &str, ext: &str, mime: &str, data: Box<[u8]>) -> Result<(), JsValue> {
+fn to_file(name: &str, ext: &str, mime: &str, data: Box<[u8]>) -> Result<(), String> {
     // Set filename
     let mut filename = String::from(name);
     if !filename.ends_with(ext) {
@@ -271,23 +254,49 @@ fn to_file(name: &str, ext: &str, mime: &str, data: Box<[u8]>) -> Result<(), JsV
     let mut blob_prop = BlobPropertyBag::new();
     blob_prop.type_(mime);
 
-    let blob = Blob::new_with_u8_array_sequence_and_options(&bytes, &blob_prop)?;
+    let blob = Blob::new_with_u8_array_sequence_and_options(&bytes, &blob_prop)
+        .map_err(|e| e.as_string())
+        .unwrap();
 
     // Generate the URL with the attached data
-    let url = Url::create_object_url_with_blob(&blob)?;
+    let url = Url::create_object_url_with_blob(&blob)
+        .map_err(|e| e.as_string())
+        .unwrap();
 
     // Create a temporary download link
     let window = web_sys::window().expect("no global `window` exists");
     let document = window.document().expect("should have a document on window");
     let body = document.body().expect("document should have a body");
-    let anchor: HtmlAnchorElement = document.create_element("a").unwrap().dyn_into()?;
+    let anchor: HtmlAnchorElement = document
+        .create_element("a")
+        .unwrap()
+        .dyn_into()
+        .map_err(|e| e.as_string())
+        .unwrap();
     anchor.set_href(&url);
     anchor.set_download(&filename);
-    body.append_child(&anchor)?;
+    if !body
+        .append_child(&anchor)
+        .map_err(|e| e.as_string())
+        .is_ok()
+    {
+        return Err("Body child appending has failed".to_string());
+    }
     // Simulate a click
     anchor.click();
     // Clean
-    body.remove_child(&anchor)?;
-    Url::revoke_object_url(&url)?;
+    if !body
+        .remove_child(&anchor)
+        .map_err(|e| e.as_string())
+        .is_ok()
+    {
+        return Err("Body child removing has failed".to_string());
+    }
+    if Url::revoke_object_url(&url)
+        .map_err(|e| e.as_string())
+        .is_ok()
+    {
+        return Err("URL revoking object url has failed".to_string());
+    }
     Ok(())
 }

@@ -4,13 +4,12 @@ use moc::{
     moc2d::{CellOrCellRangeMOC2IntoIterator, RangeMOC2IntoIterator, RangeMOC2Iterator},
     qty::{Hpx, Time},
 };
-use wasm_bindgen::JsValue;
 
-use crate::commons::{InternalMoc, Qty};
+use crate::commons::InternalMoc;
 
-pub(crate) fn smoc_from_ascii(data: &str) -> Result<InternalMoc, JsValue> {
+pub(crate) fn smoc_from_ascii(data: &str) -> Result<InternalMoc, String> {
     let cellcellranges =
-        from_ascii_ivoa::<u64, Hpx<u64>>(data).map_err(|e| JsValue::from_str(&e.to_string()))?;
+        from_ascii_ivoa::<u64, Hpx<u64>>(data).map_err(|e| e.to_string())?;
     let moc = cellcellranges
         .into_cellcellrange_moc_iter()
         .ranges()
@@ -18,9 +17,9 @@ pub(crate) fn smoc_from_ascii(data: &str) -> Result<InternalMoc, JsValue> {
     Ok(InternalMoc::Space(moc))
 }
 
-pub(crate) fn tmoc_from_ascii(data: &str) -> Result<InternalMoc, JsValue> {
+pub(crate) fn tmoc_from_ascii(data: &str) -> Result<InternalMoc, String> {
     let cellcellranges =
-        from_ascii_ivoa::<u64, Time<u64>>(data).map_err(|e| JsValue::from_str(&e.to_string()))?;
+        from_ascii_ivoa::<u64, Time<u64>>(data).map_err(|e| e.to_string())?;
     let moc = cellcellranges
         .into_cellcellrange_moc_iter()
         .ranges()
@@ -28,9 +27,9 @@ pub(crate) fn tmoc_from_ascii(data: &str) -> Result<InternalMoc, JsValue> {
     Ok(InternalMoc::Time(moc))
 }
 
-pub(crate) fn stmoc_from_ascii(data: &str) -> Result<InternalMoc, JsValue> {
+pub(crate) fn stmoc_from_ascii(data: &str) -> Result<InternalMoc, String> {
     let cellrange2 = moc2d_from_ascii_ivoa::<u64, Time<u64>, u64, Hpx<u64>>(data)
-        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+        .map_err(|e| e.to_string())?;
     let moc2 = cellrange2
         .into_cellcellrange_moc2_iter()
         .into_range_moc2_iter()
