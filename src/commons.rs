@@ -1,7 +1,8 @@
 use core::fmt;
 use std::{io::Cursor, str::from_utf8_unchecked};
 
-use crate::{load_ascii::*, load_fits::*, load_json::*, store::*};
+use crate::{load_ascii::*, load_fits::*, load_json::*, store::{*, self}};
+use js_sys::{Uint8Array, Array};
 use moc::{
     deser::fits::{from_fits_ivoa, ranges2d_to_fits_ivoa, MocIdxType},
     elemset::range::MocRanges,
@@ -17,7 +18,8 @@ use moc::{
 };
 use rfd::AsyncFileDialog;
 use unreachable::UncheckedResultExt;
-use wasm_bindgen::JsValue;
+use wasm_bindgen::{JsValue, JsCast};
+use web_sys::{BlobPropertyBag, Blob, Url, HtmlAnchorElement};
 
 /// Convenient type for Space-MOCs
 pub(crate) type Smoc = RangeMOC<u64, Hpx<u64>>;
@@ -226,4 +228,66 @@ fn type_reading(rtype: &str, moct: &Qty, data: &[u8]) -> Result<InternalMoc, JsV
         },
         _ => unreachable!(), // since file_input.set_attribute("accept", ".fits, .json, .ascii, .txt");
     }
+}
+
+pub fn to_ascii_file(name: &str, fold: Option<usize>) -> Result<(), JsValue> {
+    let data: String = store::exec(name, move |moc| moc.to_ascii(fold))
+        .ok_or_else(|| JsValue::from_str("MOC not found"))?;
+    to_file(
+        name,
+        ".txt",
+        "text/plain",
+        data.into_bytes().into_boxed_slice(),
+    )
+}
+
+pub fn to_json_file(name: &str, fold: Option<usize>) -> Result<(), JsValue> {
+    let data: String = store::exec(name, move |moc| moc.to_json(fold))
+        .ok_or_else(|| JsValue::from_str("MOC not found"))?;
+    to_file(
+        name,
+        ".json",
+        "application/json",
+        data.into_bytes().into_boxed_slice(),
+    )
+}
+
+pub fn to_fits_file(name: &str) -> Result<(), JsValue> {
+    let data: Box<[u8]> = store::exec(name, move |moc| moc.to_fits())
+        .ok_or_else(|| JsValue::from_str("MOC not found"))?;
+    to_file(name, ".fits", "application/fits", data)
+}
+
+fn to_file(name: &str, ext: &str, mime: &str, data: Box<[u8]>) -> Result<(), JsValue> {
+    // Set filename
+    let mut filename = String::from(name);
+    if !filename.ends_with(ext) {
+        filename.push_str(ext);
+    }
+    // Put data in a blob
+    let data: Uint8Array = data.as_ref().into();
+    let bytes = Array::new();
+    bytes.push(&data);
+    let mut blob_prop = BlobPropertyBag::new();
+    blob_prop.type_(mime);
+
+    let blob = Blob::new_with_u8_array_sequence_and_options(&bytes, &blob_prop)?;
+
+    // Generate the URL with the attached data
+    let url = Url::create_object_url_with_blob(&blob)?;
+
+    // Create a temporary download link
+    let window = web_sys::window().expect("no global `window` exists");
+    let document = window.document().expect("should have a document on window");
+    let body = document.body().expect("document should have a body");
+    let anchor: HtmlAnchorElement = document.create_element("a").unwrap().dyn_into()?;
+    anchor.set_href(&url);
+    anchor.set_download(&filename);
+    body.append_child(&anchor)?;
+    // Simulate a click
+    anchor.click();
+    // Clean
+    body.remove_child(&anchor)?;
+    Url::revoke_object_url(&url)?;
+    Ok(())
 }

@@ -4,6 +4,7 @@
 use crate::commons::*;
 use crate::op1::*;
 use crate::op2::*;
+use crate::store;
 use crate::store::get_store;
 use crate::store::list_mocs;
 
@@ -11,13 +12,12 @@ use eframe::egui;
 use egui::menu;
 use egui::Ui;
 use wasm_bindgen::prelude::wasm_bindgen;
-use wasm_bindgen::JsValue;
 
 //Import javascript log function
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_namespace = console)]
-    fn log(s: &str);
+    pub fn log(s: &str);
 }
 
 //An operation enumerator
@@ -36,6 +36,7 @@ impl PartialEq for Op {
         match (self, other) {
             (Op::One(a), Op::One(b)) => a.eq(b),
             (Op::Two(a), Op::Two(b)) => a.eq(b),
+            (Op::Opnone, Op::Opnone) => true,
             _ => false,
         }
     }
@@ -202,8 +203,8 @@ impl FileApp {
             Op1::Contract => self.moc_op1(ui, Op1::Contract),
             Op1::ExtBorder => self.moc_op1(ui, Op1::ExtBorder),
             Op1::IntBorder => self.moc_op1(ui, Op1::IntBorder),
-            Op1::Split => todo!(),
-            Op1::SplitIndirect => todo!(),
+            Op1::Split => self.moc_op1(ui, Op1::Split),
+            Op1::SplitIndirect => self.moc_op1(ui, Op1::SplitIndirect),
         }
     }
 
@@ -291,7 +292,9 @@ impl FileApp {
                         }
                     }
                     let moc = self.picked_file.clone().unwrap();
-                    op1(&moc, op, "result");
+                    if !op1(&moc, op, "result").is_ok() {
+                        ui.label("Error when trying to do operation");
+                    }
                 };
             });
         }
@@ -336,18 +339,44 @@ impl FileApp {
                 if ui.button("Launch").clicked() {
                     let l = self.picked_file.as_ref().unwrap();
                     let r = self.picked_second_file.as_ref().unwrap();
-                    op2(&l, &r, op, "result");
+                    if op2(&l, &r, op, "result").is_ok() {
+                        ui.label("Error when trying to do operation");
+                    }
                 };
             });
         }
     }
 
     fn list_ui(&mut self, ui: &mut Ui) {
-        for file in get_store().read().unwrap().iter() {
-            ui.horizontal(|ui| {
-                ui.label(file.0);
+        let mut filenames: Vec<String> = Vec::default();
+        ui.horizontal(|ui| {
+            ui.vertical(|ui| {
+                for file in get_store().read().unwrap().iter() {
+                    filenames.push(file.0.to_string());
+                    ui.label(file.0);
+                }
             });
-        }
+            ui.vertical(|ui| {
+                for filen in filenames.iter() {
+                    ui.horizontal(|ui| {
+                        if ui.button("remove").clicked() {
+                            if !store::drop(filen).is_ok() {
+                                ui.label("Error when trying to remove file");
+                            }
+                        }
+                        if ui.button("FITS").clicked() {
+                            to_fits_file(filen);
+                        }
+                        if ui.button("ASCII").clicked() {
+                            to_ascii_file(filen, Some(0));
+                        }
+                        if ui.button("JSON").clicked() {
+                            to_json_file(filen, Some(0));
+                        }
+                    });
+                }
+            });
+        });
     }
 
     /*
