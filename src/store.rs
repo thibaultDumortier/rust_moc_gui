@@ -1,9 +1,6 @@
 use std::collections::HashMap;
 use std::sync::{Once, RwLock};
 
-use js_sys::Array;
-use wasm_bindgen::JsValue;
-
 use crate::commons::{InternalMoc};
 
 /// Fonction used only once to init the store
@@ -48,13 +45,13 @@ pub(crate) fn drop(name: &str) -> Result<(), String> {
 }
 
 /// Returns the MOCs identifiers (names)
-pub(crate) fn list_mocs() -> Result<Array, String> {
+pub(crate) fn list_mocs() -> Result<Vec<String>, String> {
     Ok(get_store()
         .read()
         .map_err(|_| "Read lock poisoned".to_string())?
         .iter()
-        .map(|(key, _)| JsValue::from_str(key))
-        .collect::<Array>())
+        .map(|(key, _)| key.clone())
+        .collect())
 }
 
 pub(crate) fn exec<R, F>(name: &str, op: F) -> Option<R>
@@ -92,20 +89,6 @@ where
     Ok(())
 }
 
-pub(crate) fn op1_gen<T, F>(name: &str, op: F) -> Result<T, String>
-where
-    F: Fn(&InternalMoc) -> Result<T, String>,
-{
-    let store = get_store();
-    let store = store
-        .read()
-        .map_err(|_| "Read lock poisoned".to_string())?;
-    let moc = store
-        .get(name)
-        .ok_or_else(|| format!("MOC '{}' not found", name))?;
-    op(moc).map_err(|e| e)
-}
-
 /// Perform an operation on a MOC and store the resulting MOC.
 pub(crate) fn op1_multi_res<F>(name: &str, op: F, res_name_prefix: &str) -> Result<(), String>
 where
@@ -141,7 +124,7 @@ pub(crate) fn op2<F>(
     right_name: &str,
     op: F,
     res_name: &str,
-) -> Result<(), JsValue>
+) -> Result<(), String>
 where
     F: Fn(&InternalMoc, &InternalMoc) -> Result<InternalMoc, String>,
 {

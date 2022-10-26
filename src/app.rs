@@ -49,6 +49,7 @@ pub struct FileApp {
     picked_second_file: Option<String>,
     operation: Op,
     deg: u8,
+    error: Option<String>,
 }
 impl eframe::App for FileApp {
     /*
@@ -106,6 +107,7 @@ impl FileApp {
             picked_second_file: None,
             operation: Op::default(),
             deg: 0,
+            error: None,
         }
     }
 
@@ -125,7 +127,12 @@ impl FileApp {
             ui.menu_button("Files", |ui| {
                 ui.menu_button("Load", |ui| {
                     if ui.button("FITS").clicked() {
-                        assert!(load(&["fits"], Qty::Space).is_ok());
+                        match load(&["fits"], Qty::Space) {
+                            Ok(_) => (),
+                            Err(e) => {
+                                self.error = Some(e);
+                            }
+                        }
                     }
                     ui.menu_button("JSON", |ui| {
                         if ui.button("Space").clicked() {
@@ -152,6 +159,9 @@ impl FileApp {
                 })
             });
         });
+        if self.error.is_some() {
+            ui.label(self.error.as_ref().unwrap());
+        }
     }
 
     /*
@@ -261,7 +271,7 @@ impl FileApp {
     */
     fn moc_op1(&mut self, ui: &mut Ui, mut op: Op1) {
         //If no file has been imported yet
-        if list_mocs().unwrap().length() == 0 {
+        if list_mocs().unwrap().len() == 0 {
             ui.label("Pick a file!");
         //If files have been imported and can be chosen from
         } else {
@@ -290,7 +300,7 @@ impl FileApp {
                         }
                     }
                     let moc = self.picked_file.clone().unwrap();
-                    if !op1(&moc, op, "result").is_ok() {
+                    if !op1(&moc, op, &format!("{}_{}", op.to_string(), moc)).is_ok() {
                         ui.label("Error when trying to do operation");
                     }
                 };
@@ -308,7 +318,7 @@ impl FileApp {
     */
     fn moc_op2(&mut self, ui: &mut Ui, op: Op2) {
         //If no file has been imported yet
-        if list_mocs().unwrap().length() < 2 {
+        if list_mocs().unwrap().len() < 2 {
             ui.label("Pick at least 2 files!");
         //If files have been imported and can be chosen from
         } else {
@@ -336,7 +346,7 @@ impl FileApp {
                 if ui.button("Launch").clicked() {
                     let l = self.picked_file.as_ref().unwrap();
                     let r = self.picked_second_file.as_ref().unwrap();
-                    if op2(&l, &r, op, "result").is_ok() {
+                    if !op2(&l, &r, op, &format!("{}_{}_{}", op.to_string(), l, r)).is_ok() {
                         ui.label("Error when trying to do operation");
                     }
                 };
@@ -362,13 +372,19 @@ impl FileApp {
                             }
                         }
                         if ui.button("FITS").clicked() {
-                            to_fits_file(filen);
+                            if !to_fits_file(filen).is_ok() {
+                                ui.label("Error when trying to create file");
+                            }
                         }
                         if ui.button("ASCII").clicked() {
-                            to_ascii_file(filen, Some(0));
+                            if !to_ascii_file(filen, Some(0)).is_ok() {
+                                ui.label("Error when trying to create file");
+                            }
                         }
                         if ui.button("JSON").clicked() {
-                            to_json_file(filen, Some(0));
+                            if !to_json_file(filen, Some(0)).is_ok() {
+                                ui.label("Error when trying to create file");
+                            }
                         }
                     });
                 }

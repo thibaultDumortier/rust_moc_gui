@@ -1,5 +1,8 @@
 use core::fmt;
-use std::{io::Cursor, str::from_utf8_unchecked};
+use std::{
+    io::Cursor,
+    str::from_utf8_unchecked,
+};
 
 use crate::{
     load_ascii::*,
@@ -7,7 +10,6 @@ use crate::{
     load_json::*,
     store::{self, *},
 };
-use js_sys::{Array, Uint8Array};
 use moc::{
     deser::fits::{from_fits_ivoa, ranges2d_to_fits_ivoa, MocIdxType},
     elemset::range::MocRanges,
@@ -21,10 +23,20 @@ use moc::{
     },
     qty::{Hpx, Time},
 };
-use rfd::AsyncFileDialog;
 use unreachable::UncheckedResultExt;
+
+#[cfg(target_arch = "wasm32")]
+use js_sys::{Array, Uint8Array};
+use rfd::AsyncFileDialog;
 use wasm_bindgen::JsCast;
 use web_sys::{Blob, BlobPropertyBag, HtmlAnchorElement, Url};
+
+#[cfg(not(target_arch = "wasm32"))]
+use rfd::FileDialog;
+use std::{
+    fs::File,
+    io::{Read, Write},
+};
 
 /// Convenient type for Space-MOCs
 pub(crate) type Smoc = RangeMOC<u64, Hpx<u64>>;
@@ -158,44 +170,6 @@ pub(crate) fn from_fits(data: &[u8]) -> Result<InternalMoc, String> {
     Ok(moc)
 }
 
-pub(crate) fn load(rtype: &[&str], moct: Qty) -> Result<(), String> {
-    let task = AsyncFileDialog::new()
-        .add_filter("MOCs", rtype)
-        .pick_files();
-
-    let reading = if rtype.contains(&"fits") {
-        "fits"
-    } else if rtype.contains(&"json") {
-        "json"
-    } else if rtype.contains(&"ascii") {
-        "ascii"
-    } else {
-        "error [NOT SUPPOSED TO HAPPEN]"
-    };
-
-    execute(async move {
-        let handle = task.await;
-
-        if let Some(handle) = handle {
-            //If you care about wasm support you just read() the file
-            for path in handle {
-                //Reads name and adds it to be shown to user
-                let file_name = path.file_name();
-                //Reads file contents and adds it to the data
-                let file_content = path.read().await;
-                let res = type_reading(reading, &moct, file_content.as_slice());
-                if res.is_ok() {
-                    add(&file_name, res.unwrap())
-                        .expect("A problem has occured while trying to add the MOC");
-                }
-            }
-        }
-    });
-    Ok(())
-}
-fn execute<F: std::future::Future<Output = ()> + 'static>(f: F) {
-    wasm_bindgen_futures::spawn_local(f);
-}
 fn type_reading(rtype: &str, moct: &Qty, data: &[u8]) -> Result<InternalMoc, String> {
     match rtype {
         "fits" => from_fits(data),
@@ -241,6 +215,31 @@ pub fn to_fits_file(name: &str) -> Result<(), String> {
     to_file(name, ".fits", "application/fits", data)
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+fn to_file(name: &str, ext: &str, _mime: &str, data: Box<[u8]>) -> Result<(), String> {
+    let path = rfd::FileDialog::new()
+        .set_directory("/")
+        .set_file_name(&(name.to_owned() + ext))
+        .save_file();
+    if let Some(path) = path {
+        let file = File::create(path);
+        match file {
+            Ok(_) => {
+                if file.unwrap().write_all(&data).is_err() {
+                    return Err("Erreur dans l'ecriture du fichier".to_string());
+                }
+            }
+            Err(_) => return Err("Erreur dans la creation du fichier".to_string()),
+        };
+    } else {
+        // path is equal to none
+        return Err("Annulé".to_string());
+    }
+
+    Ok(())
+}
+
+#[cfg(target_arch = "wasm32")]
 fn to_file(name: &str, ext: &str, mime: &str, data: Box<[u8]>) -> Result<(), String> {
     // Set filename
     let mut filename = String::from(name);
@@ -299,4 +298,80 @@ fn to_file(name: &str, ext: &str, mime: &str, data: Box<[u8]>) -> Result<(), Str
         return Err("URL revoking object url has failed".to_string());
     }
     Ok(())
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) fn load(rtype: &[&str], moct: Qty) -> Result<(), String> {
+    let reading = if rtype.contains(&"fits") {
+        "fits"
+    } else if rtype.contains(&"json") {
+        "json"
+    } else if rtype.contains(&"ascii") {
+        "ascii"
+    } else {
+        "error [NOT SUPPOSED TO HAPPEN]"
+    };
+
+    if let Some(handle) = FileDialog::new().add_filter("MOCs", rtype).pick_files() {
+        for path in handle {
+            let mut file = File::open(&path).map_err(|_| "Error while opening file".to_string())?;
+            //Reads name and adds it to be shown to user
+            let file_name = path
+                .file_name()
+                .ok_or_else(|| "error while reading file name".to_string())?
+                .to_str()
+                .ok_or_else(|| "error while reading file name".to_string())?;
+            //Reads file contents and adds it to the data
+            let mut file_content = Vec::default();
+            file.read_to_end(&mut file_content)
+                .map_err(|e| format!("Error while reading file: {}", e))?;
+            let res = type_reading(reading, &moct, file_content.as_slice());
+            if res.is_ok() {
+                add(file_name, res.unwrap())
+                    .expect("A problem has occured while trying to add the MOC");
+            }
+        }
+    }
+    Ok(())
+}
+
+#[cfg(target_arch = "wasm32")]
+pub(crate) fn load(rtype: &[&str], moct: Qty) -> Result<(), String> {
+    let task = AsyncFileDialog::new()
+        .add_filter("MOCs", rtype)
+        .pick_files();
+
+    let reading = if rtype.contains(&"fits") {
+        "fits"
+    } else if rtype.contains(&"json") {
+        "json"
+    } else if rtype.contains(&"ascii") {
+        "ascii"
+    } else {
+        "error [NOT SUPPOSED TO HAPPEN]"
+    };
+
+    execute(async move {
+        let handle = task.await;
+
+        if let Some(handle) = handle {
+            //If you care about wasm support you just read() the file
+            for path in handle {
+                //Reads name and adds it to be shown to user
+                let file_name = path.file_name();
+                //Reads file contents and adds it to the data
+                let file_content = path.read().await;
+                let res = type_reading(reading, &moct, file_content.as_slice());
+                if res.is_ok() {
+                    add(&file_name, res.unwrap())
+                        .expect("A problem has occured while trying to add the MOC");
+                }
+            }
+        }
+    });
+    Ok(())
+}
+#[cfg(target_arch = "wasm32")]
+fn execute<F: std::future::Future<Output = ()> + 'static>(f: F) {
+    wasm_bindgen_futures::spawn_local(f);
 }

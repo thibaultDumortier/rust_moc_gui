@@ -1,7 +1,5 @@
 use core::fmt;
 
-use wasm_bindgen::JsValue;
-
 use moc::elemset::range::MocRanges;
 use moc::hpxranges2d::TimeSpaceMoc;
 use moc::moc::range::RangeMOC;
@@ -156,7 +154,7 @@ pub(crate) fn op2(
     right_name: &str,
     op: Op2,
     res_name: &str,
-) -> Result<(), JsValue> {
+) -> Result<(), String> {
     store::op2(
         left_name,
         right_name,
