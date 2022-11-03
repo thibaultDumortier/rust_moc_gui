@@ -1,8 +1,5 @@
 use core::fmt;
-use std::{
-    io::Cursor,
-    str::from_utf8_unchecked,
-};
+use std::{io::Cursor, str::from_utf8_unchecked};
 
 use crate::{
     load_ascii::*,
@@ -218,7 +215,7 @@ pub fn to_fits_file(name: &str) -> Result<(), String> {
 #[cfg(not(target_arch = "wasm32"))]
 fn to_file(name: &str, ext: &str, _mime: &str, data: Box<[u8]>) -> Result<(), String> {
     let path = rfd::FileDialog::new()
-        .set_directory("/")
+        .set_directory("../")
         .set_file_name(&(name.to_owned() + ext))
         .save_file();
     if let Some(path) = path {

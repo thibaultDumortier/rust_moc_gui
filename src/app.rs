@@ -11,6 +11,7 @@ use crate::store::list_mocs;
 use eframe::egui;
 use egui::menu;
 use egui::Ui;
+use egui_extras::{Size, TableBuilder};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 //Import javascript log function
@@ -356,39 +357,65 @@ impl FileApp {
 
     fn list_ui(&mut self, ui: &mut Ui) {
         let mut filenames: Vec<String> = Vec::default();
-        ui.horizontal(|ui| {
-            ui.vertical(|ui| {
-                for file in get_store().read().unwrap().iter() {
-                    filenames.push(file.0.to_string());
-                    ui.label(file.0);
-                }
-            });
-            ui.vertical(|ui| {
-                for filen in filenames.iter() {
-                    ui.horizontal(|ui| {
-                        if ui.button("remove").clicked() {
-                            if !store::drop(filen).is_ok() {
-                                ui.label("Error when trying to remove file");
-                            }
-                        }
-                        if ui.button("FITS").clicked() {
-                            if !to_fits_file(filen).is_ok() {
-                                ui.label("Error when trying to create file");
-                            }
-                        }
-                        if ui.button("ASCII").clicked() {
-                            if !to_ascii_file(filen, Some(0)).is_ok() {
-                                ui.label("Error when trying to create file");
-                            }
-                        }
-                        if ui.button("JSON").clicked() {
-                            if !to_json_file(filen, Some(0)).is_ok() {
-                                ui.label("Error when trying to create file");
-                            }
-                        }
+        for file in get_store().read().unwrap().iter() {
+            filenames.push(file.0.to_string());
+        }
+        let txt_h = 30.0;
+        ui.vertical(|ui| {
+            TableBuilder::new(ui)
+                .striped(true)
+                .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+                .column(Size::initial(300.0).at_least(100.0))
+                .column(Size::initial(20.0).at_least(20.0))
+                .column(Size::remainder().at_least(20.0))
+                .header(20.0, |mut header| {
+                    header.col(|ui| {
+                        ui.heading("Name");
                     });
-                }
-            });
+                    header.col(|ui| {
+                        ui.heading("📥");
+                    });
+                    header.col(|ui| {
+                        ui.heading("❌");
+                    });
+                })
+                .body(|body| {
+                    body.rows(txt_h, filenames.len(), |row_index, mut row| {
+                        row.col(|ui| {
+                            ui.label(filenames.get(row_index).unwrap());
+                        });
+                        row.col(|ui| {
+                            ui.menu_button("📥", |ui| {
+                                if ui.button("FITS").clicked() {
+                                    if !to_fits_file(filenames.get(row_index).unwrap()).is_ok() {
+                                        ui.label("Error when trying to create file");
+                                    }
+                                }
+                                if ui.button("ASCII").clicked() {
+                                    if !to_ascii_file(filenames.get(row_index).unwrap(), Some(0))
+                                        .is_ok()
+                                    {
+                                        ui.label("Error when trying to create file");
+                                    }
+                                }
+                                if ui.button("JSON").clicked() {
+                                    if !to_json_file(filenames.get(row_index).unwrap(), Some(0))
+                                        .is_ok()
+                                    {
+                                        ui.label("Error when trying to create file");
+                                    }
+                                }
+                            });
+                        });
+                        row.col(|ui| {
+                            if ui.button("❌").clicked() {
+                                if !store::drop(filenames.get(row_index).unwrap()).is_ok() {
+                                    ui.label("Error when trying to remove file");
+                                }
+                            }
+                        });
+                    })
+                })
         });
     }
 
