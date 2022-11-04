@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::{Once, RwLock};
 
-use crate::commons::{InternalMoc};
+use crate::commons::{InternalMoc, Qty};
 
 /// Fonction used only once to init the store
 static MOC_STORE_INIT: Once = Once::new();
@@ -25,6 +25,25 @@ pub(crate) fn get_store() -> &'static RwLock<HashMap<String, InternalMoc>> {
             None => unreachable!(),
         }
     }
+}
+
+pub(crate) fn get_qty(name: &str) -> Result<Qty, String> {
+    let store = get_store();
+    // Perform read operations first
+    let res_qty = {
+        let store = store
+            .read()
+            .map_err(|_| "Read lock poisoned".to_string())?;
+        let moc = store
+            .get(name)
+            .ok_or_else(|| format!("MOC '{}' not found", name))?;
+        match moc {
+            InternalMoc::Space(_) => Qty::Space,
+            InternalMoc::Time(_) => Qty::Time,
+            InternalMoc::TimeSpace(_) => Qty::Timespace,
+        }
+    };
+    Ok(res_qty)
 }
 
 /// Add a new MOC to the store

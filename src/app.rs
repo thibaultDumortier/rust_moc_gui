@@ -51,6 +51,7 @@ pub struct FileApp {
     operation: Op,
     deg: u8,
     error: Option<String>,
+    name: String,
 }
 impl eframe::App for FileApp {
     /*
@@ -109,6 +110,7 @@ impl FileApp {
             operation: Op::default(),
             deg: 0,
             error: None,
+            name: String::default(),
         }
     }
 
@@ -196,12 +198,16 @@ impl FileApp {
                     ui.selectable_value(&mut self.operation, Op::One(Op1::Contract), "Contract");
                     ui.selectable_value(&mut self.operation, Op::One(Op1::ExtBorder), "ExtBorder");
                     ui.selectable_value(&mut self.operation, Op::One(Op1::IntBorder), "IntBorder");
-                    ui.selectable_value(&mut self.operation, Op::One(Op1::Split), "Split");
-                    ui.selectable_value(
-                        &mut self.operation,
-                        Op::One(Op1::SplitIndirect),
-                        "SplitIndirect",
-                    );
+                    if self.picked_file.is_some() {
+                        if store::get_qty(&self.picked_file.clone().unwrap()) == Ok(Qty::Space) {
+                            ui.selectable_value(&mut self.operation, Op::One(Op1::Split), "Split");
+                            ui.selectable_value(
+                                &mut self.operation,
+                                Op::One(Op1::SplitIndirect),
+                                "SplitIndirect",
+                            );
+                        }
+                    }
                 });
         });
 
@@ -228,28 +234,82 @@ impl FileApp {
     */
     fn op_two_ui(&mut self, ui: &mut Ui, operation: Op2) {
         // An operation combo box including Intersection and Union
-        let sel_text = format!("{}", operation);
-        ui.horizontal(|ui| {
-            ui.label("Operation :");
-            egui::ComboBox::from_id_source("Operation_cbox")
-                .selected_text(sel_text)
-                .show_ui(ui, |ui| {
-                    ui.selectable_value(
-                        &mut self.operation,
-                        Op::Two(Op2::Intersection),
-                        "Intersection",
-                    );
-                    ui.selectable_value(&mut self.operation, Op::Two(Op2::Union), "Union");
-                    ui.selectable_value(
-                        &mut self.operation,
-                        Op::Two(Op2::Difference),
-                        "Difference",
-                    );
-                    ui.selectable_value(&mut self.operation, Op::Two(Op2::Minus), "Minus");
-                    ui.selectable_value(&mut self.operation, Op::Two(Op2::TFold), "TFold");
-                    ui.selectable_value(&mut self.operation, Op::Two(Op2::SFold), "SFold");
+        if self.picked_file.is_some() && self.picked_second_file.is_some() {
+            if store::get_qty(&self.picked_file.clone().unwrap())
+                .eq(&store::get_qty(&self.picked_second_file.clone().unwrap()))
+            {
+                let sel_text = format!("{}", operation);
+
+                ui.horizontal(|ui| {
+                    ui.label("Operation :");
+                    egui::ComboBox::from_id_source("Operation_cbox")
+                        .selected_text(sel_text)
+                        .show_ui(ui, |ui| {
+                            if store::get_qty(&self.picked_file.clone().unwrap())
+                                .eq(&store::get_qty(&self.picked_second_file.clone().unwrap()))
+                            {
+                                ui.selectable_value(
+                                    &mut self.operation,
+                                    Op::Two(Op2::Intersection),
+                                    "Intersection",
+                                );
+                                ui.selectable_value(
+                                    &mut self.operation,
+                                    Op::Two(Op2::Minus),
+                                    "Minus",
+                                );
+                                ui.selectable_value(
+                                    &mut self.operation,
+                                    Op::Two(Op2::Union),
+                                    "Union",
+                                );
+                                ui.selectable_value(
+                                    &mut self.operation,
+                                    Op::Two(Op2::Difference),
+                                    "Difference",
+                                );
+                            }
+                        });
                 });
-        });
+            } else if store::get_qty(&self.picked_file.clone().unwrap()) == Ok(Qty::Timespace)
+                || store::get_qty(&self.picked_second_file.clone().unwrap()) == Ok(Qty::Timespace)
+            {
+                let sel_text = format!("{}", operation);
+                ui.horizontal(|ui| {
+                    ui.label("Operation :");
+                    egui::ComboBox::from_id_source("Operation_cbox")
+                        .selected_text(sel_text)
+                        .show_ui(ui, |ui| {
+                            if store::get_qty(&self.picked_file.clone().unwrap()) == Ok(Qty::Space)
+                                || store::get_qty(&self.picked_second_file.clone().unwrap())
+                                    == Ok(Qty::Space)
+                            {
+                                ui.selectable_value(
+                                    &mut self.operation,
+                                    Op::Two(Op2::SFold),
+                                    "SFold",
+                                );
+                            } else if store::get_qty(&self.picked_file.clone().unwrap())
+                                == Ok(Qty::Time)
+                                || store::get_qty(&self.picked_second_file.clone().unwrap())
+                                    == Ok(Qty::Time)
+                            {
+                                ui.selectable_value(
+                                    &mut self.operation,
+                                    Op::Two(Op2::TFold),
+                                    "TFold",
+                                );
+                            }
+                        });
+                });
+            } else {
+                ui.label(
+                    "Files need to be of same type or TimeSpace and Space or Time (for folds)",
+                );
+            }
+        } else {
+            ui.label("Pick files on which to do operation");
+        }
 
         //A file choosing combobox
         match operation {
@@ -281,17 +341,24 @@ impl FileApp {
             if self.picked_file.is_some() {
                 sel_text = self.picked_file.clone().unwrap();
             }
-            //Combo box containing the different files that can be picked from
-            ui.horizontal(|ui| {
-                ui.label("Moc : ");
-                self.make_cbox(ui, sel_text.as_str(), "file_cbox", None);
-            });
 
             //In case of degrade option ask for new depth
             let deg = matches!(op, Op1::Degrade { new_depth: _ });
             if deg {
                 ui.add(egui::Slider::new(&mut self.deg, 0..=25));
             }
+
+            //Combo box containing the different files that can be picked from
+            ui.horizontal(|ui| {
+                ui.label("MOC : ");
+                self.make_cbox(ui, sel_text.as_str(), "file_cbox", None);
+            });
+
+            ui.horizontal(|ui| {
+                ui.label("New MOC name :");
+                ui.text_edit_singleline(&mut self.name);
+            });
+
             //Button launching the operation
             ui.horizontal(|ui| {
                 if ui.button("Launch").clicked() {
@@ -301,8 +368,16 @@ impl FileApp {
                         }
                     }
                     let moc = self.picked_file.clone().unwrap();
-                    if !op1(&moc, op, &format!("{}_{}", op.to_string(), moc)).is_ok() {
-                        ui.label("Error when trying to do operation");
+
+                    if self.name.len() == 0 {
+                        if !op1(&moc, op, &format!("{}_{}", op.to_string(), moc)).is_ok() {
+                            ui.label("Error when trying to do operation");
+                        }
+                    } else {
+                        if !op1(&moc, op, &self.name).is_ok() {
+                            ui.label("Error when trying to do operation");
+                            self.name = String::default();
+                        }
                     }
                 };
             });
@@ -323,7 +398,6 @@ impl FileApp {
             ui.label("Pick at least 2 files!");
         //If files have been imported and can be chosen from
         } else {
-            //If no file has been imported yet
             let mut sel_text = "pick one".to_string();
             let mut sel_text_2 = "pick one".to_string();
             if self.picked_file.is_some() {
@@ -334,12 +408,17 @@ impl FileApp {
             }
             //Combo boxes containing the different files that can be picked from
             ui.horizontal(|ui| {
-                ui.label("First moc :");
+                ui.label("First MOC :");
                 self.make_cbox(ui, &sel_text, "file_cbox", None);
             });
             ui.horizontal(|ui| {
-                ui.label("Second moc :");
+                ui.label("Second MOC :");
                 self.make_cbox(ui, &sel_text_2, "file_cbox_2", Some(1));
+            });
+
+            ui.horizontal(|ui| {
+                ui.label("New MOC name :");
+                ui.text_edit_singleline(&mut self.name);
             });
 
             //Button launching the operation
@@ -347,8 +426,15 @@ impl FileApp {
                 if ui.button("Launch").clicked() {
                     let l = self.picked_file.as_ref().unwrap();
                     let r = self.picked_second_file.as_ref().unwrap();
-                    if !op2(&l, &r, op, &format!("{}_{}_{}", op.to_string(), l, r)).is_ok() {
-                        ui.label("Error when trying to do operation");
+                    if self.name.len() == 0 {
+                        if !op2(&l, &r, op, &format!("{}_{}_{}", op.to_string(), l, r)).is_ok() {
+                            ui.label("Error when trying to do operation");
+                        }
+                    } else {
+                        if !op2(&l, &r, op, &self.name).is_ok() {
+                            ui.label("Error when trying to do operation");
+                            self.name = String::default();
+                        }
                     }
                 };
             });
