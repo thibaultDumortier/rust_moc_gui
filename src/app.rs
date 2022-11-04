@@ -238,6 +238,7 @@ impl FileApp {
             if store::get_qty(&self.picked_file.clone().unwrap())
                 .eq(&store::get_qty(&self.picked_second_file.clone().unwrap()))
             {
+                self.operation = Op::Two(Op2::Intersection);
                 let sel_text = format!("{}", operation);
 
                 ui.horizontal(|ui| {
@@ -271,40 +272,24 @@ impl FileApp {
                             }
                         });
                 });
-            } else if store::get_qty(&self.picked_file.clone().unwrap()) == Ok(Qty::Timespace)
-                || store::get_qty(&self.picked_second_file.clone().unwrap()) == Ok(Qty::Timespace)
+            } else if store::get_qty(&self.picked_second_file.clone().unwrap())
+                == Ok(Qty::Timespace)
             {
-                let sel_text = format!("{}", operation);
                 ui.horizontal(|ui| {
-                    ui.label("Operation :");
-                    egui::ComboBox::from_id_source("Operation_cbox")
-                        .selected_text(sel_text)
-                        .show_ui(ui, |ui| {
-                            if store::get_qty(&self.picked_file.clone().unwrap()) == Ok(Qty::Space)
-                                || store::get_qty(&self.picked_second_file.clone().unwrap())
-                                    == Ok(Qty::Space)
-                            {
-                                ui.selectable_value(
-                                    &mut self.operation,
-                                    Op::Two(Op2::SFold),
-                                    "SFold",
-                                );
-                            } else if store::get_qty(&self.picked_file.clone().unwrap())
-                                == Ok(Qty::Time)
-                                || store::get_qty(&self.picked_second_file.clone().unwrap())
-                                    == Ok(Qty::Time)
-                            {
-                                ui.selectable_value(
-                                    &mut self.operation,
-                                    Op::Two(Op2::TFold),
-                                    "TFold",
-                                );
-                            }
-                        });
+                    if store::get_qty(&self.picked_file.clone().unwrap()) == Ok(Qty::Space)
+                    {
+                        ui.label("The only available operation is SFold, as such this operation as been set.");
+                        self.operation = Op::Two(Op2::SFold);
+                    } else if store::get_qty(&self.picked_file.clone().unwrap())
+                        == Ok(Qty::Time)
+                    {
+                        ui.label("The only available operation is TFold, as such this operation as been set.");
+                        self.operation = Op::Two(Op2::TFold);
+                    }
                 });
             } else {
                 ui.label(
-                    "Files need to be of same type or TimeSpace and Space or Time (for folds)",
+                    "Files need to be of same type or Space or Time and Timespace (for folds)",
                 );
             }
         } else {
