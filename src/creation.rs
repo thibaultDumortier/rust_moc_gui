@@ -1,3 +1,5 @@
+use core::fmt;
+
 use moc::{
     elem::valuedcell::valued_cells_to_moc_with_opt,
     elemset::range::HpxRanges,
@@ -5,12 +7,62 @@ use moc::{
     qty::{Hpx, Time},
 };
 
-use crate::{commons::InternalMoc, store};
+use crate::{commons::*, store};
 
-pub(crate) const HALF_PI: f64 = 0.5 * std::f64::consts::PI;
-pub(crate) const PI: f64 = std::f64::consts::PI;
-pub(crate) const TWICE_PI: f64 = 2.0 * std::f64::consts::PI;
 const JD_TO_USEC: f64 = (24_u64 * 60 * 60 * 1_000_000) as f64;
+
+#[derive(Copy, Clone)]
+pub(crate) enum creation_type {
+    Cone,
+    Ring,
+    Elliptical_cone,
+    Zone,
+    Box,
+    Polygon,
+    Coo,
+    Small_cone,
+    Large_cone,
+    Decimal_jd,
+    Decimal_jd_range,
+    Valued_cells,
+}
+impl fmt::Display for creation_type {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Cone => write!(f, "Cone"),
+            Self::Ring => write!(f, "Ring"),
+            Self::Elliptical_cone => write!(f, "Elliptical_cone"),
+            Self::Zone => write!(f, "Zone"),
+            Self::Box => write!(f, "Box"),
+            Self::Polygon => write!(f, "Polygon"),
+            Self::Coo => write!(f, "Coo"),
+            Self::Small_cone => write!(f, "Small_cone"),
+            Self::Large_cone => write!(f, "Large_cone"),
+            Self::Decimal_jd => write!(f, "Decimal_jd"),
+            Self::Decimal_jd_range => write!(f, "Decimal_jd_range"),
+            Self::Valued_cells => write!(f, "Valued_cells"),
+        }
+    }
+}
+impl PartialEq for creation_type {
+    fn eq(&self, other: &Self) -> bool {
+        matches!(
+            (self, other),
+            (Self::Cone, Self::Cone)
+                | (Self::Ring, Self::Ring)
+                | (Self::Elliptical_cone, Self::Elliptical_cone)
+                | (Self::Zone, Self::Zone)
+                | (Self::Box, Self::Box)
+                | (Self::Polygon, Self::Polygon)
+                | (Self::Coo, Self::Coo)
+                | (Self::Small_cone, Self::Small_cone)
+                | (Self::Large_cone, Self::Large_cone)
+                | (Self::Decimal_jd, Self::Decimal_jd)
+                | (Self::Decimal_jd_range, Self::Decimal_jd_range)
+                | (Self::Valued_cells, Self::Valued_cells)
+        )
+    }
+}
 
 pub fn from_cone(
     name: &str,

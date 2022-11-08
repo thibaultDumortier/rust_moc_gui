@@ -35,6 +35,10 @@ use std::{
     io::{Read, Write},
 };
 
+pub(crate) const HALF_PI: f64 = 0.5 * std::f64::consts::PI;
+pub(crate) const PI: f64 = std::f64::consts::PI;
+pub(crate) const TWICE_PI: f64 = 2.0 * std::f64::consts::PI;
+
 /// Convenient type for Space-MOCs
 pub(crate) type Smoc = RangeMOC<u64, Hpx<u64>>;
 /// Convenient type for Time-MOCs

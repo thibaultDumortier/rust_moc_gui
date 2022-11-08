@@ -2,6 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
 use crate::commons::*;
+use crate::creation::*;
 use crate::op1::*;
 use crate::op2::*;
 use crate::store;
@@ -9,6 +10,7 @@ use crate::store::get_store;
 use crate::store::list_mocs;
 
 use eframe::egui;
+use egui::DragValue;
 use egui::menu;
 use egui::Ui;
 use egui_extras::{Size, TableBuilder};
@@ -26,6 +28,7 @@ enum Op {
     One(Op1),
     Two(Op2),
     Opnone,
+    Opcrea(creation_type),
 }
 impl Default for Op {
     fn default() -> Self {
@@ -52,6 +55,7 @@ pub struct FileApp {
     deg: u8,
     error: Option<String>,
     name: String,
+    creation: CreationUis,
 }
 impl eframe::App for FileApp {
     /*
@@ -76,6 +80,11 @@ impl eframe::App for FileApp {
                 ui.selectable_value(&mut self.operation, Op::Opnone, "MOC list");
                 ui.selectable_value(
                     &mut self.operation,
+                    Op::Opcrea(creation_type::Cone),
+                    "MOC creation",
+                );
+                ui.selectable_value(
+                    &mut self.operation,
                     Op::One(Op1::default()),
                     "1 MOC operation",
                 );
@@ -92,6 +101,7 @@ impl eframe::App for FileApp {
                 Op::One(o) => self.moc_op1(ui, o.clone()),
                 Op::Two(t) => self.moc_op2(ui, t.clone()),
                 Op::Opnone => self.list_ui(ui),
+                Op::Opcrea(c) => self.creation_ui(ui, c.clone()),
             }
         });
     }
@@ -111,6 +121,7 @@ impl FileApp {
             deg: 0,
             error: None,
             name: String::default(),
+            creation: CreationUis::default(),
         }
     }
 
@@ -127,44 +138,47 @@ impl FileApp {
         ui.separator();
 
         menu::bar(ui, |ui| {
-            ui.menu_button("Files", |ui| {
-                ui.menu_button("Load", |ui| {
-                    if ui.button("FITS").clicked() {
-                        match load(&["fits"], Qty::Space) {
-                            Ok(_) => (),
-                            Err(e) => {
-                                self.error = Some(e);
+            ui.horizontal(|ui| {
+                ui.menu_button("Files", |ui| {
+                    ui.menu_button("Load", |ui| {
+                        if ui.button("FITS").clicked() {
+                            match load(&["fits"], Qty::Space) {
+                                Ok(_) => (),
+                                Err(e) => {
+                                    self.error = Some(e);
+                                }
                             }
                         }
-                    }
-                    ui.menu_button("JSON", |ui| {
-                        if ui.button("Space").clicked() {
-                            assert!(load(&["json"], Qty::Space).is_ok());
-                        }
-                        if ui.button("Time").clicked() {
-                            assert!(load(&["json"], Qty::Time).is_ok());
-                        }
-                        if ui.button("Spacetime").clicked() {
-                            assert!(load(&["json"], Qty::Timespace).is_ok());
-                        }
-                    });
-                    ui.menu_button("ASCII", |ui| {
-                        if ui.button("Space").clicked() {
-                            assert!(load(&["ascii", "txt"], Qty::Space).is_ok());
-                        }
-                        if ui.button("Time").clicked() {
-                            assert!(load(&["ascii", "txt"], Qty::Time).is_ok());
-                        }
-                        if ui.button("Spacetime").clicked() {
-                            assert!(load(&["ascii", "txt"], Qty::Timespace).is_ok());
-                        }
-                    });
-                })
+                        ui.menu_button("JSON", |ui| {
+                            if ui.button("Space").clicked() {
+                                assert!(load(&["json"], Qty::Space).is_ok());
+                            }
+                            if ui.button("Time").clicked() {
+                                assert!(load(&["json"], Qty::Time).is_ok());
+                            }
+                            if ui.button("Spacetime").clicked() {
+                                assert!(load(&["json"], Qty::Timespace).is_ok());
+                            }
+                        });
+                        ui.menu_button("ASCII", |ui| {
+                            if ui.button("Space").clicked() {
+                                assert!(load(&["ascii", "txt"], Qty::Space).is_ok());
+                            }
+                            if ui.button("Time").clicked() {
+                                assert!(load(&["ascii", "txt"], Qty::Time).is_ok());
+                            }
+                            if ui.button("Spacetime").clicked() {
+                                assert!(load(&["ascii", "txt"], Qty::Timespace).is_ok());
+                            }
+                        });
+                    })
+                });
             });
+            if self.error.is_some() {
+                ui.separator();
+                ui.label(self.error.as_ref().unwrap());
+            }
         });
-        if self.error.is_some() {
-            ui.label(self.error.as_ref().unwrap());
-        }
     }
 
     /*
@@ -194,12 +208,12 @@ impl FileApp {
                         Op::One(Op1::Degrade { new_depth: 0 }),
                         "Degrade",
                     );
-                    ui.selectable_value(&mut self.operation, Op::One(Op1::Extend), "Extend");
-                    ui.selectable_value(&mut self.operation, Op::One(Op1::Contract), "Contract");
-                    ui.selectable_value(&mut self.operation, Op::One(Op1::ExtBorder), "ExtBorder");
-                    ui.selectable_value(&mut self.operation, Op::One(Op1::IntBorder), "IntBorder");
                     if self.picked_file.is_some() {
                         if store::get_qty(&self.picked_file.clone().unwrap()) == Ok(Qty::Space) {
+                            ui.selectable_value(&mut self.operation, Op::One(Op1::Extend), "Extend");
+                            ui.selectable_value(&mut self.operation, Op::One(Op1::Contract), "Contract");
+                            ui.selectable_value(&mut self.operation, Op::One(Op1::ExtBorder), "ExtBorder");
+                            ui.selectable_value(&mut self.operation, Op::One(Op1::IntBorder), "IntBorder");
                             ui.selectable_value(&mut self.operation, Op::One(Op1::Split), "Split");
                             ui.selectable_value(
                                 &mut self.operation,
@@ -223,10 +237,10 @@ impl FileApp {
     fn op_two_ui(&mut self, ui: &mut Ui, operation: Op2) {
         // An operation combo box including Intersection and Union
         if self.picked_file.is_some() && self.picked_second_file.is_some() {
-            if store::get_qty(&self.picked_file.clone().unwrap())
-                .eq(&store::get_qty(&self.picked_second_file.clone().unwrap()))
-            {
-                self.operation = Op::Two(Op2::Intersection);
+            if self.files_have_same_type() {
+                if operation.eq(&Op2::SFold) || operation.eq(&Op2::TFold){
+                    self.operation = Op::Two(Op2::Intersection);
+                }
                 let sel_text = format!("{}", operation);
 
                 ui.horizontal(|ui| {
@@ -234,9 +248,7 @@ impl FileApp {
                     egui::ComboBox::from_id_source("Operation_cbox")
                         .selected_text(sel_text)
                         .show_ui(ui, |ui| {
-                            if store::get_qty(&self.picked_file.clone().unwrap())
-                                .eq(&store::get_qty(&self.picked_second_file.clone().unwrap()))
-                            {
+                            if self.files_have_same_type() {
                                 ui.selectable_value(
                                     &mut self.operation,
                                     Op::Two(Op2::Intersection),
@@ -260,9 +272,7 @@ impl FileApp {
                             }
                         });
                 });
-            } else if store::get_qty(&self.picked_second_file.clone().unwrap()) == Ok(Qty::Timespace)
-                || store::get_qty(&self.picked_file.clone().unwrap()) == Ok(Qty::Timespace)
-            {
+            } else if self.files_have_stmoc() {
                 ui.horizontal(|ui| {
                     if store::get_qty(&self.picked_file.clone().unwrap()) == Ok(Qty::Space) 
                     || store::get_qty(&self.picked_second_file.clone().unwrap()) == Ok(Qty::Space)
@@ -330,6 +340,7 @@ impl FileApp {
                 if store::get_qty(&self.picked_file.clone().unwrap()) != Ok(Qty::Timespace) {
                     ui.horizontal(|ui| {
                         if ui.button("Launch").clicked() {
+                            self.error = None;
                             if deg {
                                 op = Op1::Degrade {
                                     new_depth: self.deg,
@@ -339,11 +350,11 @@ impl FileApp {
 
                             if self.name.len() == 0 {
                                 if !op1(&moc, op, &format!("{}_{}", op.to_string(), moc)).is_ok() {
-                                    ui.label("Error when trying to do operation");
+                                    self.error = Some("Error when trying to do operation".to_string());
                                 }
                             } else {
                                 if !op1(&moc, op, &self.name).is_ok() {
-                                    ui.label("Error when trying to do operation");
+                                    self.error = Some("Error when trying to do operation".to_string());
                                     self.name = String::default();
                                 }
                             }
@@ -390,7 +401,7 @@ impl FileApp {
 
             self.op_two_ui(ui, op.clone());
 
-            if self.picked_file.is_some() && self.picked_second_file.is_some() {
+            if (self.picked_file.is_some() && self.picked_second_file.is_some()) && (self.files_have_same_type() || self.files_have_stmoc()) {
                 ui.horizontal(|ui| {
                     ui.label("New MOC name :");
                     ui.text_edit_singleline(&mut self.name);
@@ -399,6 +410,7 @@ impl FileApp {
                 //Button launching the operation
                 ui.horizontal(|ui| {
                     if ui.button("Launch").clicked() {
+                        self.error = None;
                         let mut l = self.picked_file.as_ref().unwrap();
                         let mut r = self.picked_second_file.as_ref().unwrap();
                         if store::get_qty(l) == Ok(Qty::Timespace) {
@@ -409,17 +421,39 @@ impl FileApp {
                         if self.name.len() == 0 {
                             if !op2(&l, &r, op, &format!("{}_{}_{}", op.to_string(), l, r)).is_ok()
                             {
-                                ui.label("Error when trying to do operation");
+                                self.error = Some("Error when trying to do operation".to_string());
                             }
                         } else {
                             if !op2(&l, &r, op, &self.name).is_ok() {
-                                ui.label("Error when trying to do operation");
+                                self.error = Some("Error when trying to do operation".to_string());
                                 self.name = String::default();
                             }
                         }
                     };
                 });
             }
+        }
+    }
+
+    fn creation_ui(&mut self, ui: &mut Ui, crea: creation_type) {
+        let sel_text = format!("{}", crea);
+
+        ui.horizontal(|ui| {
+            ui.label("Creation type :");
+            egui::ComboBox::from_id_source("Creation_cbox")
+                .selected_text(sel_text)
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(
+                        &mut self.operation,
+                        Op::Opcrea(creation_type::Cone),
+                        "Cone",
+                    );
+                });
+        });
+
+        match crea {
+            creation_type::Cone => if !self.creation.cone_ui(ui).is_ok() { self.error = Some("Error during creation".to_string()) },
+            _ => self.error = Some("Not yet impl".to_string()),
         }
     }
 
@@ -456,21 +490,21 @@ impl FileApp {
                             ui.menu_button("📥", |ui| {
                                 if ui.button("FITS").clicked() {
                                     if !to_fits_file(filenames.get(row_index).unwrap()).is_ok() {
-                                        ui.label("Error when trying to create file");
+                                        self.error = Some("Error when trying to create file".to_string());
                                     }
                                 }
                                 if ui.button("ASCII").clicked() {
                                     if !to_ascii_file(filenames.get(row_index).unwrap(), Some(0))
                                         .is_ok()
                                     {
-                                        ui.label("Error when trying to create file");
+                                        self.error = Some("Error when trying to create file".to_string());
                                     }
                                 }
                                 if ui.button("JSON").clicked() {
                                     if !to_json_file(filenames.get(row_index).unwrap(), Some(0))
                                         .is_ok()
                                     {
-                                        ui.label("Error when trying to create file");
+                                        self.error = Some("Error when trying to create file".to_string());
                                     }
                                 }
                             });
@@ -478,7 +512,7 @@ impl FileApp {
                         row.col(|ui| {
                             if ui.button("❌").clicked() {
                                 if !store::drop(filenames.get(row_index).unwrap()).is_ok() {
-                                    ui.label("Error when trying to remove file");
+                                    self.error = Some("Error when trying to remove file".to_string());
                                 }
                             }
                         });
@@ -517,5 +551,62 @@ impl FileApp {
                     }
                 }
             });
+    }
+
+    fn files_have_stmoc(&mut self) -> bool {
+        store::get_qty(&self.picked_second_file.clone().unwrap()) == Ok(Qty::Timespace)
+                || store::get_qty(&self.picked_file.clone().unwrap()) == Ok(Qty::Timespace)
+    }
+    fn files_have_same_type(&mut self) -> bool {
+        store::get_qty(&self.picked_file.clone().unwrap())
+                .eq(&store::get_qty(&self.picked_second_file.clone().unwrap()))
+    }
+}
+
+#[derive(Default)]
+pub struct CreationUis {
+    name: String,
+    depth: u8,
+    lon_deg: f64,
+    lat_deg: f64,
+    radius: f64,
+}
+impl CreationUis {
+    pub fn cone_ui(&mut self, ui: &mut Ui) -> Result<(), String> {
+        ui.horizontal(|ui| {
+            ui.label("Depth :");
+            ui.add(egui::Slider::new(&mut self.depth, 0..=26));
+        });
+
+        ui.horizontal(|ui| {
+            ui.label("Longitude degradation :");
+            ui.add(egui::Slider::new(&mut self.lon_deg, 0.0..=TWICE_PI));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Latitude degradation :");
+            ui.add(egui::Slider::new(&mut self.lat_deg, -HALF_PI..=HALF_PI));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Radius :");
+            ui.add(egui::Slider::new(&mut self.radius, 0.0..=PI));
+        });
+
+        ui.horizontal(|ui| {
+            ui.label("New MOC name :");
+            ui.text_edit_singleline(&mut self.name);
+        });
+
+        if ui.button("create").clicked() {
+            if self.name.len() == 0 {
+                if !from_cone(&format!("Cone_of_rad_{}", self.radius.to_string().as_str()), self.depth, self.lon_deg, self.lat_deg, self.radius).is_ok(){
+                    return Err("Error during creation from cone".to_string());
+                }
+            } else {
+                if !from_cone(&self.name, self.depth, self.lon_deg, self.lat_deg, self.radius).is_ok(){
+                    return Err("Error during creation from cone".to_string());
+                }
+            }
+        }
+        Ok(())
     }
 }
