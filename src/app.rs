@@ -89,8 +89,8 @@ impl eframe::App for FileApp {
 
             ui.separator();
             match &self.operation {
-                Op::One(o) => self.op_one_ui(ui, o.clone()),
-                Op::Two(t) => self.op_two_ui(ui, t.clone()),
+                Op::One(o) => self.moc_op1(ui, o.clone()),
+                Op::Two(t) => self.moc_op2(ui, t.clone()),
                 Op::Opnone => self.list_ui(ui),
             }
         });
@@ -210,18 +210,6 @@ impl FileApp {
                     }
                 });
         });
-
-        //A file choosing combobox
-        match operation {
-            Op1::Complement => self.moc_op1(ui, Op1::Complement),
-            Op1::Degrade { new_depth } => self.moc_op1(ui, Op1::Degrade { new_depth }),
-            Op1::Extend => self.moc_op1(ui, Op1::Extend),
-            Op1::Contract => self.moc_op1(ui, Op1::Contract),
-            Op1::ExtBorder => self.moc_op1(ui, Op1::ExtBorder),
-            Op1::IntBorder => self.moc_op1(ui, Op1::IntBorder),
-            Op1::Split => self.moc_op1(ui, Op1::Split),
-            Op1::SplitIndirect => self.moc_op1(ui, Op1::SplitIndirect),
-        }
     }
 
     /*
@@ -272,16 +260,17 @@ impl FileApp {
                             }
                         });
                 });
-            } else if store::get_qty(&self.picked_second_file.clone().unwrap())
-                == Ok(Qty::Timespace)
+            } else if store::get_qty(&self.picked_second_file.clone().unwrap()) == Ok(Qty::Timespace)
+                || store::get_qty(&self.picked_file.clone().unwrap()) == Ok(Qty::Timespace)
             {
                 ui.horizontal(|ui| {
-                    if store::get_qty(&self.picked_file.clone().unwrap()) == Ok(Qty::Space)
+                    if store::get_qty(&self.picked_file.clone().unwrap()) == Ok(Qty::Space) 
+                    || store::get_qty(&self.picked_second_file.clone().unwrap()) == Ok(Qty::Space)
                     {
                         ui.label("The only available operation is SFold, as such this operation as been set.");
                         self.operation = Op::Two(Op2::SFold);
-                    } else if store::get_qty(&self.picked_file.clone().unwrap())
-                        == Ok(Qty::Time)
+                    } else if store::get_qty(&self.picked_file.clone().unwrap()) == Ok(Qty::Time) 
+                    || store::get_qty(&self.picked_second_file.clone().unwrap()) == Ok(Qty::Time)
                     {
                         ui.label("The only available operation is TFold, as such this operation as been set.");
                         self.operation = Op::Two(Op2::TFold);
@@ -294,16 +283,6 @@ impl FileApp {
             }
         } else {
             ui.label("Pick files on which to do operation");
-        }
-
-        //A file choosing combobox
-        match operation {
-            Op2::Intersection => self.moc_op2(ui, Op2::Intersection),
-            Op2::Union => self.moc_op2(ui, Op2::Union),
-            Op2::Difference => self.moc_op2(ui, Op2::Difference),
-            Op2::Minus => self.moc_op2(ui, Op2::Minus),
-            Op2::TFold => self.moc_op2(ui, Op2::TFold),
-            Op2::SFold => self.moc_op2(ui, Op2::SFold),
         }
     }
 
@@ -327,45 +306,53 @@ impl FileApp {
                 sel_text = self.picked_file.clone().unwrap();
             }
 
-            //In case of degrade option ask for new depth
-            let deg = matches!(op, Op1::Degrade { new_depth: _ });
-            if deg {
-                ui.add(egui::Slider::new(&mut self.deg, 0..=25));
-            }
-
             //Combo box containing the different files that can be picked from
             ui.horizontal(|ui| {
                 ui.label("MOC : ");
                 self.make_cbox(ui, sel_text.as_str(), "file_cbox", None);
             });
 
-            ui.horizontal(|ui| {
-                ui.label("New MOC name :");
-                ui.text_edit_singleline(&mut self.name);
-            });
+            self.op_one_ui(ui, op.clone());
 
-            //Button launching the operation
-            ui.horizontal(|ui| {
-                if ui.button("Launch").clicked() {
-                    if deg {
-                        op = Op1::Degrade {
-                            new_depth: self.deg,
-                        }
-                    }
-                    let moc = self.picked_file.clone().unwrap();
+            //In case of degrade option ask for new depth
+            let deg = matches!(op, Op1::Degrade { new_depth: _ });
+            if deg {
+                ui.add(egui::Slider::new(&mut self.deg, 0..=25));
+            }
 
-                    if self.name.len() == 0 {
-                        if !op1(&moc, op, &format!("{}_{}", op.to_string(), moc)).is_ok() {
-                            ui.label("Error when trying to do operation");
-                        }
-                    } else {
-                        if !op1(&moc, op, &self.name).is_ok() {
-                            ui.label("Error when trying to do operation");
-                            self.name = String::default();
-                        }
-                    }
-                };
-            });
+            if self.picked_file.is_some() {
+                ui.horizontal(|ui| {
+                    ui.label("New MOC name :");
+                    ui.text_edit_singleline(&mut self.name);
+                });
+
+                //Button launching the operation
+                if store::get_qty(&self.picked_file.clone().unwrap()) != Ok(Qty::Timespace) {
+                    ui.horizontal(|ui| {
+                        if ui.button("Launch").clicked() {
+                            if deg {
+                                op = Op1::Degrade {
+                                    new_depth: self.deg,
+                                }
+                            }
+                            let moc = self.picked_file.clone().unwrap();
+
+                            if self.name.len() == 0 {
+                                if !op1(&moc, op, &format!("{}_{}", op.to_string(), moc)).is_ok() {
+                                    ui.label("Error when trying to do operation");
+                                }
+                            } else {
+                                if !op1(&moc, op, &self.name).is_ok() {
+                                    ui.label("Error when trying to do operation");
+                                    self.name = String::default();
+                                }
+                            }
+                        };
+                    });
+                } else {
+                    ui.label("SpaceTime MOCs cannot be operated on alone.");
+                }
+            }
         }
     }
 
@@ -401,28 +388,38 @@ impl FileApp {
                 self.make_cbox(ui, &sel_text_2, "file_cbox_2", Some(1));
             });
 
-            ui.horizontal(|ui| {
-                ui.label("New MOC name :");
-                ui.text_edit_singleline(&mut self.name);
-            });
+            self.op_two_ui(ui, op.clone());
 
-            //Button launching the operation
-            ui.horizontal(|ui| {
-                if ui.button("Launch").clicked() {
-                    let l = self.picked_file.as_ref().unwrap();
-                    let r = self.picked_second_file.as_ref().unwrap();
-                    if self.name.len() == 0 {
-                        if !op2(&l, &r, op, &format!("{}_{}_{}", op.to_string(), l, r)).is_ok() {
-                            ui.label("Error when trying to do operation");
+            if self.picked_file.is_some() && self.picked_second_file.is_some() {
+                ui.horizontal(|ui| {
+                    ui.label("New MOC name :");
+                    ui.text_edit_singleline(&mut self.name);
+                });
+
+                //Button launching the operation
+                ui.horizontal(|ui| {
+                    if ui.button("Launch").clicked() {
+                        let mut l = self.picked_file.as_ref().unwrap();
+                        let mut r = self.picked_second_file.as_ref().unwrap();
+                        if store::get_qty(l) == Ok(Qty::Timespace) {
+                            let tmp = r;
+                            r = l;
+                            l = tmp;
                         }
-                    } else {
-                        if !op2(&l, &r, op, &self.name).is_ok() {
-                            ui.label("Error when trying to do operation");
-                            self.name = String::default();
+                        if self.name.len() == 0 {
+                            if !op2(&l, &r, op, &format!("{}_{}_{}", op.to_string(), l, r)).is_ok()
+                            {
+                                ui.label("Error when trying to do operation");
+                            }
+                        } else {
+                            if !op2(&l, &r, op, &self.name).is_ok() {
+                                ui.label("Error when trying to do operation");
+                                self.name = String::default();
+                            }
                         }
-                    }
-                };
-            });
+                    };
+                });
+            }
         }
     }
 
