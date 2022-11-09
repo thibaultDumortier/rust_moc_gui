@@ -448,12 +448,41 @@ impl FileApp {
                         Op::Opcrea(creation_type::Cone),
                         "Cone",
                     );
+                    ui.selectable_value(
+                        &mut self.operation,
+                        Op::Opcrea(creation_type::Ring),
+                        "Ring",
+                    );
+                    ui.selectable_value(
+                        &mut self.operation,
+                        Op::Opcrea(creation_type::Elliptical_cone),
+                        "Eliptical cone",
+                    );
+                    ui.selectable_value(
+                        &mut self.operation,
+                        Op::Opcrea(creation_type::Zone),
+                        "Zone",
+                    );
+                    ui.selectable_value(
+                        &mut self.operation,
+                        Op::Opcrea(creation_type::Box),
+                        "Box",
+                    );
                 });
         });
 
-        match crea {
-            creation_type::Cone => if !self.creation.cone_ui(ui).is_ok() { self.error = Some("Error during creation".to_string()) },
-            _ => self.error = Some("Not yet impl".to_string()),
+        let res = match crea {
+            creation_type::Cone => self.creation.cone_ui(ui),
+            creation_type::Ring => self.creation.ring_ui(ui),
+            creation_type::Elliptical_cone => self.creation.eliptical_ui(ui),
+            creation_type::Zone => self.creation.zone_ui(ui),
+            creation_type::Box => self.creation.box_ui(ui),
+            _ => todo!(),
+        };
+        if res.is_err() {
+            res.unwrap_or_else(|e| self.error=Some(e));
+        }else {
+            self.error = None;
         }
     }
 
@@ -569,27 +598,20 @@ pub struct CreationUis {
     depth: u8,
     lon_deg: f64,
     lat_deg: f64,
+    lon_deg_min: f64,
+    lat_deg_min: f64,
     radius: f64,
+    int_radius: f64,
+    a_deg: f64,
+    b_deg: f64,
+    pa_deg: f64,
 }
 impl CreationUis {
+    // UIs for types
     pub fn cone_ui(&mut self, ui: &mut Ui) -> Result<(), String> {
-        ui.horizontal(|ui| {
-            ui.label("Depth :");
-            ui.add(egui::Slider::new(&mut self.depth, 0..=26));
-        });
-
-        ui.horizontal(|ui| {
-            ui.label("Longitude degradation :");
-            ui.add(egui::Slider::new(&mut self.lon_deg, 0.0..=TWICE_PI));
-        });
-        ui.horizontal(|ui| {
-            ui.label("Latitude degradation :");
-            ui.add(egui::Slider::new(&mut self.lat_deg, -HALF_PI..=HALF_PI));
-        });
-        ui.horizontal(|ui| {
-            ui.label("Radius :");
-            ui.add(egui::Slider::new(&mut self.radius, 0.0..=PI));
-        });
+        self.depth_builder(ui);
+        self.lon_lat_deg_builder(ui);
+        self.radius_builder(ui);
 
         ui.horizontal(|ui| {
             ui.label("New MOC name :");
@@ -598,15 +620,149 @@ impl CreationUis {
 
         if ui.button("create").clicked() {
             if self.name.len() == 0 {
-                if !from_cone(&format!("Cone_of_rad_{}", self.radius.to_string().as_str()), self.depth, self.lon_deg, self.lat_deg, self.radius).is_ok(){
-                    return Err("Error during creation from cone".to_string());
-                }
+                from_cone(&format!("Cone_of_rad_{}", self.radius.to_string().as_str()), self.depth, self.lon_deg, self.lat_deg, self.radius)?;
             } else {
-                if !from_cone(&self.name, self.depth, self.lon_deg, self.lat_deg, self.radius).is_ok(){
-                    return Err("Error during creation from cone".to_string());
-                }
+                from_cone(&self.name, self.depth, self.lon_deg, self.lat_deg, self.radius)?;
             }
         }
         Ok(())
+    }
+    pub fn ring_ui(&mut self, ui: &mut Ui) -> Result<(), String> {
+        self.depth_builder(ui);
+        self.lon_lat_deg_builder(ui);
+        self.radii_builder(ui);
+
+        ui.horizontal(|ui| {
+            ui.label("New MOC name :");
+            ui.text_edit_singleline(&mut self.name);
+        });
+
+        if ui.button("create").clicked() {
+            if self.name.len() == 0 {
+                from_ring(&format!("ring_of_rad_{}_{}", self.int_radius.to_string().as_str(),self.radius.to_string().as_str()), 
+                self.depth, self.lon_deg, self.lat_deg, self.int_radius,self.radius)?;
+            } else {
+                from_ring(&self.name, self.depth, self.lon_deg, self.lat_deg, self.int_radius, self.radius)?;
+            }
+        }
+        Ok(())
+    }
+    pub fn eliptical_ui(&mut self, ui: &mut Ui) -> Result<(), String> {
+        self.elipbox_builder(ui);
+
+        if ui.button("create").clicked() {
+            if self.name.len() == 0 {
+                from_elliptical_cone(&format!("ElipCone_deg_{}_{}_{}", self.a_deg, self.b_deg, self.pa_deg), 
+                self.depth, self.lon_deg, self.lat_deg, self.a_deg, self.b_deg, self.pa_deg)?;
+            } else {
+                from_elliptical_cone(&self.name, self.depth, self.lon_deg, self.lat_deg, self.a_deg, self.b_deg, self.pa_deg)?;
+            }
+        }
+        Ok(())
+    }
+    pub fn zone_ui(&mut self, ui: &mut Ui) -> Result<(), String> {
+        self.depth_builder(ui);
+        self.lons_lats_builder(ui);
+
+        if ui.button("create").clicked() {
+            if self.name.len() == 0 {
+                from_zone(&format!("Zone_deg_{}_{}", self.lon_deg_min, self.lat_deg_min), 
+                self.depth, self.lon_deg_min, self.lat_deg_min, self.lon_deg, self.lat_deg)?;
+            } else {
+                from_zone(&self.name, self.depth, self.lon_deg_min, self.lat_deg_min, self.lon_deg, self.lat_deg)?;
+            }
+        }
+        Ok(())
+    }
+    pub fn box_ui(&mut self, ui: &mut Ui) -> Result<(), String> {
+        self.elipbox_builder(ui);
+
+        if ui.button("create").clicked() {
+            if self.name.len() == 0 {
+                from_box(&format!("Box_deg_{}_{}_{}", self.a_deg, self.b_deg, self.pa_deg), 
+                self.depth, self.lon_deg, self.lat_deg, self.a_deg, self.b_deg, self.pa_deg)?;
+            } else {
+                from_box(&self.name, self.depth, self.lon_deg, self.lat_deg, self.a_deg, self.b_deg, self.pa_deg)?;
+            }
+        }
+        Ok(())
+    }
+
+    // COMMON BUILDERS
+    fn elipbox_builder(&mut self, ui: &mut Ui) {
+        self.depth_builder(ui);
+        self.lon_lat_deg_builder(ui);
+        self.degs_builder(ui);
+
+        ui.horizontal(|ui| {
+            ui.label("New MOC name :");
+            ui.text_edit_singleline(&mut self.name);
+        });
+    }
+
+    // BASE BUILDERS
+    fn depth_builder(&mut self, ui: &mut Ui) {
+        ui.horizontal(|ui| {
+            ui.label("Depth:");
+            ui.add(egui::Slider::new(&mut self.depth, 0..=26));
+        });
+    }
+    fn lon_lat_deg_builder(&mut self, ui: &mut Ui) {
+        ui.horizontal(|ui| {
+            ui.label("Longitude degradation:");
+            ui.add(egui::Slider::new(&mut self.lon_deg, 0.0..=TWICE_PI));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Latitude degradation:");
+            ui.add(egui::Slider::new(&mut self.lat_deg, -HALF_PI..=HALF_PI));
+        });
+    }
+    fn lons_lats_builder(&mut self, ui: &mut Ui) {
+        ui.horizontal(|ui| {
+            ui.label("Minimal longitude degradation:");
+            ui.add(egui::Slider::new(&mut self.lon_deg_min, 0.0..=self.lon_deg));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Minimal latitude degradation:");
+            ui.add(egui::Slider::new(&mut self.lat_deg_min, -HALF_PI..=self.lat_deg));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Maximal longitude degradation:");
+            ui.add(egui::Slider::new(&mut self.lon_deg, self.lon_deg_min..=TWICE_PI));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Maximal latitude degradation:");
+            ui.add(egui::Slider::new(&mut self.lat_deg, self.lat_deg_min..=HALF_PI));
+        });
+    }
+    fn radius_builder(&mut self, ui: &mut Ui) {
+        ui.horizontal(|ui| {
+            ui.label("Radius:");
+            ui.add(egui::Slider::new(&mut self.radius, 0.0..=PI));
+        });
+    }
+    fn radii_builder(&mut self, ui: &mut Ui) {
+        ui.horizontal(|ui| {
+            ui.label("Internal radius:");
+            ui.add(egui::Slider::new(&mut self.int_radius, 0.0..=self.radius));
+        });
+        ui.horizontal(|ui| {
+            ui.label("External radius:");
+            ui.add(egui::Slider::new(&mut self.radius, self.int_radius..=PI));
+        });
+    }
+    fn degs_builder(&mut self, ui: &mut Ui) {
+        ui.horizontal(|ui|{
+            ui.label("A degradation:");
+            ui.add(egui::Slider::new(&mut self.a_deg, 0.0..=HALF_PI));
+        });
+        ui.horizontal(|ui|{
+            ui.label("B degradation:");
+            ui.add(egui::Slider::new(&mut self.b_deg, 0.0..=self.a_deg));
+        });
+        ui.horizontal(|ui|{
+            ui.label("PA degradation:");
+            ui.add(egui::Slider::new(&mut self.pa_deg, 0.0..=PI));
+        });
     }
 }
