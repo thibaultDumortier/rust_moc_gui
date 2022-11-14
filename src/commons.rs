@@ -1,7 +1,7 @@
 use core::fmt;
 use std::{io::Cursor, str::from_utf8_unchecked};
 
-use crate::{
+use crate::loaders::{
     load_ascii::*,
     load_fits::*,
     load_json::*,
@@ -328,8 +328,7 @@ pub(crate) fn load(rtype: &[&str], moct: Qty) -> Result<(), String> {
                 .map_err(|e| format!("Error while reading file: {}", e))?;
             let res = type_reading(reading, &moct, file_content.as_slice());
             if let Ok(r) = res {
-                add(file_name, r)
-                    .expect("A problem has occured while trying to add the MOC");
+                add(file_name, r).expect("A problem has occured while trying to add the MOC");
             }
         }
     }

@@ -2,12 +2,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
 use crate::commons::*;
-use crate::creation::*;
-use crate::op1::*;
-use crate::op2::*;
-use crate::store;
-use crate::store::get_store;
-use crate::store::list_mocs;
+use crate::loaders::{store, store::get_store, store::list_mocs};
+use crate::op::{creation::*, op1::*, op2::*};
 
 use eframe::egui;
 use egui::menu;
@@ -26,8 +22,8 @@ extern "C" {
 enum Op {
     One(Op1),
     Two(Op2),
-    Opnone,
-    Opcrea(CreationType),
+    List,
+    Crea(CreationType),
 }
 impl Default for Op {
     fn default() -> Self {
@@ -39,7 +35,7 @@ impl PartialEq for Op {
         match (self, other) {
             (Op::One(a), Op::One(b)) => a.eq(b),
             (Op::Two(a), Op::Two(b)) => a.eq(b),
-            (Op::Opnone, Op::Opnone) => true,
+            (Op::List, Op::List) => true,
             _ => false,
         }
     }
@@ -76,10 +72,10 @@ impl eframe::App for FileApp {
 
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.horizontal(|ui| {
-                ui.selectable_value(&mut self.operation, Op::Opnone, "MOC list");
+                ui.selectable_value(&mut self.operation, Op::List, "MOC list");
                 ui.selectable_value(
                     &mut self.operation,
-                    Op::Opcrea(CreationType::Cone),
+                    Op::Crea(CreationType::Cone),
                     "MOC creation",
                 );
                 ui.selectable_value(
@@ -99,8 +95,8 @@ impl eframe::App for FileApp {
             match &self.operation {
                 Op::One(o) => self.moc_op1(ui, *o),
                 Op::Two(t) => self.moc_op2(ui, *t),
-                Op::Opnone => self.list_ui(ui),
-                Op::Opcrea(c) => self.creation_ui(ui,*c),
+                Op::List => self.list_ui(ui),
+                Op::Crea(c) => self.creation_ui(ui, *c),
             }
         });
     }
@@ -207,11 +203,25 @@ impl FileApp {
                         Op::One(Op1::Degrade { new_depth: 0 }),
                         "Degrade",
                     );
-                    if self.picked_file.is_some() && store::get_qty(&self.picked_file.clone().unwrap()) == Ok(Qty::Space) {
+                    if self.picked_file.is_some()
+                        && store::get_qty(&self.picked_file.clone().unwrap()) == Ok(Qty::Space)
+                    {
                         ui.selectable_value(&mut self.operation, Op::One(Op1::Extend), "Extend");
-                        ui.selectable_value(&mut self.operation, Op::One(Op1::Contract), "Contract");
-                        ui.selectable_value(&mut self.operation, Op::One(Op1::ExtBorder), "ExtBorder");
-                        ui.selectable_value(&mut self.operation, Op::One(Op1::IntBorder), "IntBorder");
+                        ui.selectable_value(
+                            &mut self.operation,
+                            Op::One(Op1::Contract),
+                            "Contract",
+                        );
+                        ui.selectable_value(
+                            &mut self.operation,
+                            Op::One(Op1::ExtBorder),
+                            "ExtBorder",
+                        );
+                        ui.selectable_value(
+                            &mut self.operation,
+                            Op::One(Op1::IntBorder),
+                            "IntBorder",
+                        );
                         ui.selectable_value(&mut self.operation, Op::One(Op1::Split), "Split");
                         ui.selectable_value(
                             &mut self.operation,
@@ -235,7 +245,7 @@ impl FileApp {
         // An operation combo box including Intersection and Union
         if self.picked_file.is_some() && self.picked_second_file.is_some() {
             if self.files_have_same_type() {
-                if operation.eq(&Op2::SFold) || operation.eq(&Op2::TFold){
+                if operation.eq(&Op2::SFold) || operation.eq(&Op2::TFold) {
                     self.operation = Op::Two(Op2::Intersection);
                 }
                 let sel_text = format!("{}", operation);
@@ -271,12 +281,12 @@ impl FileApp {
                 });
             } else if self.files_have_stmoc() {
                 ui.horizontal(|ui| {
-                    if store::get_qty(&self.picked_file.clone().unwrap()) == Ok(Qty::Space) 
+                    if store::get_qty(&self.picked_file.clone().unwrap()) == Ok(Qty::Space)
                     || store::get_qty(&self.picked_second_file.clone().unwrap()) == Ok(Qty::Space)
                     {
                         ui.label("The only available operation is SFold, as such this operation as been set.");
                         self.operation = Op::Two(Op2::SFold);
-                    } else if store::get_qty(&self.picked_file.clone().unwrap()) == Ok(Qty::Time) 
+                    } else if store::get_qty(&self.picked_file.clone().unwrap()) == Ok(Qty::Time)
                     || store::get_qty(&self.picked_second_file.clone().unwrap()) == Ok(Qty::Time)
                     {
                         ui.label("The only available operation is TFold, as such this operation as been set.");
@@ -347,7 +357,8 @@ impl FileApp {
 
                             if self.name.is_empty() {
                                 if op1(&moc, op, &format!("{}_{}", op, moc)).is_err() {
-                                    self.error = Some("Error when trying to do operation".to_string());
+                                    self.error =
+                                        Some("Error when trying to do operation".to_string());
                                 }
                             } else if op1(&moc, op, &self.name).is_err() {
                                 self.error = Some("Error when trying to do operation".to_string());
@@ -396,7 +407,9 @@ impl FileApp {
 
             self.op_two_ui(ui, op);
 
-            if (self.picked_file.is_some() && self.picked_second_file.is_some()) && (self.files_have_same_type() || self.files_have_stmoc()) {
+            if (self.picked_file.is_some() && self.picked_second_file.is_some())
+                && (self.files_have_same_type() || self.files_have_stmoc())
+            {
                 ui.horizontal(|ui| {
                     ui.label("New MOC name :");
                     ui.text_edit_singleline(&mut self.name);
@@ -412,8 +425,7 @@ impl FileApp {
                             std::mem::swap(&mut r, &mut l);
                         }
                         if self.name.is_empty() {
-                            if op2(l, r, op, &format!("{}_{}_{}", op, l, r)).is_err()
-                            {
+                            if op2(l, r, op, &format!("{}_{}_{}", op, l, r)).is_err() {
                                 self.error = Some("Error when trying to do operation".to_string());
                             }
                         } else if op2(l, r, op, &self.name).is_err() {
@@ -434,38 +446,24 @@ impl FileApp {
             egui::ComboBox::from_id_source("Creation_cbox")
                 .selected_text(sel_text)
                 .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut self.operation, Op::Crea(CreationType::Cone), "Cone");
+                    ui.selectable_value(&mut self.operation, Op::Crea(CreationType::Ring), "Ring");
                     ui.selectable_value(
                         &mut self.operation,
-                        Op::Opcrea(CreationType::Cone),
-                        "Cone",
-                    );
-                    ui.selectable_value(
-                        &mut self.operation,
-                        Op::Opcrea(CreationType::Ring),
-                        "Ring",
-                    );
-                    ui.selectable_value(
-                        &mut self.operation,
-                        Op::Opcrea(CreationType::EllipticalCone),
+                        Op::Crea(CreationType::EllipticalCone),
                         "Eliptical cone",
                     );
-                    ui.selectable_value(
-                        &mut self.operation,
-                        Op::Opcrea(CreationType::Zone),
-                        "Zone",
-                    );
-                    ui.selectable_value(
-                        &mut self.operation,
-                        Op::Opcrea(CreationType::Box),
-                        "Box",
-                    );
+                    ui.selectable_value(&mut self.operation, Op::Crea(CreationType::Zone), "Zone");
+                    ui.selectable_value(&mut self.operation, Op::Crea(CreationType::Box), "Box");
                 });
         });
 
         match crea {
             CreationType::Cone => self.error = self.creation.cone_ui(ui, &self.error),
             CreationType::Ring => self.error = self.creation.ring_ui(ui, &self.error),
-            CreationType::EllipticalCone => self.error = self.creation.eliptical_ui(ui, &self.error),
+            CreationType::EllipticalCone => {
+                self.error = self.creation.eliptical_ui(ui, &self.error)
+            }
             CreationType::Zone => self.error = self.creation.zone_ui(ui, &self.error),
             CreationType::Box => self.error = self.creation.box_ui(ui, &self.error),
             _ => todo!(),
@@ -503,22 +501,32 @@ impl FileApp {
                         });
                         row.col(|ui| {
                             ui.menu_button("📥", |ui| {
-                                if ui.button("FITS").clicked() && to_fits_file(filenames.get(row_index).unwrap()).is_err() 
+                                if ui.button("FITS").clicked()
+                                    && to_fits_file(filenames.get(row_index).unwrap()).is_err()
                                 {
-                                    self.error = Some("Error when trying to download file".to_string());
+                                    self.error =
+                                        Some("Error when trying to download file".to_string());
                                 }
-                                if ui.button("ASCII").clicked() && to_ascii_file(filenames.get(row_index).unwrap(), Some(0)).is_err()
+                                if ui.button("ASCII").clicked()
+                                    && to_ascii_file(filenames.get(row_index).unwrap(), Some(0))
+                                        .is_err()
                                 {
-                                    self.error = Some("Error when trying to download file".to_string());
+                                    self.error =
+                                        Some("Error when trying to download file".to_string());
                                 }
-                                if ui.button("JSON").clicked() && to_json_file(filenames.get(row_index).unwrap(), Some(0)).is_err()
+                                if ui.button("JSON").clicked()
+                                    && to_json_file(filenames.get(row_index).unwrap(), Some(0))
+                                        .is_err()
                                 {
-                                    self.error = Some("Error when trying to download file".to_string());
+                                    self.error =
+                                        Some("Error when trying to download file".to_string());
                                 }
                             });
                         });
                         row.col(|ui| {
-                            if ui.button("❌").clicked() && store::drop(filenames.get(row_index).unwrap()).is_err() {
+                            if ui.button("❌").clicked()
+                                && store::drop(filenames.get(row_index).unwrap()).is_err()
+                            {
                                 self.error = Some("Error when trying to remove file".to_string());
                             }
                         });
@@ -561,11 +569,11 @@ impl FileApp {
 
     fn files_have_stmoc(&mut self) -> bool {
         store::get_qty(&self.picked_second_file.clone().unwrap()) == Ok(Qty::Timespace)
-                || store::get_qty(&self.picked_file.clone().unwrap()) == Ok(Qty::Timespace)
+            || store::get_qty(&self.picked_file.clone().unwrap()) == Ok(Qty::Timespace)
     }
     fn files_have_same_type(&mut self) -> bool {
         store::get_qty(&self.picked_file.clone().unwrap())
-                .eq(&store::get_qty(&self.picked_second_file.clone().unwrap()))
+            .eq(&store::get_qty(&self.picked_second_file.clone().unwrap()))
     }
 }
 
@@ -599,13 +607,23 @@ impl CreationUis {
         if ui.button("create").clicked() {
             err = None;
             if self.name.is_empty() {
-                if let Err(e) = from_cone(&format!("Cone_of_rad_{}", self.radius.to_string().as_str()), self.depth, self.lon_deg, self.lat_deg, self.radius) {
+                if let Err(e) = from_cone(
+                    &format!("Cone_of_rad_{}", self.radius.to_string().as_str()),
+                    self.depth,
+                    self.lon_deg,
+                    self.lat_deg,
+                    self.radius,
+                ) {
                     err = Some(e);
                 }
-            } else {
-                if let Err(e) = from_cone(&self.name, self.depth, self.lon_deg, self.lat_deg, self.radius){
-                    err = Some(e);
-                }
+            } else if let Err(e) = from_cone(
+                &self.name,
+                self.depth,
+                self.lon_deg,
+                self.lat_deg,
+                self.radius,
+            ) {
+                err = Some(e);
             }
         }
         err
@@ -624,14 +642,29 @@ impl CreationUis {
         if ui.button("create").clicked() {
             err = None;
             if self.name.is_empty() {
-                if let Err(e) = from_ring(&format!("ring_of_rad_{}_{}", self.int_radius.to_string().as_str(),self.radius.to_string().as_str()), 
-                self.depth, self.lon_deg, self.lat_deg, self.int_radius,self.radius){
+                if let Err(e) = from_ring(
+                    &format!(
+                        "ring_of_rad_{}_{}",
+                        self.int_radius.to_string().as_str(),
+                        self.radius.to_string().as_str()
+                    ),
+                    self.depth,
+                    self.lon_deg,
+                    self.lat_deg,
+                    self.int_radius,
+                    self.radius,
+                ) {
                     err = Some(e);
                 }
-            } else {
-                if let Err(e) = from_ring(&self.name, self.depth, self.lon_deg, self.lat_deg, self.int_radius, self.radius){
-                    err = Some(e);
-                }
+            } else if let Err(e) = from_ring(
+                &self.name,
+                self.depth,
+                self.lon_deg,
+                self.lat_deg,
+                self.int_radius,
+                self.radius,
+            ) {
+                err = Some(e);
             }
         }
         err
@@ -643,14 +676,27 @@ impl CreationUis {
         if ui.button("create").clicked() {
             err = None;
             if self.name.is_empty() {
-                if let Err(e) = from_elliptical_cone(&format!("ElipCone_deg_{}_{}_{}", self.a_deg, self.b_deg, self.pa_deg), 
-                self.depth, self.lon_deg, self.lat_deg, self.a_deg, self.b_deg, self.pa_deg){
+                if let Err(e) = from_elliptical_cone(
+                    &format!("ElipCone_deg_{}_{}_{}", self.a_deg, self.b_deg, self.pa_deg),
+                    self.depth,
+                    self.lon_deg,
+                    self.lat_deg,
+                    self.a_deg,
+                    self.b_deg,
+                    self.pa_deg,
+                ) {
                     err = Some(e);
                 }
-            } else {
-                if let Err(e) = from_elliptical_cone(&self.name, self.depth, self.lon_deg, self.lat_deg, self.a_deg, self.b_deg, self.pa_deg){
-                    err = Some(e);
-                }
+            } else if let Err(e) = from_elliptical_cone(
+                &self.name,
+                self.depth,
+                self.lon_deg,
+                self.lat_deg,
+                self.a_deg,
+                self.b_deg,
+                self.pa_deg,
+            ) {
+                err = Some(e);
             }
         }
         err
@@ -663,14 +709,25 @@ impl CreationUis {
         if ui.button("create").clicked() {
             err = None;
             if self.name.is_empty() {
-                if let Err(e) = from_zone(&format!("Zone_deg_{}_{}", self.lon_deg_min, self.lat_deg_min), 
-                self.depth, self.lon_deg_min, self.lat_deg_min, self.lon_deg, self.lat_deg){
+                if let Err(e) = from_zone(
+                    &format!("Zone_deg_{}_{}", self.lon_deg_min, self.lat_deg_min),
+                    self.depth,
+                    self.lon_deg_min,
+                    self.lat_deg_min,
+                    self.lon_deg,
+                    self.lat_deg,
+                ) {
                     err = Some(e);
                 }
-            } else {
-                if let Err(e) = from_zone(&self.name, self.depth, self.lon_deg_min, self.lat_deg_min, self.lon_deg, self.lat_deg){
-                    err = Some(e);
-                }
+            } else if let Err(e) = from_zone(
+                &self.name,
+                self.depth,
+                self.lon_deg_min,
+                self.lat_deg_min,
+                self.lon_deg,
+                self.lat_deg,
+            ) {
+                err = Some(e);
             }
         }
         err
@@ -682,14 +739,27 @@ impl CreationUis {
         if ui.button("create").clicked() {
             err = None;
             if self.name.is_empty() {
-                if let Err(e) = from_box(&format!("Box_deg_{}_{}_{}", self.a_deg, self.b_deg, self.pa_deg), 
-                self.depth, self.lon_deg, self.lat_deg, self.a_deg, self.b_deg, self.pa_deg){
+                if let Err(e) = from_box(
+                    &format!("Box_deg_{}_{}_{}", self.a_deg, self.b_deg, self.pa_deg),
+                    self.depth,
+                    self.lon_deg,
+                    self.lat_deg,
+                    self.a_deg,
+                    self.b_deg,
+                    self.pa_deg,
+                ) {
                     err = Some(e);
                 }
-            } else {
-                if let Err(e) = from_box(&self.name, self.depth, self.lon_deg, self.lat_deg, self.a_deg, self.b_deg, self.pa_deg){
-                    err = Some(e);
-                }
+            } else if let Err(e) = from_box(
+                &self.name,
+                self.depth,
+                self.lon_deg,
+                self.lat_deg,
+                self.a_deg,
+                self.b_deg,
+                self.pa_deg,
+            ) {
+                err = Some(e);
             }
         }
         err
@@ -731,15 +801,24 @@ impl CreationUis {
         });
         ui.horizontal(|ui| {
             ui.label("Minimal latitude degradation:");
-            ui.add(egui::Slider::new(&mut self.lat_deg_min, -HALF_PI..=self.lat_deg));
+            ui.add(egui::Slider::new(
+                &mut self.lat_deg_min,
+                -HALF_PI..=self.lat_deg,
+            ));
         });
         ui.horizontal(|ui| {
             ui.label("Maximal longitude degradation:");
-            ui.add(egui::Slider::new(&mut self.lon_deg, self.lon_deg_min..=TWICE_PI));
+            ui.add(egui::Slider::new(
+                &mut self.lon_deg,
+                self.lon_deg_min..=TWICE_PI,
+            ));
         });
         ui.horizontal(|ui| {
             ui.label("Maximal latitude degradation:");
-            ui.add(egui::Slider::new(&mut self.lat_deg, self.lat_deg_min..=HALF_PI));
+            ui.add(egui::Slider::new(
+                &mut self.lat_deg,
+                self.lat_deg_min..=HALF_PI,
+            ));
         });
     }
     fn radius_builder(&mut self, ui: &mut Ui) {
@@ -759,15 +838,15 @@ impl CreationUis {
         });
     }
     fn degs_builder(&mut self, ui: &mut Ui) {
-        ui.horizontal(|ui|{
+        ui.horizontal(|ui| {
             ui.label("A degradation:");
             ui.add(egui::Slider::new(&mut self.a_deg, 0.0..=HALF_PI));
         });
-        ui.horizontal(|ui|{
+        ui.horizontal(|ui| {
             ui.label("B degradation:");
             ui.add(egui::Slider::new(&mut self.b_deg, 0.0..=self.a_deg));
         });
-        ui.horizontal(|ui|{
+        ui.horizontal(|ui| {
             ui.label("PA degradation:");
             ui.add(egui::Slider::new(&mut self.pa_deg, 0.0..=PI));
         });

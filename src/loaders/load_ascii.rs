@@ -8,8 +8,7 @@ use moc::{
 use crate::commons::InternalMoc;
 
 pub(crate) fn smoc_from_ascii(data: &str) -> Result<InternalMoc, String> {
-    let cellcellranges =
-        from_ascii_ivoa::<u64, Hpx<u64>>(data).map_err(|e| e.to_string())?;
+    let cellcellranges = from_ascii_ivoa::<u64, Hpx<u64>>(data).map_err(|e| e.to_string())?;
     let moc = cellcellranges
         .into_cellcellrange_moc_iter()
         .ranges()
@@ -18,8 +17,7 @@ pub(crate) fn smoc_from_ascii(data: &str) -> Result<InternalMoc, String> {
 }
 
 pub(crate) fn tmoc_from_ascii(data: &str) -> Result<InternalMoc, String> {
-    let cellcellranges =
-        from_ascii_ivoa::<u64, Time<u64>>(data).map_err(|e| e.to_string())?;
+    let cellcellranges = from_ascii_ivoa::<u64, Time<u64>>(data).map_err(|e| e.to_string())?;
     let moc = cellcellranges
         .into_cellcellrange_moc_iter()
         .ranges()
@@ -28,8 +26,8 @@ pub(crate) fn tmoc_from_ascii(data: &str) -> Result<InternalMoc, String> {
 }
 
 pub(crate) fn stmoc_from_ascii(data: &str) -> Result<InternalMoc, String> {
-    let cellrange2 = moc2d_from_ascii_ivoa::<u64, Time<u64>, u64, Hpx<u64>>(data)
-        .map_err(|e| e.to_string())?;
+    let cellrange2 =
+        moc2d_from_ascii_ivoa::<u64, Time<u64>, u64, Hpx<u64>>(data).map_err(|e| e.to_string())?;
     let moc2 = cellrange2
         .into_cellcellrange_moc2_iter()
         .into_range_moc2_iter()

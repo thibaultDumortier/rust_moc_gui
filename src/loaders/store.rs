@@ -31,9 +31,7 @@ pub(crate) fn get_qty(name: &str) -> Result<Qty, String> {
     let store = get_store();
     // Perform read operations first
     let res_qty = {
-        let store = store
-            .read()
-            .map_err(|_| "Read lock poisoned".to_string())?;
+        let store = store.read().map_err(|_| "Read lock poisoned".to_string())?;
         let moc = store
             .get(name)
             .ok_or_else(|| format!("MOC '{}' not found", name))?;
@@ -89,9 +87,7 @@ where
     let store = get_store();
     // Perform read operations first
     let res_moc = {
-        let store = store
-            .read()
-            .map_err(|_| "Read lock poisoned".to_string())?;
+        let store = store.read().map_err(|_| "Read lock poisoned".to_string())?;
         let moc = store
             .get(name)
             .ok_or_else(|| format!("MOC '{}' not found", name))?;
@@ -116,9 +112,7 @@ where
     let store = get_store();
     // Perform read operations first
     let res_mocs = {
-        let store = store
-            .read()
-            .map_err(|_| "Read lock poisoned".to_string())?;
+        let store = store.read().map_err(|_| "Read lock poisoned".to_string())?;
         let moc = store
             .get(name)
             .ok_or_else(|| format!("MOC '{}' not found", name))?;
@@ -138,21 +132,14 @@ where
 }
 
 /// Perform an operation between 2 MOCs and store the resulting MOC.
-pub(crate) fn op2<F>(
-    left_name: &str,
-    right_name: &str,
-    op: F,
-    res_name: &str,
-) -> Result<(), String>
+pub(crate) fn op2<F>(left_name: &str, right_name: &str, op: F, res_name: &str) -> Result<(), String>
 where
     F: Fn(&InternalMoc, &InternalMoc) -> Result<InternalMoc, String>,
 {
     let store = get_store();
     // Perform read operations first
     let res_moc = {
-        let store = store
-            .read()
-            .map_err(|_| "Read lock poisoned".to_string())?;
+        let store = store.read().map_err(|_| "Read lock poisoned".to_string())?;
         let left = store
             .get(left_name)
             .ok_or_else(|| format!("MOC '{}' not found", left_name))?;
