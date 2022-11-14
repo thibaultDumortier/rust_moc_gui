@@ -10,7 +10,6 @@ use crate::store::get_store;
 use crate::store::list_mocs;
 
 use eframe::egui;
-use egui::DragValue;
 use egui::menu;
 use egui::Ui;
 use egui_extras::{Size, TableBuilder};
@@ -28,7 +27,7 @@ enum Op {
     One(Op1),
     Two(Op2),
     Opnone,
-    Opcrea(creation_type),
+    Opcrea(CreationType),
 }
 impl Default for Op {
     fn default() -> Self {
@@ -80,7 +79,7 @@ impl eframe::App for FileApp {
                 ui.selectable_value(&mut self.operation, Op::Opnone, "MOC list");
                 ui.selectable_value(
                     &mut self.operation,
-                    Op::Opcrea(creation_type::Cone),
+                    Op::Opcrea(CreationType::Cone),
                     "MOC creation",
                 );
                 ui.selectable_value(
@@ -98,10 +97,10 @@ impl eframe::App for FileApp {
 
             ui.separator();
             match &self.operation {
-                Op::One(o) => self.moc_op1(ui, o.clone()),
-                Op::Two(t) => self.moc_op2(ui, t.clone()),
+                Op::One(o) => self.moc_op1(ui, *o),
+                Op::Two(t) => self.moc_op2(ui, *t),
                 Op::Opnone => self.list_ui(ui),
-                Op::Opcrea(c) => self.creation_ui(ui, c.clone()),
+                Op::Opcrea(c) => self.creation_ui(ui,*c),
             }
         });
     }
@@ -143,7 +142,7 @@ impl FileApp {
                     ui.menu_button("Load", |ui| {
                         if ui.button("FITS").clicked() {
                             match load(&["fits"], Qty::Space) {
-                                Ok(_) => (),
+                                Ok(_) => self.error = None,
                                 Err(e) => {
                                     self.error = Some(e);
                                 }
@@ -208,19 +207,17 @@ impl FileApp {
                         Op::One(Op1::Degrade { new_depth: 0 }),
                         "Degrade",
                     );
-                    if self.picked_file.is_some() {
-                        if store::get_qty(&self.picked_file.clone().unwrap()) == Ok(Qty::Space) {
-                            ui.selectable_value(&mut self.operation, Op::One(Op1::Extend), "Extend");
-                            ui.selectable_value(&mut self.operation, Op::One(Op1::Contract), "Contract");
-                            ui.selectable_value(&mut self.operation, Op::One(Op1::ExtBorder), "ExtBorder");
-                            ui.selectable_value(&mut self.operation, Op::One(Op1::IntBorder), "IntBorder");
-                            ui.selectable_value(&mut self.operation, Op::One(Op1::Split), "Split");
-                            ui.selectable_value(
-                                &mut self.operation,
-                                Op::One(Op1::SplitIndirect),
-                                "SplitIndirect",
-                            );
-                        }
+                    if self.picked_file.is_some() && store::get_qty(&self.picked_file.clone().unwrap()) == Ok(Qty::Space) {
+                        ui.selectable_value(&mut self.operation, Op::One(Op1::Extend), "Extend");
+                        ui.selectable_value(&mut self.operation, Op::One(Op1::Contract), "Contract");
+                        ui.selectable_value(&mut self.operation, Op::One(Op1::ExtBorder), "ExtBorder");
+                        ui.selectable_value(&mut self.operation, Op::One(Op1::IntBorder), "IntBorder");
+                        ui.selectable_value(&mut self.operation, Op::One(Op1::Split), "Split");
+                        ui.selectable_value(
+                            &mut self.operation,
+                            Op::One(Op1::SplitIndirect),
+                            "SplitIndirect",
+                        );
                     }
                 });
         });
@@ -306,7 +303,7 @@ impl FileApp {
     */
     fn moc_op1(&mut self, ui: &mut Ui, mut op: Op1) {
         //If no file has been imported yet
-        if list_mocs().unwrap().len() == 0 {
+        if list_mocs().unwrap().is_empty() {
             ui.label("Pick a file!");
         //If files have been imported and can be chosen from
         } else {
@@ -322,7 +319,7 @@ impl FileApp {
                 self.make_cbox(ui, sel_text.as_str(), "file_cbox", None);
             });
 
-            self.op_one_ui(ui, op.clone());
+            self.op_one_ui(ui, op);
 
             //In case of degrade option ask for new depth
             let deg = matches!(op, Op1::Degrade { new_depth: _ });
@@ -348,15 +345,13 @@ impl FileApp {
                             }
                             let moc = self.picked_file.clone().unwrap();
 
-                            if self.name.len() == 0 {
-                                if !op1(&moc, op, &format!("{}_{}", op.to_string(), moc)).is_ok() {
+                            if self.name.is_empty() {
+                                if op1(&moc, op, &format!("{}_{}", op, moc)).is_err() {
                                     self.error = Some("Error when trying to do operation".to_string());
                                 }
-                            } else {
-                                if !op1(&moc, op, &self.name).is_ok() {
-                                    self.error = Some("Error when trying to do operation".to_string());
-                                    self.name = String::default();
-                                }
+                            } else if op1(&moc, op, &self.name).is_err() {
+                                self.error = Some("Error when trying to do operation".to_string());
+                                self.name = String::default();
                             }
                         };
                     });
@@ -399,7 +394,7 @@ impl FileApp {
                 self.make_cbox(ui, &sel_text_2, "file_cbox_2", Some(1));
             });
 
-            self.op_two_ui(ui, op.clone());
+            self.op_two_ui(ui, op);
 
             if (self.picked_file.is_some() && self.picked_second_file.is_some()) && (self.files_have_same_type() || self.files_have_stmoc()) {
                 ui.horizontal(|ui| {
@@ -414,20 +409,16 @@ impl FileApp {
                         let mut l = self.picked_file.as_ref().unwrap();
                         let mut r = self.picked_second_file.as_ref().unwrap();
                         if store::get_qty(l) == Ok(Qty::Timespace) {
-                            let tmp = r;
-                            r = l;
-                            l = tmp;
+                            std::mem::swap(&mut r, &mut l);
                         }
-                        if self.name.len() == 0 {
-                            if !op2(&l, &r, op, &format!("{}_{}_{}", op.to_string(), l, r)).is_ok()
+                        if self.name.is_empty() {
+                            if op2(l, r, op, &format!("{}_{}_{}", op, l, r)).is_err()
                             {
                                 self.error = Some("Error when trying to do operation".to_string());
                             }
-                        } else {
-                            if !op2(&l, &r, op, &self.name).is_ok() {
-                                self.error = Some("Error when trying to do operation".to_string());
-                                self.name = String::default();
-                            }
+                        } else if op2(l, r, op, &self.name).is_err() {
+                            self.error = Some("Error when trying to do operation".to_string());
+                            self.name = String::default();
                         }
                     };
                 });
@@ -435,7 +426,7 @@ impl FileApp {
         }
     }
 
-    fn creation_ui(&mut self, ui: &mut Ui, crea: creation_type) {
+    fn creation_ui(&mut self, ui: &mut Ui, crea: CreationType) {
         let sel_text = format!("{}", crea);
 
         ui.horizontal(|ui| {
@@ -445,45 +436,40 @@ impl FileApp {
                 .show_ui(ui, |ui| {
                     ui.selectable_value(
                         &mut self.operation,
-                        Op::Opcrea(creation_type::Cone),
+                        Op::Opcrea(CreationType::Cone),
                         "Cone",
                     );
                     ui.selectable_value(
                         &mut self.operation,
-                        Op::Opcrea(creation_type::Ring),
+                        Op::Opcrea(CreationType::Ring),
                         "Ring",
                     );
                     ui.selectable_value(
                         &mut self.operation,
-                        Op::Opcrea(creation_type::Elliptical_cone),
+                        Op::Opcrea(CreationType::EllipticalCone),
                         "Eliptical cone",
                     );
                     ui.selectable_value(
                         &mut self.operation,
-                        Op::Opcrea(creation_type::Zone),
+                        Op::Opcrea(CreationType::Zone),
                         "Zone",
                     );
                     ui.selectable_value(
                         &mut self.operation,
-                        Op::Opcrea(creation_type::Box),
+                        Op::Opcrea(CreationType::Box),
                         "Box",
                     );
                 });
         });
 
-        let res = match crea {
-            creation_type::Cone => self.creation.cone_ui(ui),
-            creation_type::Ring => self.creation.ring_ui(ui),
-            creation_type::Elliptical_cone => self.creation.eliptical_ui(ui),
-            creation_type::Zone => self.creation.zone_ui(ui),
-            creation_type::Box => self.creation.box_ui(ui),
+        match crea {
+            CreationType::Cone => self.error = self.creation.cone_ui(ui, &self.error),
+            CreationType::Ring => self.error = self.creation.ring_ui(ui, &self.error),
+            CreationType::EllipticalCone => self.error = self.creation.eliptical_ui(ui, &self.error),
+            CreationType::Zone => self.error = self.creation.zone_ui(ui, &self.error),
+            CreationType::Box => self.error = self.creation.box_ui(ui, &self.error),
             _ => todo!(),
         };
-        if res.is_err() {
-            res.unwrap_or_else(|e| self.error=Some(e));
-        }else {
-            self.error = None;
-        }
     }
 
     fn list_ui(&mut self, ui: &mut Ui) {
@@ -517,32 +503,23 @@ impl FileApp {
                         });
                         row.col(|ui| {
                             ui.menu_button("📥", |ui| {
-                                if ui.button("FITS").clicked() {
-                                    if !to_fits_file(filenames.get(row_index).unwrap()).is_ok() {
-                                        self.error = Some("Error when trying to create file".to_string());
-                                    }
+                                if ui.button("FITS").clicked() && to_fits_file(filenames.get(row_index).unwrap()).is_err() 
+                                {
+                                    self.error = Some("Error when trying to download file".to_string());
                                 }
-                                if ui.button("ASCII").clicked() {
-                                    if !to_ascii_file(filenames.get(row_index).unwrap(), Some(0))
-                                        .is_ok()
-                                    {
-                                        self.error = Some("Error when trying to create file".to_string());
-                                    }
+                                if ui.button("ASCII").clicked() && to_ascii_file(filenames.get(row_index).unwrap(), Some(0)).is_err()
+                                {
+                                    self.error = Some("Error when trying to download file".to_string());
                                 }
-                                if ui.button("JSON").clicked() {
-                                    if !to_json_file(filenames.get(row_index).unwrap(), Some(0))
-                                        .is_ok()
-                                    {
-                                        self.error = Some("Error when trying to create file".to_string());
-                                    }
+                                if ui.button("JSON").clicked() && to_json_file(filenames.get(row_index).unwrap(), Some(0)).is_err()
+                                {
+                                    self.error = Some("Error when trying to download file".to_string());
                                 }
                             });
                         });
                         row.col(|ui| {
-                            if ui.button("❌").clicked() {
-                                if !store::drop(filenames.get(row_index).unwrap()).is_ok() {
-                                    self.error = Some("Error when trying to remove file".to_string());
-                                }
+                            if ui.button("❌").clicked() && store::drop(filenames.get(row_index).unwrap()).is_err() {
+                                self.error = Some("Error when trying to remove file".to_string());
                             }
                         });
                     })
@@ -608,7 +585,8 @@ pub struct CreationUis {
 }
 impl CreationUis {
     // UIs for types
-    pub fn cone_ui(&mut self, ui: &mut Ui) -> Result<(), String> {
+    pub fn cone_ui(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
+        let mut err = e.to_owned();
         self.depth_builder(ui);
         self.lon_lat_deg_builder(ui);
         self.radius_builder(ui);
@@ -619,15 +597,21 @@ impl CreationUis {
         });
 
         if ui.button("create").clicked() {
-            if self.name.len() == 0 {
-                from_cone(&format!("Cone_of_rad_{}", self.radius.to_string().as_str()), self.depth, self.lon_deg, self.lat_deg, self.radius)?;
+            err = None;
+            if self.name.is_empty() {
+                if let Err(e) = from_cone(&format!("Cone_of_rad_{}", self.radius.to_string().as_str()), self.depth, self.lon_deg, self.lat_deg, self.radius) {
+                    err = Some(e);
+                }
             } else {
-                from_cone(&self.name, self.depth, self.lon_deg, self.lat_deg, self.radius)?;
+                if let Err(e) = from_cone(&self.name, self.depth, self.lon_deg, self.lat_deg, self.radius){
+                    err = Some(e);
+                }
             }
         }
-        Ok(())
+        err
     }
-    pub fn ring_ui(&mut self, ui: &mut Ui) -> Result<(), String> {
+    pub fn ring_ui(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
+        let mut err = e.to_owned();
         self.depth_builder(ui);
         self.lon_lat_deg_builder(ui);
         self.radii_builder(ui);
@@ -638,54 +622,77 @@ impl CreationUis {
         });
 
         if ui.button("create").clicked() {
-            if self.name.len() == 0 {
-                from_ring(&format!("ring_of_rad_{}_{}", self.int_radius.to_string().as_str(),self.radius.to_string().as_str()), 
-                self.depth, self.lon_deg, self.lat_deg, self.int_radius,self.radius)?;
+            err = None;
+            if self.name.is_empty() {
+                if let Err(e) = from_ring(&format!("ring_of_rad_{}_{}", self.int_radius.to_string().as_str(),self.radius.to_string().as_str()), 
+                self.depth, self.lon_deg, self.lat_deg, self.int_radius,self.radius){
+                    err = Some(e);
+                }
             } else {
-                from_ring(&self.name, self.depth, self.lon_deg, self.lat_deg, self.int_radius, self.radius)?;
+                if let Err(e) = from_ring(&self.name, self.depth, self.lon_deg, self.lat_deg, self.int_radius, self.radius){
+                    err = Some(e);
+                }
             }
         }
-        Ok(())
+        err
     }
-    pub fn eliptical_ui(&mut self, ui: &mut Ui) -> Result<(), String> {
+    pub fn eliptical_ui(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
+        let mut err = e.to_owned();
         self.elipbox_builder(ui);
 
         if ui.button("create").clicked() {
-            if self.name.len() == 0 {
-                from_elliptical_cone(&format!("ElipCone_deg_{}_{}_{}", self.a_deg, self.b_deg, self.pa_deg), 
-                self.depth, self.lon_deg, self.lat_deg, self.a_deg, self.b_deg, self.pa_deg)?;
+            err = None;
+            if self.name.is_empty() {
+                if let Err(e) = from_elliptical_cone(&format!("ElipCone_deg_{}_{}_{}", self.a_deg, self.b_deg, self.pa_deg), 
+                self.depth, self.lon_deg, self.lat_deg, self.a_deg, self.b_deg, self.pa_deg){
+                    err = Some(e);
+                }
             } else {
-                from_elliptical_cone(&self.name, self.depth, self.lon_deg, self.lat_deg, self.a_deg, self.b_deg, self.pa_deg)?;
+                if let Err(e) = from_elliptical_cone(&self.name, self.depth, self.lon_deg, self.lat_deg, self.a_deg, self.b_deg, self.pa_deg){
+                    err = Some(e);
+                }
             }
         }
-        Ok(())
+        err
     }
-    pub fn zone_ui(&mut self, ui: &mut Ui) -> Result<(), String> {
+    pub fn zone_ui(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
+        let mut err = e.to_owned();
         self.depth_builder(ui);
         self.lons_lats_builder(ui);
 
         if ui.button("create").clicked() {
-            if self.name.len() == 0 {
-                from_zone(&format!("Zone_deg_{}_{}", self.lon_deg_min, self.lat_deg_min), 
-                self.depth, self.lon_deg_min, self.lat_deg_min, self.lon_deg, self.lat_deg)?;
+            err = None;
+            if self.name.is_empty() {
+                if let Err(e) = from_zone(&format!("Zone_deg_{}_{}", self.lon_deg_min, self.lat_deg_min), 
+                self.depth, self.lon_deg_min, self.lat_deg_min, self.lon_deg, self.lat_deg){
+                    err = Some(e);
+                }
             } else {
-                from_zone(&self.name, self.depth, self.lon_deg_min, self.lat_deg_min, self.lon_deg, self.lat_deg)?;
+                if let Err(e) = from_zone(&self.name, self.depth, self.lon_deg_min, self.lat_deg_min, self.lon_deg, self.lat_deg){
+                    err = Some(e);
+                }
             }
         }
-        Ok(())
+        err
     }
-    pub fn box_ui(&mut self, ui: &mut Ui) -> Result<(), String> {
+    pub fn box_ui(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
+        let mut err = e.to_owned();
         self.elipbox_builder(ui);
 
         if ui.button("create").clicked() {
-            if self.name.len() == 0 {
-                from_box(&format!("Box_deg_{}_{}_{}", self.a_deg, self.b_deg, self.pa_deg), 
-                self.depth, self.lon_deg, self.lat_deg, self.a_deg, self.b_deg, self.pa_deg)?;
+            err = None;
+            if self.name.is_empty() {
+                if let Err(e) = from_box(&format!("Box_deg_{}_{}_{}", self.a_deg, self.b_deg, self.pa_deg), 
+                self.depth, self.lon_deg, self.lat_deg, self.a_deg, self.b_deg, self.pa_deg){
+                    err = Some(e);
+                }
             } else {
-                from_box(&self.name, self.depth, self.lon_deg, self.lat_deg, self.a_deg, self.b_deg, self.pa_deg)?;
+                if let Err(e) = from_box(&self.name, self.depth, self.lon_deg, self.lat_deg, self.a_deg, self.b_deg, self.pa_deg){
+                    err = Some(e);
+                }
             }
         }
-        Ok(())
+        err
     }
 
     // COMMON BUILDERS

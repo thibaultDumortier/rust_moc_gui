@@ -12,54 +12,54 @@ use crate::{commons::*, store};
 const JD_TO_USEC: f64 = (24_u64 * 60 * 60 * 1_000_000) as f64;
 
 #[derive(Copy, Clone)]
-pub(crate) enum creation_type {
-    Cone,
-    Ring,
-    Elliptical_cone,
-    Zone,
+pub(crate) enum CreationType {
     Box,
-    Polygon,
+    Cone,
     Coo,
-    Small_cone,
-    Large_cone,
-    Decimal_jd,
-    Decimal_jd_range,
-    Valued_cells,
+    DecimalJd,
+    DecimalJdRange,
+    EllipticalCone,
+    LargeCone,
+    Polygon,
+    Ring,
+    SmallCone,
+    ValuedCells,
+    Zone,
 }
-impl fmt::Display for creation_type {
+impl fmt::Display for CreationType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Cone => write!(f, "Cone"),
             Self::Ring => write!(f, "Ring"),
-            Self::Elliptical_cone => write!(f, "Elliptical_cone"),
+            Self::EllipticalCone => write!(f, "EllipticalCone"),
             Self::Zone => write!(f, "Zone"),
             Self::Box => write!(f, "Box"),
             Self::Polygon => write!(f, "Polygon"),
             Self::Coo => write!(f, "Coo"),
-            Self::Small_cone => write!(f, "Small_cone"),
-            Self::Large_cone => write!(f, "Large_cone"),
-            Self::Decimal_jd => write!(f, "Decimal_jd"),
-            Self::Decimal_jd_range => write!(f, "Decimal_jd_range"),
-            Self::Valued_cells => write!(f, "Valued_cells"),
+            Self::SmallCone => write!(f, "SmallCone"),
+            Self::LargeCone => write!(f, "LargeCone"),
+            Self::DecimalJd => write!(f, "DecimalJd"),
+            Self::DecimalJdRange => write!(f, "DecimalJdRange"),
+            Self::ValuedCells => write!(f, "ValuedCells"),
         }
     }
 }
-impl PartialEq for creation_type {
+impl PartialEq for CreationType {
     fn eq(&self, other: &Self) -> bool {
         matches!(
             (self, other),
             (Self::Cone, Self::Cone)
                 | (Self::Ring, Self::Ring)
-                | (Self::Elliptical_cone, Self::Elliptical_cone)
+                | (Self::EllipticalCone, Self::EllipticalCone)
                 | (Self::Zone, Self::Zone)
                 | (Self::Box, Self::Box)
                 | (Self::Polygon, Self::Polygon)
                 | (Self::Coo, Self::Coo)
-                | (Self::Small_cone, Self::Small_cone)
-                | (Self::Large_cone, Self::Large_cone)
-                | (Self::Decimal_jd, Self::Decimal_jd)
-                | (Self::Decimal_jd_range, Self::Decimal_jd_range)
-                | (Self::Valued_cells, Self::Valued_cells)
+                | (Self::SmallCone, Self::SmallCone)
+                | (Self::LargeCone, Self::LargeCone)
+                | (Self::DecimalJd, Self::DecimalJd)
+                | (Self::DecimalJdRange, Self::DecimalJdRange)
+                | (Self::ValuedCells, Self::ValuedCells)
         )
     }
 }
@@ -124,7 +124,7 @@ pub fn from_elliptical_cone(
         Err("Semi-major axis must be in ]0, pi/2]".to_string())
     } else if b <= 0.0 || a <= b {
         Err("Semi-minor axis must be in ]0, a[".to_string())
-    } else if pa < 0.0 || HALF_PI <= pa {
+    } else if !(0.0..HALF_PI).contains(&pa) {
         Err("Position angle must be in [0, pi[".to_string())
     } else {
         let moc: RangeMOC<u64, Hpx<u64>> =
@@ -168,7 +168,7 @@ pub fn from_box(
         Err("Semi-major axis must be in ]0, pi/2]".to_string())
     } else if b <= 0.0 || a < b {
         Err("Semi-minor axis must be in ]0, a[".to_string())
-    } else if pa < 0.0 || PI <= pa {
+    } else if !(0.0..PI).contains(&pa) {
         Err("Position angle must be in [0, pi[".to_string())
     } else {
         let moc: RangeMOC<u64, Hpx<u64>> = RangeMOC::from_box(lon, lat, a, b, pa, depth);
@@ -403,7 +403,7 @@ pub fn from_valued_cells(
 
 pub(crate) fn lon_deg2rad(lon_deg: f64) -> Result<f64, String> {
     let lon = lon_deg.to_radians();
-    if lon < 0.0 || TWICE_PI <= lon {
+    if !(0.0..TWICE_PI).contains(&lon) {
         Err("Longitude must be in [0, 2pi[".to_string())
     } else {
         Ok(lon)
@@ -412,7 +412,7 @@ pub(crate) fn lon_deg2rad(lon_deg: f64) -> Result<f64, String> {
 
 pub(crate) fn lat_deg2rad(lat_deg: f64) -> Result<f64, String> {
     let lat = lat_deg.to_radians();
-    if lat < -HALF_PI || HALF_PI <= lat {
+    if !(-HALF_PI..HALF_PI).contains(&lat) {
         Err("Latitude must be in [-pi/2, pi/2]".to_string())
     } else {
         Ok(lat)

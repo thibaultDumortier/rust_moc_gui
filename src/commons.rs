@@ -327,8 +327,8 @@ pub(crate) fn load(rtype: &[&str], moct: Qty) -> Result<(), String> {
             file.read_to_end(&mut file_content)
                 .map_err(|e| format!("Error while reading file: {}", e))?;
             let res = type_reading(reading, &moct, file_content.as_slice());
-            if res.is_ok() {
-                add(file_name, res.unwrap())
+            if let Ok(r) = res {
+                add(file_name, r)
                     .expect("A problem has occured while trying to add the MOC");
             }
         }

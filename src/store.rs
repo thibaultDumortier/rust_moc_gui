@@ -15,7 +15,7 @@ pub(crate) fn get_store() -> &'static RwLock<HashMap<String, InternalMoc>> {
         // Inspired from the Option get_or_insert_with method, modified to ensure thread safety with
         // https://doc.rust-lang.org/std/sync/struct.Once.html
         // This implements a double-checked lock.
-        if let None = MOC_STORE {
+        if MOC_STORE.is_none() {
             MOC_STORE_INIT.call_once(|| {
                 MOC_STORE = Some(RwLock::new(HashMap::new()));
             });
@@ -78,7 +78,7 @@ where
     R:,
     F: Fn(&InternalMoc) -> R,
 {
-    get_store().read().unwrap().get(name).map(|moc| op(moc))
+    get_store().read().unwrap().get(name).map(op)
 }
 
 /// Perform an operation on a MOC and store the resulting MOC.
@@ -95,7 +95,7 @@ where
         let moc = store
             .get(name)
             .ok_or_else(|| format!("MOC '{}' not found", name))?;
-        op(moc).map_err(|e| e)?
+        op(moc)?
     };
     // Then write operation.
     // Remark: we could have called directly add(res_name, res_moc)
@@ -122,7 +122,7 @@ where
         let moc = store
             .get(name)
             .ok_or_else(|| format!("MOC '{}' not found", name))?;
-        op(moc).map_err(|e| e)?
+        op(moc)?
     };
     // Then write operation.
     // Remark: we could have called directly add(res_name, res_moc)
@@ -159,7 +159,7 @@ where
         let right = store
             .get(right_name)
             .ok_or_else(|| format!("MOC '{}' not found", right_name))?;
-        op(left, right).map_err(|e| e)?
+        op(left, right)?
     };
     // Then write operation.
     // Remark: we could have called directly add(res_name, res_moc)
