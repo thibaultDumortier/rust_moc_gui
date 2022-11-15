@@ -2,7 +2,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
 use core::fmt;
-use std::fmt::Display;
 
 use crate::commons::*;
 use crate::loaders::{store, store::get_store, store::list_mocs};

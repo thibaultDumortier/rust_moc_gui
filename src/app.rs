@@ -2,8 +2,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
 use crate::commons::*;
-use crate::loaders::{store, store::get_store, store::list_mocs};
-use crate::op::{creation::*, op1::*, op2::*};
+use crate::loaders::{store, store::get_store};
+use crate::op::creation::*;
 use crate::uis::{creationui::*, opui::*};
 
 use eframe::egui;
@@ -188,6 +188,7 @@ impl FileApp {
                     );
                     ui.selectable_value(&mut self.operation, Op::Crea(CreationType::Zone), "Zone");
                     ui.selectable_value(&mut self.operation, Op::Crea(CreationType::Box), "Box");
+                    ui.selectable_value(&mut self.operation, Op::Crea(CreationType::Polygon), "Polygon");
                 });
         });
 
@@ -199,6 +200,7 @@ impl FileApp {
             }
             CreationType::Zone => self.error = self.creation.zone_ui(ui, &self.error),
             CreationType::Box => self.error = self.creation.box_ui(ui, &self.error),
+            CreationType::Polygon => self.error = self.creation.polygon_ui(ui, &self.error),
             _ => todo!(),
         };
     }
