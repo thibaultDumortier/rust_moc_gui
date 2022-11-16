@@ -171,7 +171,7 @@ pub(crate) fn from_fits(data: &[u8]) -> Result<InternalMoc, String> {
     Ok(moc)
 }
 
-fn type_reading(rtype: &str, moct: &Qty, data: &[u8]) -> Result<InternalMoc, String> {
+pub(crate) fn type_reading(rtype: &str, moct: &Qty, data: &[u8]) -> Result<InternalMoc, String> {
     match rtype {
         "fits" => from_fits(data),
         "json" => match moct {

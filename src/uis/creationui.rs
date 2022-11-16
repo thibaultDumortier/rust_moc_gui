@@ -7,6 +7,7 @@ use crate::op::creation::*;
 use eframe::egui;
 use egui::{DragValue, Ui};
 use egui_extras::{Size, TableBuilder};
+use rfd::AsyncFileDialog;
 
 #[derive(Default)]
 pub struct CreationUis {
@@ -17,6 +18,7 @@ pub struct CreationUis {
     radius_a: f64,
     lon_deg_min_b_int: f64,
     lat_deg_min_pa: f64,
+    comp: bool,
     vert_coos: Vec<(f64, f64)>,
     coos_radius: Box<[f64]>,
     uniqs: Box<[f64]>,
@@ -208,59 +210,40 @@ impl CreationUis {
     pub fn polygon_ui(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
         let mut err = e.to_owned();
 
-        let txt_h = 30.0;
-        ui.vertical(|ui| {
-            TableBuilder::new(ui)
-                .striped(true)
-                .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-                .column(Size::initial(150.0).at_least(100.0))
-                .column(Size::initial(150.0).at_least(100.0))
-                .column(Size::remainder().at_least(20.0))
-                .header(20.0, |mut header| {
-                    header.col(|ui| {
-                        ui.heading("deg1");
-                        ui.add(DragValue::new(&mut self.lon_deg_polf1));
-                    });
-                    header.col(|ui| {
-                        ui.heading("deg2");
-                        ui.add(DragValue::new(&mut self.lat_deg_polf2));
-                        if ui.button("add").clicked() {
-                            if self.lon_deg_polf1.eq(&self.lat_deg_polf2) || self.vert_coos.contains(&(self.lon_deg_polf1, self.lat_deg_polf2)) {
-                                err = Some("Please add 2 different values that are not already present in your polygon".to_string());
-                            } else {
-                                self.vert_coos.push((self.lon_deg_polf1, self.lat_deg_polf2));
-                                self.lon_deg_polf1 = 0.0;
-                                self.lat_deg_polf2 = 0.0;
-                            }
-                        }
-                    });
-                    header.col(|ui| {
-                        ui.heading("❌");
-                    });
-                })
-                .body(|body| {
-                    body.rows(txt_h, self.vert_coos.len(), |row_index, mut row| {
-                        row.col(|ui| {
-                            ui.label(self.vert_coos.get(row_index).or(Some(&(0.0,0.0))).unwrap().0.to_string());
-                        });
-                        row.col(|ui| {
-                            ui.label(self.vert_coos.get(row_index).or(Some(&(0.0,0.0))).unwrap().1.to_string());
-                        });
-                        row.col(|ui| {
-                            if ui.button("❌").clicked() {
-                                self.vert_coos.remove(row_index);
-                            }
-                        });
-                    })
-                })
-        });
+        err = self.table_builder(
+            ui,
+            "Please add 2 different values that are not already present in your polygon",
+            &err,
+        );
+        self.depth_builder(ui);
+        self.check_bool(ui, "complement");
 
         if ui.button("Create").clicked() {
             err = None;
-            if self.vert_coos.len() < 3 {
+            if self.vert_coos.len() < 1 {
                 err = Some(
-                    "You need to add at least 3 vertices coordinates to make a polygon".to_string(),
+                    "You need to add at least 1 set of coordinates".to_string(),
                 );
+            }
+            let mut vec: Vec<f64> = Vec::default();
+            for v in &self.vert_coos {
+                vec.push(v.0);
+                vec.push(v.1);
+            }
+
+            if self.name.is_empty() {
+                if let Err(e) = from_polygon(
+                    &format!("Polygon_{}", self.depth),
+                    self.depth,
+                    vec.into_boxed_slice(),
+                    self.comp,
+                ) {
+                    err = Some(e);
+                }
+            } else if let Err(e) =
+                from_polygon(&self.name, self.depth, vec.into_boxed_slice(), self.comp)
+            {
+                err = Some(e);
             }
         }
         err
@@ -286,6 +269,13 @@ impl CreationUis {
         });
     }
     fn lon_lat_deg_builder(&mut self, ui: &mut Ui) {
+        if !(0.0..=TWICE_PI).contains(&self.lon_deg_polf1)
+            || !(-HALF_PI..=HALF_PI).contains(&self.lat_deg_polf2)
+        {
+            self.lon_deg_polf1 = 0.0;
+            self.lat_deg_polf2 = 0.0;
+        }
+
         ui.horizontal(|ui| {
             ui.label("Longitude degradation:");
             ui.add(egui::Slider::new(&mut self.lon_deg_polf1, 0.0..=TWICE_PI));
@@ -389,4 +379,100 @@ impl CreationUis {
             ui.add(egui::Slider::new(&mut self.lat_deg_min_pa, 0.0..=PI));
         });
     }
+    fn check_bool(&mut self, ui: &mut Ui, txt: &str) {
+        ui.checkbox(&mut self.comp, txt);
+    }
+    fn table_builder(&mut self, ui: &mut Ui, e: &str, er: &Option<String>) -> Option<String> {
+        let mut err = er.to_owned();
+
+        let txt_h = 30.0;
+        ui.vertical(|ui| {
+            TableBuilder::new(ui)
+                .striped(true)
+                .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+                .column(Size::initial(300.0).at_least(100.0))
+                .column(Size::initial(300.0).at_least(100.0))
+                .column(Size::remainder().at_least(20.0))
+                .header(20.0, |mut header| {
+                    header.col(|ui| {
+                        ui.heading("Lon");
+                        ui.add(egui::Slider::new(&mut self.lon_deg_polf1, 0.0..=TWICE_PI));
+                    });
+                    header.col(|ui| {
+                        ui.heading("Lat");
+                        ui.add(egui::Slider::new(
+                            &mut self.lat_deg_polf2,
+                            -HALF_PI..=HALF_PI,
+                        ));
+                        if ui.button("Add").clicked() {
+                            if self.lon_deg_polf1.eq(&self.lat_deg_polf2)
+                                || self
+                                    .vert_coos
+                                    .contains(&(self.lon_deg_polf1, self.lat_deg_polf2))
+                            {
+                                err = Some(e.to_string());
+                            } else {
+                                err = None;
+                                self.vert_coos
+                                    .push((self.lon_deg_polf1, self.lat_deg_polf2));
+                                self.lon_deg_polf1 = 0.0;
+                                self.lat_deg_polf2 = 0.0;
+                            }
+                        }
+                    });
+                    header.col(|ui| {
+                        ui.heading("❌");
+                    });
+                })
+                .body(|body| {
+                    body.rows(txt_h, self.vert_coos.len(), |row_index, mut row| {
+                        row.col(|ui| {
+                            // Or enables the program to do vertices deletions
+                            ui.label(
+                                self.vert_coos
+                                    .get(row_index)
+                                    .or(Some(&(0.0, 0.0)))
+                                    .unwrap()
+                                    .0
+                                    .to_string(),
+                            );
+                        });
+                        row.col(|ui| {
+                            // Or enables the program to do vertices deletions
+                            ui.label(
+                                self.vert_coos
+                                    .get(row_index)
+                                    .or(Some(&(0.0, 0.0)))
+                                    .unwrap()
+                                    .1
+                                    .to_string(),
+                            );
+                        });
+                        row.col(|ui| {
+                            if ui.button("❌").clicked() {
+                                self.vert_coos.remove(row_index);
+                            }
+                        });
+                    })
+                });
+        });
+        err
+    }
+}
+
+fn load(rtype: &[&str], moct: Qty) -> Result<(), String> {
+    let task = AsyncFileDialog::new()
+        .add_filter("MOCs", rtype)
+        .pick_file();
+
+    execute(async move {
+        let handle = task.await;
+        if let Some(file) = handle {
+            file.read();
+        }
+    });
+    Ok(())
+}
+fn execute<F: std::future::Future<Output = ()> + 'static>(f: F) {
+    wasm_bindgen_futures::spawn_local(f);
 }
