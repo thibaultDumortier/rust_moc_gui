@@ -5,10 +5,12 @@ use crate::op::creation::*;
 use crate::{app::log, commons::*};
 
 use eframe::egui;
-use egui::{DragValue, Ui};
+use egui::Ui;
 use egui_extras::{Size, TableBuilder};
-use js_sys::JSON::parse;
 use rfd::AsyncFileDialog;
+use std::cell::RefCell;
+use std::future::Future;
+use std::rc::Rc;
 
 #[derive(Default)]
 pub struct CreationUis {
@@ -20,7 +22,7 @@ pub struct CreationUis {
     lon_deg_min_b_int: f64,
     lat_deg_min_pa: f64,
     comp: bool,
-    vert_coos: Vec<(f64, f64)>,
+    vert: Vec<(f64, f64)>,
     coos_radius: Box<[f64]>,
     uniqs: Box<[f64]>,
     values: Box<[f64]>,
@@ -221,11 +223,11 @@ impl CreationUis {
 
         if ui.button("Create").clicked() {
             err = None;
-            if self.vert_coos.is_empty() {
+            if self.vert.is_empty() {
                 err = Some("You need to add at least 1 set of coordinates".to_string());
             }
             let mut vec: Vec<f64> = Vec::default();
-            for v in &self.vert_coos {
+            for v in &self.vert {
                 vec.push(v.0);
                 vec.push(v.1);
             }
@@ -252,7 +254,7 @@ impl CreationUis {
         let mut err = e.to_owned();
 
         if ui.button("load").clicked() {
-            load_csv();
+            self.load_csv();
         }
 
         err
@@ -416,14 +418,13 @@ impl CreationUis {
                         if ui.button("Add").clicked() {
                             if self.lon_deg_polf1.eq(&self.lat_deg_polf2)
                                 || self
-                                    .vert_coos
+                                    .vert
                                     .contains(&(self.lon_deg_polf1, self.lat_deg_polf2))
                             {
                                 err = Some(e.to_string());
                             } else {
                                 err = None;
-                                self.vert_coos
-                                    .push((self.lon_deg_polf1, self.lat_deg_polf2));
+                                self.vert.push((self.lon_deg_polf1, self.lat_deg_polf2));
                                 self.lon_deg_polf1 = 0.0;
                                 self.lat_deg_polf2 = 0.0;
                             }
@@ -434,11 +435,11 @@ impl CreationUis {
                     });
                 })
                 .body(|body| {
-                    body.rows(txt_h, self.vert_coos.len(), |row_index, mut row| {
+                    body.rows(txt_h, self.vert.len(), |row_index, mut row| {
                         row.col(|ui| {
                             // Or enables the program to do vertices deletions
                             ui.label(
-                                self.vert_coos
+                                self.vert
                                     .get(row_index)
                                     .or(Some(&(0.0, 0.0)))
                                     .unwrap()
@@ -449,7 +450,7 @@ impl CreationUis {
                         row.col(|ui| {
                             // Or enables the program to do vertices deletions
                             ui.label(
-                                self.vert_coos
+                                self.vert
                                     .get(row_index)
                                     .or(Some(&(0.0, 0.0)))
                                     .unwrap()
@@ -459,7 +460,7 @@ impl CreationUis {
                         });
                         row.col(|ui| {
                             if ui.button("❌").clicked() {
-                                self.vert_coos.remove(row_index);
+                                self.vert.remove(row_index);
                             }
                         });
                     })
@@ -467,42 +468,44 @@ impl CreationUis {
         });
         err
     }
-}
 
-fn load_csv() -> Result<(), String> {
-    let task = AsyncFileDialog::new()
-        .add_filter("MOCs", &["csv"])
-        .pick_file();
+    fn load_csv(&mut self) -> Result<(), String> {
+        let task = AsyncFileDialog::new()
+            .add_filter("MOCs", &["csv"])
+            .pick_file();
 
-    execute(async move {
-        let handle = task.await;
-        if let Some(file) = handle {
-            let f: Vec<String> = unsafe {
-                String::from_utf8_unchecked(file.read().await)
-                    .split(",")
-                    .map(|s| s.to_string())
-                    .collect()
-            };
+        let v: Rc<RefCell<Vec<f64>>> = Rc::new(RefCell::new(Vec::default()));
+        let res = Rc::clone(&v);
+        execute(async move {
+            let handle = task.await;
+            if let Some(file) = handle {
+                let f: Vec<String> = unsafe {
+                    String::from_utf8_unchecked(file.read().await)
+                        .split(",")
+                        .map(|s| s.to_string())
+                        .collect()
+                };
 
-            // Split on line returns too
-            let mut f2: Vec<&str> = Vec::default();
-            for str in &f {
-                let mut tmp: Vec<&str> = str.split("\n").collect();
-                f2.append(&mut tmp);
-            }
+                // Split on line returns too
+                let mut f2: Vec<&str> = Vec::default();
+                for str in &f {
+                    let mut tmp: Vec<&str> = str.split("\n").collect();
+                    f2.append(&mut tmp);
+                }
 
-            // Get floats
-            let mut v: Vec<f64> = Vec::default();
-            for float in f2 {
-                if let Ok(n) = float.parse::<f64>() {
-                    v.push(n);
-                    log(format!("{}", n).as_str());
+                // Get floats
+                for float in f2 {
+                    if let Ok(n) = float.parse::<f64>() {
+                        v.borrow_mut().push(n);
+                    }
                 }
             }
-        }
-    });
-    Ok(())
+        });
+        self.coos_radius = res.borrow().clone().into_boxed_slice();
+        Ok(())
+    }
 }
+
 fn execute<F: std::future::Future<Output = ()> + 'static>(f: F) {
     wasm_bindgen_futures::spawn_local(f);
 }

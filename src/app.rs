@@ -37,6 +37,7 @@ impl PartialEq for Op {
             (Op::One, Op::One) => true,
             (Op::Two, Op::Two) => true,
             (Op::List, Op::List) => true,
+            (Op::Crea(a), Op::Crea(b)) => a.eq(b),
             _ => false,
         }
     }
