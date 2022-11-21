@@ -1,12 +1,13 @@
 #![warn(clippy::all)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
-use crate::commons::*;
 use crate::op::creation::*;
+use crate::{app::log, commons::*};
 
 use eframe::egui;
 use egui::{DragValue, Ui};
 use egui_extras::{Size, TableBuilder};
+use js_sys::JSON::parse;
 use rfd::AsyncFileDialog;
 
 #[derive(Default)]
@@ -220,10 +221,8 @@ impl CreationUis {
 
         if ui.button("Create").clicked() {
             err = None;
-            if self.vert_coos.len() < 1 {
-                err = Some(
-                    "You need to add at least 1 set of coordinates".to_string(),
-                );
+            if self.vert_coos.is_empty() {
+                err = Some("You need to add at least 1 set of coordinates".to_string());
             }
             let mut vec: Vec<f64> = Vec::default();
             for v in &self.vert_coos {
@@ -246,6 +245,16 @@ impl CreationUis {
                 err = Some(e);
             }
         }
+        err
+    }
+
+    pub fn coo_ui(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
+        let mut err = e.to_owned();
+
+        if ui.button("load").clicked() {
+            load_csv();
+        }
+
         err
     }
 
@@ -460,15 +469,36 @@ impl CreationUis {
     }
 }
 
-fn load(rtype: &[&str], moct: Qty) -> Result<(), String> {
+fn load_csv() -> Result<(), String> {
     let task = AsyncFileDialog::new()
-        .add_filter("MOCs", rtype)
+        .add_filter("MOCs", &["csv"])
         .pick_file();
 
     execute(async move {
         let handle = task.await;
         if let Some(file) = handle {
-            file.read();
+            let f: Vec<String> = unsafe {
+                String::from_utf8_unchecked(file.read().await)
+                    .split(",")
+                    .map(|s| s.to_string())
+                    .collect()
+            };
+
+            // Split on line returns too
+            let mut f2: Vec<&str> = Vec::default();
+            for str in &f {
+                let mut tmp: Vec<&str> = str.split("\n").collect();
+                f2.append(&mut tmp);
+            }
+
+            // Get floats
+            let mut v: Vec<f64> = Vec::default();
+            for float in f2 {
+                if let Ok(n) = float.parse::<f64>() {
+                    v.push(n);
+                    log(format!("{}", n).as_str());
+                }
+            }
         }
     });
     Ok(())

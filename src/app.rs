@@ -189,6 +189,7 @@ impl FileApp {
                     ui.selectable_value(&mut self.operation, Op::Crea(CreationType::Zone), "Zone");
                     ui.selectable_value(&mut self.operation, Op::Crea(CreationType::Box), "Box");
                     ui.selectable_value(&mut self.operation, Op::Crea(CreationType::Polygon), "Polygon");
+                    ui.selectable_value(&mut self.operation, Op::Crea(CreationType::Coo), "Coo");
                 });
         });
 
@@ -201,6 +202,7 @@ impl FileApp {
             CreationType::Zone => self.error = self.creation.zone_ui(ui, &self.error),
             CreationType::Box => self.error = self.creation.box_ui(ui, &self.error),
             CreationType::Polygon => self.error = self.creation.polygon_ui(ui, &self.error),
+            CreationType::Coo => self.error = self.creation.coo_ui(ui, &self.error),
             _ => todo!(),
         };
     }
