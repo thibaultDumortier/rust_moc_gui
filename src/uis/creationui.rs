@@ -255,6 +255,7 @@ impl CreationUis {
 
         if ui.button("load").clicked() {
             self.load_csv();
+            log(format!("{:?}", self.coos_radius).as_str());
         }
 
         err
@@ -499,9 +500,12 @@ impl CreationUis {
                         v.borrow_mut().push(n);
                     }
                 }
+                log(format!("{:?}", v).as_str());
             }
         });
+        log(format!("{:?}", res).as_str());
         self.coos_radius = res.borrow().clone().into_boxed_slice();
+        log(format!("{:?}", self.coos_radius).as_str());
         Ok(())
     }
 }
