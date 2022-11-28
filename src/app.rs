@@ -3,7 +3,6 @@
 
 use crate::commons::*;
 use crate::loaders::{store, store::get_store};
-use crate::op::creation::*;
 use crate::uis::{creationui::*, opui::*};
 
 use eframe::egui;
@@ -20,24 +19,24 @@ extern "C" {
 }
 
 //An operation enumerator
-enum Op {
+enum UiMenu {
     One,
     Two,
     List,
-    Crea(CreationType),
+    Crea,
 }
-impl Default for Op {
+impl Default for UiMenu {
     fn default() -> Self {
-        Op::List
+        UiMenu::List
     }
 }
-impl PartialEq for Op {
+impl PartialEq for UiMenu {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Op::One, Op::One) => true,
-            (Op::Two, Op::Two) => true,
-            (Op::List, Op::List) => true,
-            (Op::Crea(a), Op::Crea(b)) => a.eq(b),
+            (UiMenu::One, UiMenu::One) => true,
+            (UiMenu::Two, UiMenu::Two) => true,
+            (UiMenu::List, UiMenu::List) => true,
+            (UiMenu::Crea, UiMenu::Crea) => true,
             _ => false,
         }
     }
@@ -46,7 +45,7 @@ impl PartialEq for Op {
 //FileApp struct
 #[derive(Default)]
 pub struct FileApp {
-    operation: Op,
+    operation: UiMenu,
     error: Option<String>,
     creation: CreationUis,
     opui: OpUis,
@@ -71,20 +70,20 @@ impl eframe::App for FileApp {
 
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.horizontal(|ui| {
-                ui.selectable_value(&mut self.operation, Op::List, "MOC list");
+                ui.selectable_value(&mut self.operation, UiMenu::List, "MOC list");
                 ui.selectable_value(
                     &mut self.operation,
-                    Op::Crea(CreationType::Cone),
+                    UiMenu::Crea,
                     "MOC creation",
                 );
                 ui.selectable_value(
                     &mut self.operation,
-                    Op::One,
+                    UiMenu::One,
                     "1 MOC operation",
                 );
                 ui.selectable_value(
                     &mut self.operation,
-                    Op::Two,
+                    UiMenu::Two,
                     "2 MOCs operation",
                 );
             });
@@ -92,10 +91,10 @@ impl eframe::App for FileApp {
 
             ui.separator();
             match &self.operation {
-                Op::One => self.opui.moc_op1(ui),
-                Op::Two => self.opui.moc_op2(ui),
-                Op::List => self.list_ui(ui),
-                Op::Crea(c) => self.creation_ui(ui, *c),
+                UiMenu::One => self.opui.moc_op1(ui),
+                UiMenu::Two => self.opui.moc_op2(ui),
+                UiMenu::List => self.list_ui(ui),
+                UiMenu::Crea => self.creation.creation_ui(ui),
             }
         });
     }
@@ -109,7 +108,7 @@ impl FileApp {
     */
     pub fn new() -> Self {
         FileApp {
-            operation: Op::default(),
+            operation: UiMenu::default(),
             error: None,
             creation: CreationUis::default(),
             opui: OpUis::default(),
@@ -170,42 +169,6 @@ impl FileApp {
                 ui.label(self.error.as_ref().unwrap());
             }
         });
-    }
-
-    fn creation_ui(&mut self, ui: &mut Ui, crea: CreationType) {
-        let sel_text = format!("{}", crea);
-
-        ui.horizontal(|ui| {
-            ui.label("Creation type :");
-            egui::ComboBox::from_id_source("Creation_cbox")
-                .selected_text(sel_text)
-                .show_ui(ui, |ui| {
-                    ui.selectable_value(&mut self.operation, Op::Crea(CreationType::Cone), "Cone");
-                    ui.selectable_value(&mut self.operation, Op::Crea(CreationType::Ring), "Ring");
-                    ui.selectable_value(
-                        &mut self.operation,
-                        Op::Crea(CreationType::EllipticalCone),
-                        "Eliptical cone",
-                    );
-                    ui.selectable_value(&mut self.operation, Op::Crea(CreationType::Zone), "Zone");
-                    ui.selectable_value(&mut self.operation, Op::Crea(CreationType::Box), "Box");
-                    ui.selectable_value(&mut self.operation, Op::Crea(CreationType::Polygon), "Polygon");
-                    ui.selectable_value(&mut self.operation, Op::Crea(CreationType::Coo), "Coo");
-                });
-        });
-
-        match crea {
-            CreationType::Cone => self.error = self.creation.cone_ui(ui, &self.error),
-            CreationType::Ring => self.error = self.creation.ring_ui(ui, &self.error),
-            CreationType::EllipticalCone => {
-                self.error = self.creation.eliptical_ui(ui, &self.error)
-            }
-            CreationType::Zone => self.error = self.creation.zone_ui(ui, &self.error),
-            CreationType::Box => self.error = self.creation.box_ui(ui, &self.error),
-            CreationType::Polygon => self.error = self.creation.polygon_ui(ui, &self.error),
-            CreationType::Coo => self.error = self.creation.coo_ui(ui, &self.error),
-            _ => todo!(),
-        };
     }
 
     fn list_ui(&mut self, ui: &mut Ui) {

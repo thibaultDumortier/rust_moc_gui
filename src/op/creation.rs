@@ -64,6 +64,11 @@ impl PartialEq for CreationType {
         )
     }
 }
+impl Default for CreationType {
+    fn default() -> Self {
+        CreationType::Cone
+    }
+}
 
 pub fn from_cone(
     name: &str,
@@ -186,14 +191,16 @@ pub fn from_box(
 pub fn from_polygon(
     name: &str,
     depth: u8,
-    vertices_deg: Box<[f64]>,
+    content: String,
     complement: bool,
 ) -> Result<(), String> {
+    let v = vector_splitter(content);
+
     // An other solution would be to go unsafe to transmute in Box<[[f64; 2]]> ...
-    let vertices = vertices_deg
+    let vertices = v
         .iter()
         .step_by(2)
-        .zip(vertices_deg.iter().skip(1).step_by(2))
+        .zip(v.iter().skip(1).step_by(2))
         .map(|(lon_deg, lat_deg)| {
             let lon = lon_deg2rad(*lon_deg)?;
             let lat = lat_deg2rad(*lat_deg)?;
@@ -210,16 +217,7 @@ pub fn from_polygon(
 /// * `depth`: MOC maximum depth in `[0, 29]`
 /// * `coos_deg`: list of coordinates in degrees `[lon_1, lat_1, lon_2, lat_2, ..., lon_n, lat_n]`
 pub fn from_coo(name: &str, depth: u8, content: String) -> Result<(), String> {
-    let mut v: Vec<f64> = Vec::default();
-
-    let f: Vec<&str> = content
-        .split(|c| c == ',' || c == '\n')
-        .map(|s| s)
-        .collect();
-    log(format!("{:?}", f).as_str());
-    // Split on line returns too
-    let mut tmp: Vec<f64> = f.iter().filter_map(|f| (*f).parse::<f64>().ok()).collect();
-    v.append(&mut tmp);
+    let v = vector_splitter(content);
 
     // An other solution would be to go unsafe to transmute coos_deg in Box<[[f64; 2]]> ...
     let moc: RangeMOC<u64, Hpx<u64>> = RangeMOC::from_coos(
@@ -250,13 +248,15 @@ pub fn from_coo(name: &str, depth: u8, content: String) -> Result<(), String> {
 pub fn from_small_cones(
     name: &str,
     depth: u8,
-    coos_and_radius_deg: Box<[f64]>,
+    content: String,
 ) -> Result<(), String> {
-    let coos_rad = coos_and_radius_deg
+    let v = vector_splitter(content);
+
+    let coos_rad = v
         .iter()
         .step_by(3)
-        .zip(coos_and_radius_deg.iter().skip(1).step_by(3))
-        .zip(coos_and_radius_deg.iter().skip(2).step_by(3))
+        .zip(v.iter().skip(1).step_by(3))
+        .zip(v.iter().skip(2).step_by(3))
         .filter_map(|((lon_deg, lat_deg), radius_deg)| {
             let lon = lon_deg2rad(*lon_deg).ok();
             let lat = lat_deg2rad(*lat_deg).ok();
@@ -279,13 +279,15 @@ pub fn from_small_cones(
 pub fn from_large_cones(
     name: &str,
     depth: u8,
-    coos_and_radius_deg: Box<[f64]>,
+    content: String,
 ) -> Result<(), String> {
-    let coos_rad = coos_and_radius_deg
+    let v = vector_splitter(content);
+
+    let coos_rad = v
         .iter()
         .step_by(3)
-        .zip(coos_and_radius_deg.iter().skip(1).step_by(3))
-        .zip(coos_and_radius_deg.iter().skip(2).step_by(3))
+        .zip(v.iter().skip(1).step_by(3))
+        .zip(v.iter().skip(2).step_by(3))
         .filter_map(|((lon_deg, lat_deg), radius_deg)| {
             let lon = lon_deg2rad(*lon_deg).ok();
             let lat = lat_deg2rad(*lat_deg).ok();
@@ -311,22 +313,26 @@ pub fn from_large_cones(
 /// The other approach is to use a couple of `f64`: one for the integer part of the JD, the
 /// other for the fractional part of the JD.
 /// We will add such a method later if required by users.
-pub fn from_decimal_jd(name: &str, depth: u8, jd: Box<[f64]>) -> Result<(), String> {
+pub fn from_decimal_jd(name: &str, depth: u8, content: String) -> Result<(), String> {
+    let v = vector_splitter(content);
+
     let moc = RangeMOC::<u64, Time<u64>>::from_microsec_since_jd0(
         depth,
-        jd.iter().map(|jd| (jd * JD_TO_USEC) as u64),
+        v.iter().map(|jd| (jd * JD_TO_USEC) as u64),
         None,
     );
     store::add(name, InternalMoc::Time(moc))
 }
 
-pub fn from_decimal_jd_range(name: &str, depth: u8, jd_ranges: Box<[f64]>) -> Result<(), String> {
+pub fn from_decimal_jd_range(name: &str, depth: u8, content: String) -> Result<(), String> {
+    let v = vector_splitter(content);
+
     let moc = RangeMOC::<u64, Time<u64>>::from_microsec_ranges_since_jd0(
         depth,
-        jd_ranges
+        v
             .iter()
             .step_by(2)
-            .zip(jd_ranges.iter().skip(1).step_by(2))
+            .zip(v.iter().skip(1).step_by(2))
             .map(|(jd_min, jd_max)| (jd_min * JD_TO_USEC) as u64..(jd_max * JD_TO_USEC) as u64),
         None,
     );
@@ -428,4 +434,18 @@ pub(crate) fn lat_deg2rad(lat_deg: f64) -> Result<f64, String> {
     } else {
         Ok(lat)
     }
+}
+
+fn vector_splitter(content: String) -> Vec<f64> {
+    let mut v: Vec<f64> = Vec::default();
+
+    let f: Vec<&str> = content
+        .split(|c| c == ',' || c == '\n')
+        .map(|s| s)
+        .collect();
+    // Split on line returns too
+    let mut tmp: Vec<f64> = f.iter().filter_map(|f| (*f).parse::<f64>().ok()).collect();
+    v.append(&mut tmp);
+
+    v
 }

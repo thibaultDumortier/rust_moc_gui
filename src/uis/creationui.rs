@@ -7,7 +7,6 @@ use crate::{app::log, commons::*};
 use super::creationui::CreationType;
 use eframe::egui;
 use egui::Ui;
-use egui_extras::{Size, TableBuilder};
 use rfd::AsyncFileDialog;
 
 #[derive(Default)]
@@ -20,14 +19,54 @@ pub struct CreationUis {
     lon_deg_min_b_int: f64,
     lat_deg_min_pa: f64,
     comp: bool,
-    vert: Vec<(f64, f64)>,
-    coos_radius: Box<[f64]>,
-    uniqs: Box<[f64]>,
-    values: Box<[f64]>,
+    typ: CreationType,
+    error: Option<String>,
 }
 impl CreationUis {
+    pub(crate) fn creation_ui(&mut self, ui: &mut Ui) {
+        let sel_text = format!("{}", self.typ);
+
+        ui.horizontal(|ui| {
+            ui.label("Creation type :");
+            egui::ComboBox::from_id_source("Creation_cbox")
+                .selected_text(sel_text)
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut self.typ, CreationType::Cone, "Cone");
+                    ui.selectable_value(&mut self.typ, CreationType::Ring, "Ring");
+                    ui.selectable_value(
+                        &mut self.typ,
+                        CreationType::EllipticalCone,
+                        "Eliptical cone",
+                    );
+                    ui.selectable_value(&mut self.typ, CreationType::Zone, "Zone");
+                    ui.selectable_value(&mut self.typ, CreationType::Box, "Box");
+                    ui.selectable_value(&mut self.typ, CreationType::Polygon, "Polygon");
+                    ui.selectable_value(&mut self.typ, CreationType::Coo, "Coo");
+                    ui.selectable_value(&mut self.typ, CreationType::SmallCone, "Cone S");
+                    ui.selectable_value(&mut self.typ, CreationType::LargeCone, "Cone L");
+                    ui.selectable_value(&mut self.typ, CreationType::DecimalJd, "Time: dec");
+                    ui.selectable_value(&mut self.typ, CreationType::DecimalJdRange, "Time: range");
+                });
+        });
+
+        match self.typ {
+            CreationType::Cone => self.error = self.cone_ui(ui, &self.error.clone()),
+            CreationType::Ring => self.error = self.ring_ui(ui, &self.error.clone()),
+            CreationType::EllipticalCone => self.error = self.eliptical_ui(ui, &self.error.clone()),
+            CreationType::Zone => self.error = self.zone_ui(ui, &self.error.clone()),
+            CreationType::Box => self.error = self.box_ui(ui, &self.error.clone()),
+            CreationType::Polygon => self.error = self.polygon_ui(ui, &self.error.clone()),
+            CreationType::Coo => self.error = self.coo_ui(ui, &self.error.clone()),
+            CreationType::SmallCone => self.error = self.smallc_ui(ui, &self.error.clone()),
+            CreationType::LargeCone => self.error = self.largec_ui(ui, &self.error.clone()),
+            CreationType::DecimalJd => self.error = self.jd_ui(ui, &self.error.clone()),
+            CreationType::DecimalJdRange => self.error = self.jdr_ui(ui, &self.error.clone()),
+            _ => todo!(),
+        };
+    }
+
     // UIs for types
-    pub fn cone_ui(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
+    pub(crate) fn cone_ui(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
         let mut err = e.to_owned();
         self.depth_builder(ui);
         self.lon_lat_deg_builder(ui);
@@ -62,7 +101,7 @@ impl CreationUis {
         }
         err
     }
-    pub fn ring_ui(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
+    pub(crate) fn ring_ui(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
         let mut err = e.to_owned();
         self.depth_builder(ui);
         self.lon_lat_deg_builder(ui);
@@ -103,7 +142,7 @@ impl CreationUis {
         }
         err
     }
-    pub fn eliptical_ui(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
+    pub(crate) fn eliptical_ui(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
         let mut err = e.to_owned();
         self.elipbox_builder(ui);
 
@@ -138,7 +177,7 @@ impl CreationUis {
         }
         err
     }
-    pub fn zone_ui(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
+    pub(crate) fn zone_ui(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
         let mut err = e.to_owned();
         self.depth_builder(ui);
         self.lons_lats_builder(ui);
@@ -172,7 +211,8 @@ impl CreationUis {
         }
         err
     }
-    pub fn box_ui(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
+
+    pub(crate) fn box_ui(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
         let mut err = e.to_owned();
         self.elipbox_builder(ui);
 
@@ -208,14 +248,9 @@ impl CreationUis {
         err
     }
 
-    pub fn polygon_ui(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
+    pub(crate) fn polygon_ui(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
         let mut err = e.to_owned();
 
-        err = self.table_builder(
-            ui,
-            "Please add 2 different values that are not already present in your polygon",
-            &err,
-        );
         self.depth_builder(ui);
         self.check_bool(ui, "complement");
 
@@ -226,50 +261,28 @@ impl CreationUis {
 
         if ui.button("Create").clicked() {
             err = None;
-            if self.vert.is_empty() {
-                err = Some("You need to add at least 1 set of coordinates".to_string());
-            }
-            let mut vec: Vec<f64> = Vec::default();
-            for v in &self.vert {
-                vec.push(v.0);
-                vec.push(v.1);
-            }
 
-            if self.name.is_empty() {
-                if let Err(e) = from_polygon(
-                    &format!("Polygon_{}", self.depth),
-                    self.depth,
-                    vec.into_boxed_slice(),
-                    self.comp,
-                ) {
-                    err = Some(e);
-                }
-            } else if let Err(e) =
-                from_polygon(&self.name, self.depth, vec.into_boxed_slice(), self.comp)
-            {
+            if let Err(e) = self.load_csv(CreationType::Coo) {
                 err = Some(e);
             }
         }
         err
     }
 
-    pub fn coo_ui(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
-        let mut err = e.to_owned();
-
-        self.depth_builder(ui);
-
-        ui.horizontal(|ui| {
-            ui.label("New MOC name :");
-            ui.text_edit_singleline(&mut self.name);
-        });
-
-        if ui.button("Create").clicked() {
-            err = None;
-            if let Err(e) = self.load_csv(CreationType::Coo) {
-                err = Some(e);
-            }
-        }
-        err
+    pub(crate) fn coo_ui(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
+        self.coo_cones_jd_builder(ui, CreationType::Coo, e)
+    }
+    pub(crate) fn smallc_ui(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
+        self.coo_cones_jd_builder(ui, CreationType::SmallCone, e)
+    }
+    pub(crate) fn largec_ui(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
+        self.coo_cones_jd_builder(ui, CreationType::LargeCone, e)
+    }
+    pub(crate) fn jd_ui(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
+        self.coo_cones_jd_builder(ui, CreationType::DecimalJd, e)
+    }
+    pub(crate) fn jdr_ui(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
+        self.coo_cones_jd_builder(ui, CreationType::DecimalJdRange, e)
     }
 
     // COMMON BUILDERS
@@ -282,6 +295,32 @@ impl CreationUis {
             ui.label("New MOC name :");
             ui.text_edit_singleline(&mut self.name);
         });
+    }
+
+    fn coo_cones_jd_builder(
+        &mut self,
+        ui: &mut Ui,
+        typ: CreationType,
+        e: &Option<String>,
+    ) -> Option<String> {
+        let mut err = e.to_owned();
+
+        self.depth_builder(ui);
+
+        ui.horizontal(|ui| {
+            ui.label("New MOC name :");
+            ui.text_edit_singleline(&mut self.name);
+        });
+
+        ui.label("Creating a MOC like this will ask you for a .csv file.");
+
+        if ui.button("Create").clicked() {
+            err = None;
+            if let Err(e) = self.load_csv(typ) {
+                err = Some(e);
+            }
+        }
+        err
     }
 
     // BASE BUILDERS
@@ -405,81 +444,6 @@ impl CreationUis {
     fn check_bool(&mut self, ui: &mut Ui, txt: &str) {
         ui.checkbox(&mut self.comp, txt);
     }
-    fn table_builder(&mut self, ui: &mut Ui, e: &str, er: &Option<String>) -> Option<String> {
-        let mut err = er.to_owned();
-
-        let txt_h = 30.0;
-        ui.vertical(|ui| {
-            TableBuilder::new(ui)
-                .striped(true)
-                .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-                .column(Size::initial(300.0).at_least(100.0))
-                .column(Size::initial(300.0).at_least(100.0))
-                .column(Size::remainder().at_least(20.0))
-                .header(20.0, |mut header| {
-                    header.col(|ui| {
-                        ui.heading("Lon");
-                        ui.add(egui::Slider::new(&mut self.lon_deg_polf1, 0.0..=TWICE_PI));
-                    });
-                    header.col(|ui| {
-                        ui.heading("Lat");
-                        ui.add(egui::Slider::new(
-                            &mut self.lat_deg_polf2,
-                            -HALF_PI..=HALF_PI,
-                        ));
-                        if ui.button("Add").clicked() {
-                            if self.lon_deg_polf1.eq(&self.lat_deg_polf2)
-                                || self
-                                    .vert
-                                    .contains(&(self.lon_deg_polf1, self.lat_deg_polf2))
-                            {
-                                err = Some(e.to_string());
-                            } else {
-                                err = None;
-                                self.vert.push((self.lon_deg_polf1, self.lat_deg_polf2));
-                                self.lon_deg_polf1 = 0.0;
-                                self.lat_deg_polf2 = 0.0;
-                            }
-                        }
-                    });
-                    header.col(|ui| {
-                        ui.heading("❌");
-                    });
-                })
-                .body(|body| {
-                    body.rows(txt_h, self.vert.len(), |row_index, mut row| {
-                        row.col(|ui| {
-                            // Or enables the program to do vertices deletions
-                            ui.label(
-                                self.vert
-                                    .get(row_index)
-                                    .or(Some(&(0.0, 0.0)))
-                                    .unwrap()
-                                    .0
-                                    .to_string(),
-                            );
-                        });
-                        row.col(|ui| {
-                            // Or enables the program to do vertices deletions
-                            ui.label(
-                                self.vert
-                                    .get(row_index)
-                                    .or(Some(&(0.0, 0.0)))
-                                    .unwrap()
-                                    .1
-                                    .to_string(),
-                            );
-                        });
-                        row.col(|ui| {
-                            if ui.button("❌").clicked() {
-                                self.vert.remove(row_index);
-                            }
-                        });
-                    })
-                });
-        });
-        err
-    }
 
     fn load_csv(&mut self, typ: CreationType) -> Result<(), String> {
         let task = AsyncFileDialog::new()
@@ -491,13 +455,29 @@ impl CreationUis {
         if !self.name.is_empty() {
             name = self.name.clone();
         }
+        let complement = self.comp;
 
         execute(async move {
             let handle = task.await;
             if let Some(file) = handle {
                 let file_content = unsafe { String::from_utf8_unchecked(file.read().await) };
 
-                from_coo(&name, depth, file_content);
+                let _ = match typ {
+                    CreationType::Box => todo!(),
+                    CreationType::Cone => todo!(),
+                    CreationType::Coo => from_coo(&name, depth, file_content),
+                    CreationType::DecimalJd => from_decimal_jd(&name, depth, file_content),
+                    CreationType::DecimalJdRange => {
+                        from_decimal_jd_range(&name, depth, file_content)
+                    }
+                    CreationType::EllipticalCone => todo!(),
+                    CreationType::LargeCone => from_large_cones(&name, depth, file_content),
+                    CreationType::Polygon => from_polygon(&name, depth, file_content, complement),
+                    CreationType::Ring => todo!(),
+                    CreationType::SmallCone => from_small_cones(&name, depth, file_content),
+                    CreationType::ValuedCells => todo!(),
+                    CreationType::Zone => todo!(),
+                };
             }
         });
         Ok(())

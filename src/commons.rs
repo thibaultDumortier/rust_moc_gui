@@ -1,8 +1,7 @@
 use core::fmt;
 use std::{
-    error::Error,
     io::Cursor,
-    str::{from_utf8_unchecked, FromStr},
+    str::from_utf8_unchecked,
 };
 
 use crate::loaders::{
@@ -24,8 +23,6 @@ use moc::{
     },
     qty::{Hpx, Time},
 };
-use time::format_description::{self, well_known::Rfc3339};
-use time::PrimitiveDateTime;
 use unreachable::UncheckedResultExt;
 
 #[cfg(target_arch = "wasm32")]
@@ -301,7 +298,7 @@ pub(crate) fn load(rtype: &[&str], moct: Qty) -> Result<(), String> {
     } else if rtype.contains(&"ascii") {
         "ascii"
     } else {
-        "error [NOT SUPPOSED TO HAPPEN]"
+        "l.301 commons.rs [NOT SUPPOSED TO HAPPEN]"
     };
 
     if let Some(handle) = FileDialog::new().add_filter("MOCs", rtype).pick_files() {
@@ -339,7 +336,7 @@ pub(crate) fn load(rtype: &[&str], moct: Qty) -> Result<(), String> {
     } else if rtype.contains(&"ascii") {
         "ascii"
     } else {
-        "error [NOT SUPPOSED TO HAPPEN]"
+        "l.339 commons.rs [NOT SUPPOSED TO HAPPEN]"
     };
 
     execute(async move {
