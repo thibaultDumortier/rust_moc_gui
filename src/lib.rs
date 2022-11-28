@@ -6,5 +6,3 @@ pub mod loaders;
 pub mod uis;
 pub(crate) mod commons;
 pub use app::FileApp;
-
-//TODO moc creation cone polygon elipse zone box + csv, gui size change, invert moc_op1 and op_one_ui

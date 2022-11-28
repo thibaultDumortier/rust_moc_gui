@@ -28,7 +28,7 @@ enum Op {
 }
 impl Default for Op {
     fn default() -> Self {
-        Op::One
+        Op::List
     }
 }
 impl PartialEq for Op {
@@ -239,11 +239,11 @@ impl FileApp {
                         });
                         row.col(|ui| {
                             ui.menu_button("📥", |ui| {
-                                if ui.button("FITS").clicked()
-                                    && to_fits_file(filenames.get(row_index).unwrap()).is_err()
-                                {
-                                    self.error =
-                                        Some("Error when trying to download file".to_string());
+                                if ui.button("FITS").clicked(){
+                                    if let Err(e) = to_fits_file(filenames.get(row_index).unwrap())
+                                    {
+                                        self.error = Some(e);
+                                    }
                                 }
                                 if ui.button("ASCII").clicked()
                                     && to_ascii_file(filenames.get(row_index).unwrap(), Some(0))

@@ -1,5 +1,9 @@
 use core::fmt;
-use std::{io::Cursor, str::from_utf8_unchecked};
+use std::{
+    error::Error,
+    io::Cursor,
+    str::{from_utf8_unchecked, FromStr},
+};
 
 use crate::loaders::{
     load_ascii::*,
@@ -20,6 +24,8 @@ use moc::{
     },
     qty::{Hpx, Time},
 };
+use time::format_description::{self, well_known::Rfc3339};
+use time::PrimitiveDateTime;
 use unreachable::UncheckedResultExt;
 
 #[cfg(target_arch = "wasm32")]
@@ -211,9 +217,11 @@ pub fn to_json_file(name: &str, fold: Option<usize>) -> Result<(), String> {
 }
 
 pub fn to_fits_file(name: &str) -> Result<(), String> {
-    let data: Box<[u8]> =
-        store::exec(name, move |moc| moc.to_fits()).ok_or_else(|| "MOC not found".to_string())?;
-    to_file(name, ".fits", "application/fits", data)
+    if let Some(data) = store::exec(name, move |moc| moc.to_fits()) {
+        return to_file(name, ".fits", "application/fits", data)
+    } else {
+        Err("Encountered an issue during fits conversion".to_string())
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -275,29 +283,12 @@ fn to_file(name: &str, ext: &str, mime: &str, data: Box<[u8]>) -> Result<(), Str
         .unwrap();
     anchor.set_href(&url);
     anchor.set_download(&filename);
-    if !body
-        .append_child(&anchor)
-        .map_err(|e| e.as_string())
-        .is_ok()
-    {
-        return Err("Body child appending has failed".to_string());
-    }
+    body.append_child(&anchor).map_err(|_| "Body child appending has failed".to_string())?;
     // Simulate a click
     anchor.click();
     // Clean
-    if !body
-        .remove_child(&anchor)
-        .map_err(|e| e.as_string())
-        .is_ok()
-    {
-        return Err("Body child removing has failed".to_string());
-    }
-    if Url::revoke_object_url(&url)
-        .map_err(|e| e.as_string())
-        .is_ok()
-    {
-        return Err("URL revoking object url has failed".to_string());
-    }
+    body.remove_child(&anchor).map_err(|_| "Body child removing has failed".to_string())?;
+    Url::revoke_object_url(&url).map_err(|_| "URL revoking object url has failed".to_string())?;
     Ok(())
 }
 

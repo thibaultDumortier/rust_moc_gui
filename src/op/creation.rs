@@ -7,8 +7,8 @@ use moc::{
     qty::{Hpx, Time},
 };
 
-use crate::commons::*;
 use crate::loaders::store;
+use crate::{app::log, commons::*};
 
 const JD_TO_USEC: f64 = (24_u64 * 60 * 60 * 1_000_000) as f64;
 
@@ -209,14 +209,24 @@ pub fn from_polygon(
 /// * `name`: the name to be given to the MOC
 /// * `depth`: MOC maximum depth in `[0, 29]`
 /// * `coos_deg`: list of coordinates in degrees `[lon_1, lat_1, lon_2, lat_2, ..., lon_n, lat_n]`
-pub fn from_coo(name: &str, depth: u8, coos_deg: Box<[f64]>) -> Result<(), String> {
+pub fn from_coo(name: &str, depth: u8, content: String) -> Result<(), String> {
+    let mut v: Vec<f64> = Vec::default();
+
+    let f: Vec<&str> = content
+        .split(|c| c == ',' || c == '\n')
+        .map(|s| s)
+        .collect();
+    log(format!("{:?}", f).as_str());
+    // Split on line returns too
+    let mut tmp: Vec<f64> = f.iter().filter_map(|f| (*f).parse::<f64>().ok()).collect();
+    v.append(&mut tmp);
+
     // An other solution would be to go unsafe to transmute coos_deg in Box<[[f64; 2]]> ...
     let moc: RangeMOC<u64, Hpx<u64>> = RangeMOC::from_coos(
         depth,
-        coos_deg
-            .iter()
+        v.iter()
             .step_by(2)
-            .zip(coos_deg.iter().skip(1).step_by(2))
+            .zip(v.iter().skip(1).step_by(2))
             .filter_map(|(lon_deg, lat_deg)| {
                 let lon = lon_deg2rad(*lon_deg).ok();
                 let lat = lat_deg2rad(*lat_deg).ok();

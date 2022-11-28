@@ -4,13 +4,11 @@
 use crate::op::creation::*;
 use crate::{app::log, commons::*};
 
+use super::creationui::CreationType;
 use eframe::egui;
 use egui::Ui;
 use egui_extras::{Size, TableBuilder};
 use rfd::AsyncFileDialog;
-use std::cell::RefCell;
-use std::future::Future;
-use std::rc::Rc;
 
 #[derive(Default)]
 pub struct CreationUis {
@@ -221,6 +219,11 @@ impl CreationUis {
         self.depth_builder(ui);
         self.check_bool(ui, "complement");
 
+        ui.horizontal(|ui| {
+            ui.label("New MOC name :");
+            ui.text_edit_singleline(&mut self.name);
+        });
+
         if ui.button("Create").clicked() {
             err = None;
             if self.vert.is_empty() {
@@ -253,11 +256,19 @@ impl CreationUis {
     pub fn coo_ui(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
         let mut err = e.to_owned();
 
-        if ui.button("load").clicked() {
-            self.load_csv();
-            log(format!("{:?}", self.coos_radius).as_str());
-        }
+        self.depth_builder(ui);
 
+        ui.horizontal(|ui| {
+            ui.label("New MOC name :");
+            ui.text_edit_singleline(&mut self.name);
+        });
+
+        if ui.button("Create").clicked() {
+            err = None;
+            if let Err(e) = self.load_csv(CreationType::Coo) {
+                err = Some(e);
+            }
+        }
         err
     }
 
@@ -470,42 +481,25 @@ impl CreationUis {
         err
     }
 
-    fn load_csv(&mut self) -> Result<(), String> {
+    fn load_csv(&mut self, typ: CreationType) -> Result<(), String> {
         let task = AsyncFileDialog::new()
             .add_filter("MOCs", &["csv"])
             .pick_file();
 
-        let v: Rc<RefCell<Vec<f64>>> = Rc::new(RefCell::new(Vec::default()));
-        let res = Rc::clone(&v);
+        let depth = self.depth;
+        let mut name = format!("Coo_{}", self.depth);
+        if !self.name.is_empty() {
+            name = self.name.clone();
+        }
+
         execute(async move {
             let handle = task.await;
             if let Some(file) = handle {
-                let f: Vec<String> = unsafe {
-                    String::from_utf8_unchecked(file.read().await)
-                        .split(",")
-                        .map(|s| s.to_string())
-                        .collect()
-                };
+                let file_content = unsafe { String::from_utf8_unchecked(file.read().await) };
 
-                // Split on line returns too
-                let mut f2: Vec<&str> = Vec::default();
-                for str in &f {
-                    let mut tmp: Vec<&str> = str.split("\n").collect();
-                    f2.append(&mut tmp);
-                }
-
-                // Get floats
-                for float in f2 {
-                    if let Ok(n) = float.parse::<f64>() {
-                        v.borrow_mut().push(n);
-                    }
-                }
-                log(format!("{:?}", v).as_str());
+                from_coo(&name, depth, file_content);
             }
         });
-        log(format!("{:?}", res).as_str());
-        self.coos_radius = res.borrow().clone().into_boxed_slice();
-        log(format!("{:?}", self.coos_radius).as_str());
         Ok(())
     }
 }
