@@ -1,6 +1,8 @@
 #![warn(clippy::all)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
+use std::f64::INFINITY;
+
 use crate::op::creation::*;
 use crate::{app::log, commons::*};
 
@@ -21,8 +23,22 @@ pub struct CreationUis {
     comp: bool,
     typ: CreationType,
     error: Option<String>,
+    // Valued cells requirements
+    density: bool,
+    asc: bool,
+    not_strict: bool,
+    split: bool,
+    revese_recursive_descent: bool,
+    from_threshold: f64,
+    to_threshold: f64,
 }
 impl CreationUis {
+    ////////////////////////////////////////////////
+    // MAIN UI (this uses the sub UIs seen later) //
+
+    // Creation_ui, the main UI component for MOC creation
+    // #Args
+    //  *   `ui`: the egui UI that needs to show the given components
     pub(crate) fn creation_ui(&mut self, ui: &mut Ui) {
         let sel_text = format!("{}", self.typ);
 
@@ -46,6 +62,7 @@ impl CreationUis {
                     ui.selectable_value(&mut self.typ, CreationType::LargeCone, "Cone L");
                     ui.selectable_value(&mut self.typ, CreationType::DecimalJd, "Time: dec");
                     ui.selectable_value(&mut self.typ, CreationType::DecimalJdRange, "Time: range");
+                    ui.selectable_value(&mut self.typ, CreationType::ValuedCells, "Valued cells");
                 });
         });
 
@@ -61,11 +78,26 @@ impl CreationUis {
             CreationType::LargeCone => self.error = self.largec_ui(ui, &self.error.clone()),
             CreationType::DecimalJd => self.error = self.jd_ui(ui, &self.error.clone()),
             CreationType::DecimalJdRange => self.error = self.jdr_ui(ui, &self.error.clone()),
+            CreationType::ValuedCells => self.error = self.valuedC(ui, &self.error.clone()),
             _ => todo!(),
         };
     }
 
-    // UIs for types
+    /////////////
+    // sub-UIs //
+
+    //////////////////////////////////////////////////////////////////////////
+    // All sub-Uis are defined the same and follow a "Type" of MOC creation.
+    // #Definition
+    //      [Type]_ui, the UI for creation from a [Type]
+    // #Args
+    //  *   `ui`: the egui UI that needs to show the given components
+    //  *   `e`: an optional String in case of past errors to keep it visible until change
+    // #Errors
+    //      Depending on the outcome of the "from_[Type]" Moc creation operation
+    //      the program may return an error
+    //////////////////////////////////////////////////////////////////////////
+
     pub(crate) fn cone_ui(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
         let mut err = e.to_owned();
         self.depth_builder(ui);
@@ -252,19 +284,19 @@ impl CreationUis {
         let mut err = e.to_owned();
 
         self.depth_builder(ui);
-        self.check_bool(ui, "complement");
+        ui.checkbox(&mut self.comp, "Complement");
 
         ui.horizontal(|ui| {
             ui.label("New MOC name :");
             ui.text_edit_singleline(&mut self.name);
         });
 
+        ui.label("Creating a MOC like this will ask you for a .csv file.");
+
         if ui.button("Create").clicked() {
             err = None;
 
-            if let Err(e) = self.load_csv(CreationType::Coo) {
-                err = Some(e);
-            }
+            self.load_csv(CreationType::Coo)
         }
         err
     }
@@ -278,6 +310,8 @@ impl CreationUis {
     pub(crate) fn largec_ui(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
         self.coo_cones_jd_builder(ui, CreationType::LargeCone, e)
     }
+
+    // Jd_ui and Jdr_ui are different, they permit Time MOCs creation.
     pub(crate) fn jd_ui(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
         self.coo_cones_jd_builder(ui, CreationType::DecimalJd, e)
     }
@@ -285,7 +319,71 @@ impl CreationUis {
         self.coo_cones_jd_builder(ui, CreationType::DecimalJdRange, e)
     }
 
-    // COMMON BUILDERS
+    fn valuedC(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
+        let mut err = e.clone();
+
+        self.depth_builder(ui);
+        self.threshold_builder(ui);
+
+        ui.checkbox(&mut self.density, "Density");
+        ui.checkbox(&mut self.asc, "Asc");
+        ui.checkbox(&mut self.not_strict, "Strict");
+        ui.checkbox(&mut self.split, "Split");
+        ui.checkbox(
+            &mut self.revese_recursive_descent,
+            "Revese recursive descent",
+        );
+
+        if ui.button("Create").clicked() {
+            err = None;
+
+            let task = AsyncFileDialog::new()
+                .add_filter("MOCs", &["csv"])
+                .pick_file();
+
+            let depth = self.depth;
+            let mut name = format!("ValuedC_{}", self.depth);
+            if !self.name.is_empty() {
+                name = self.name.clone();
+            }
+            let density = self.density;
+            let asc = self.asc;
+            let not_strict = self.not_strict;
+            let split = self.split;
+            let revese_recursive_descent = self.revese_recursive_descent;
+            let from_threshold = self.from_threshold;
+            let to_threshold = self.to_threshold;
+
+            execute(async move {
+                let handle = task.await;
+                if let Some(file) = handle {
+                    let file_content = unsafe { String::from_utf8_unchecked(file.read().await) };
+                    let _ = from_valued_cells(
+                        &name,
+                        depth,
+                        density,
+                        from_threshold,
+                        to_threshold,
+                        asc,
+                        not_strict,
+                        split,
+                        revese_recursive_descent,
+                        file_content,
+                    );
+                }
+            });
+        }
+        err
+    }
+
+    /////////////////////
+    // COMMON BUILDERS //
+
+    // #Definition
+    //      Elipbox_builder is a function that helps with the creation of both
+    //      the eliptical cone UI and the box UI.
+    // #Args
+    //  *   `ui`: the egui UI that needs to show the given components
     fn elipbox_builder(&mut self, ui: &mut Ui) {
         self.depth_builder(ui);
         self.lon_lat_deg_builder(ui);
@@ -297,6 +395,16 @@ impl CreationUis {
         });
     }
 
+    // #Definition
+    //      Coo_cones_jd_builder is a function that helps with the creation of
+    //      the coo UI, the small and large cone UI and both decimal jd UIs.
+    // #Args
+    //  *   `ui`: the egui UI that needs to show the given components
+    //  *   `typ`: the type of creation we are currently performing
+    //  *   `e`: an optional String in case of past errors to keep it visible until change
+    // #Errors
+    //      Depending on the outcome of the "from_[Type]" Moc creation operation
+    //      the program may return an error
     fn coo_cones_jd_builder(
         &mut self,
         ui: &mut Ui,
@@ -316,20 +424,21 @@ impl CreationUis {
 
         if ui.button("Create").clicked() {
             err = None;
-            if let Err(e) = self.load_csv(typ) {
-                err = Some(e);
-            }
+            self.load_csv(typ);
         }
         err
     }
 
-    // BASE BUILDERS
+    ////////////////////
+    // BASIC BUILDERS //
+
     fn depth_builder(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
             ui.label("Depth:");
             ui.add(egui::Slider::new(&mut self.depth, 0..=26));
         });
     }
+
     fn lon_lat_deg_builder(&mut self, ui: &mut Ui) {
         if !(0.0..=TWICE_PI).contains(&self.lon_deg_polf1)
             || !(-HALF_PI..=HALF_PI).contains(&self.lat_deg_polf2)
@@ -350,6 +459,7 @@ impl CreationUis {
             ));
         });
     }
+
     fn lons_lats_builder(&mut self, ui: &mut Ui) {
         if !(0.0..=self.lon_deg_polf1).contains(&self.lon_deg_min_b_int)
             || !(-HALF_PI..=self.lat_deg_polf2).contains(&self.lat_deg_min_pa)
@@ -387,12 +497,14 @@ impl CreationUis {
             ));
         });
     }
+
     fn radius_builder(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
             ui.label("Radius:");
             ui.add(egui::Slider::new(&mut self.radius_a, 0.0..=PI));
         });
     }
+
     fn radii_builder(&mut self, ui: &mut Ui) {
         if !(self.lon_deg_min_b_int..=PI).contains(&self.radius_a)
             || !(0.0..=self.radius_a).contains(&self.lon_deg_min_b_int)
@@ -415,6 +527,7 @@ impl CreationUis {
             ));
         });
     }
+
     fn degs_builder(&mut self, ui: &mut Ui) {
         if !(0.0..=HALF_PI).contains(&self.radius_a)
             || !(0.0..=self.radius_a).contains(&self.lon_deg_min_b_int)
@@ -441,17 +554,28 @@ impl CreationUis {
             ui.add(egui::Slider::new(&mut self.lat_deg_min_pa, 0.0..=PI));
         });
     }
-    fn check_bool(&mut self, ui: &mut Ui, txt: &str) {
-        ui.checkbox(&mut self.comp, txt);
+
+    fn threshold_builder(&mut self, ui: &mut Ui) {
+        ui.horizontal(|ui| {
+            ui.label("From Threshold :");
+            ui.add(egui::Slider::new(&mut self.from_threshold, 0.0..=INFINITY).logarithmic(true));
+        });
+        ui.horizontal(|ui| {
+            ui.label("To Threshold:");
+            ui.add(egui::Slider::new(&mut self.to_threshold, 0.0..=INFINITY).logarithmic(true));
+        });
     }
 
-    fn load_csv(&mut self, typ: CreationType) -> Result<(), String> {
+    //////////////////////
+    // Useful functions //
+
+    fn load_csv(&mut self, typ: CreationType) {
         let task = AsyncFileDialog::new()
             .add_filter("MOCs", &["csv"])
             .pick_file();
 
         let depth = self.depth;
-        let mut name = format!("Coo_{}", self.depth);
+        let mut name = format!("{}_{}", typ, self.depth);
         if !self.name.is_empty() {
             name = self.name.clone();
         }
@@ -480,7 +604,6 @@ impl CreationUis {
                 };
             }
         });
-        Ok(())
     }
 }
 

@@ -245,11 +245,7 @@ pub fn from_coo(name: &str, depth: u8, content: String) -> Result<(), String> {
 /// * `depth`: MOC maximum depth in `[0, 29]`
 /// * `coos_and_radius_deg`: list of coordinates adn radii in degrees
 ///   `[lon_1, lat_1, rad_1, lon_2, lat_2, rad_2, ..., lon_n, lat_n, rad_n]`
-pub fn from_small_cones(
-    name: &str,
-    depth: u8,
-    content: String,
-) -> Result<(), String> {
+pub fn from_small_cones(name: &str, depth: u8, content: String) -> Result<(), String> {
     let v = vector_splitter(content);
 
     let coos_rad = v
@@ -276,11 +272,7 @@ pub fn from_small_cones(
 /// * `depth`: MOC maximum depth in `[0, 29]`
 /// * `coos_and_radius_deg`: list of coordinates adn radii in degrees
 ///   `[lon_1, lat_1, rad_1, lon_2, lat_2, rad_2, ..., lon_n, lat_n, rad_n]`
-pub fn from_large_cones(
-    name: &str,
-    depth: u8,
-    content: String,
-) -> Result<(), String> {
+pub fn from_large_cones(name: &str, depth: u8, content: String) -> Result<(), String> {
     let v = vector_splitter(content);
 
     let coos_rad = v
@@ -329,8 +321,7 @@ pub fn from_decimal_jd_range(name: &str, depth: u8, content: String) -> Result<(
 
     let moc = RangeMOC::<u64, Time<u64>>::from_microsec_ranges_since_jd0(
         depth,
-        v
-            .iter()
+        v.iter()
             .step_by(2)
             .zip(v.iter().skip(1).step_by(2))
             .map(|(jd_min, jd_max)| (jd_min * JD_TO_USEC) as u64..(jd_max * JD_TO_USEC) as u64),
@@ -362,9 +353,21 @@ pub fn from_valued_cells(
     not_strict: bool,
     split: bool,
     revese_recursive_descent: bool,
-    uniqs: Box<[f64]>,
-    values: Box<[f64]>,
+    content: String,
 ) -> Result<(), String> {
+    let mut v: Vec<f64> = Vec::default();
+
+    let f: Vec<&str> = content
+        .split(|c| c == ',' || c == '\n')
+        .map(|s| s)
+        .collect();
+    // Split on line returns too
+    let mut tmp: Vec<f64> = f.iter().filter_map(|f| (*f).parse::<f64>().ok()).collect();
+    v.append(&mut tmp);
+
+    let uniqs: Vec<f64> = v.iter().step_by(2).map(|f| *f).collect();
+    let values: Vec<f64> = v.iter().skip(1).step_by(2).map(|f| *f).collect();
+
     let depth = depth.max(
         uniqs
             .iter()
