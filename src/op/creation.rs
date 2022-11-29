@@ -8,7 +8,7 @@ use moc::{
 };
 
 use crate::loaders::store;
-use crate::{app::log, commons::*};
+use crate::{commons::*};
 
 const JD_TO_USEC: f64 = (24_u64 * 60 * 60 * 1_000_000) as f64;
 
@@ -359,14 +359,13 @@ pub fn from_valued_cells(
 
     let f: Vec<&str> = content
         .split(|c| c == ',' || c == '\n')
-        .map(|s| s)
         .collect();
     // Split on line returns too
     let mut tmp: Vec<f64> = f.iter().filter_map(|f| (*f).parse::<f64>().ok()).collect();
     v.append(&mut tmp);
 
-    let uniqs: Vec<f64> = v.iter().step_by(2).map(|f| *f).collect();
-    let values: Vec<f64> = v.iter().skip(1).step_by(2).map(|f| *f).collect();
+    let uniqs: Vec<f64> = v.iter().step_by(2).copied().collect();
+    let values: Vec<f64> = v.iter().skip(1).step_by(2).copied().collect();
 
     let depth = depth.max(
         uniqs
@@ -444,7 +443,6 @@ fn vector_splitter(content: String) -> Vec<f64> {
 
     let f: Vec<&str> = content
         .split(|c| c == ',' || c == '\n')
-        .map(|s| s)
         .collect();
     // Split on line returns too
     let mut tmp: Vec<f64> = f.iter().filter_map(|f| (*f).parse::<f64>().ok()).collect();

@@ -32,13 +32,13 @@ impl Default for UiMenu {
 }
 impl PartialEq for UiMenu {
     fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (UiMenu::One, UiMenu::One) => true,
-            (UiMenu::Two, UiMenu::Two) => true,
-            (UiMenu::List, UiMenu::List) => true,
-            (UiMenu::Crea, UiMenu::Crea) => true,
-            _ => false,
-        }
+        matches!(
+            (self, other),
+            (UiMenu::One, UiMenu::One)
+                | (UiMenu::Two, UiMenu::Two)
+                | (UiMenu::List, UiMenu::List)
+                | (UiMenu::Crea, UiMenu::Crea)
+        )
     }
 }
 
@@ -71,21 +71,9 @@ impl eframe::App for FileApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.selectable_value(&mut self.operation, UiMenu::List, "MOC list");
-                ui.selectable_value(
-                    &mut self.operation,
-                    UiMenu::Crea,
-                    "MOC creation",
-                );
-                ui.selectable_value(
-                    &mut self.operation,
-                    UiMenu::One,
-                    "1 MOC operation",
-                );
-                ui.selectable_value(
-                    &mut self.operation,
-                    UiMenu::Two,
-                    "2 MOCs operation",
-                );
+                ui.selectable_value(&mut self.operation, UiMenu::Crea, "MOC creation");
+                ui.selectable_value(&mut self.operation, UiMenu::One, "1 MOC operation");
+                ui.selectable_value(&mut self.operation, UiMenu::Two, "2 MOCs operation");
             });
             ui.end_row();
 
@@ -202,7 +190,7 @@ impl FileApp {
                         });
                         row.col(|ui| {
                             ui.menu_button("📥", |ui| {
-                                if ui.button("FITS").clicked(){
+                                if ui.button("FITS").clicked() {
                                     if let Err(e) = to_fits_file(filenames.get(row_index).unwrap())
                                     {
                                         self.error = Some(e);

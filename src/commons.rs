@@ -215,7 +215,7 @@ pub fn to_json_file(name: &str, fold: Option<usize>) -> Result<(), String> {
 
 pub fn to_fits_file(name: &str) -> Result<(), String> {
     if let Some(data) = store::exec(name, move |moc| moc.to_fits()) {
-        return to_file(name, ".fits", "application/fits", data)
+        to_file(name, ".fits", "application/fits", data)
     } else {
         Err("Encountered an issue during fits conversion".to_string())
     }

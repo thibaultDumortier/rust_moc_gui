@@ -3,8 +3,8 @@
 
 use std::f64::INFINITY;
 
+use crate::commons::*;
 use crate::op::creation::*;
-use crate::{app::log, commons::*};
 
 use super::creationui::CreationType;
 use eframe::egui;
@@ -78,8 +78,7 @@ impl CreationUis {
             CreationType::LargeCone => self.error = self.largec_ui(ui, &self.error.clone()),
             CreationType::DecimalJd => self.error = self.jd_ui(ui, &self.error.clone()),
             CreationType::DecimalJdRange => self.error = self.jdr_ui(ui, &self.error.clone()),
-            CreationType::ValuedCells => self.error = self.valuedC(ui, &self.error.clone()),
-            _ => todo!(),
+            CreationType::ValuedCells => self.error = self.valued_c(ui, &self.error.clone()),
         };
     }
 
@@ -319,7 +318,7 @@ impl CreationUis {
         self.coo_cones_jd_builder(ui, CreationType::DecimalJdRange, e)
     }
 
-    fn valuedC(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
+    fn valued_c(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
         let mut err = e.clone();
 
         self.depth_builder(ui);

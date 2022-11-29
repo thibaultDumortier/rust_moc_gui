@@ -233,7 +233,7 @@ impl OpUis {
                             if self.name.is_empty() {
                                 if op1(&moc, op, &format!("{}_{}", op, moc)).is_err() {
                                     //self.error =
-                                    Some("Error when trying to do operation".to_string());
+                                    "Error when trying to do operation".to_string();
                                 }
                             } else if op1(&moc, op, &self.name).is_err() {
                                 //self.error = Some("Error when trying to do operation".to_string());
