@@ -5,4 +5,5 @@ pub mod op;
 pub mod loaders;
 pub mod uis;
 pub(crate) mod commons;
+pub(crate) mod window_options;
 pub use app::FileApp;

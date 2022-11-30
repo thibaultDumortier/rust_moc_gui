@@ -1,7 +1,7 @@
 #![warn(clippy::all)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
-use crate::commons::*;
+use crate::{commons::*, window_options};
 use crate::loaders::{store, store::get_store};
 use crate::uis::{creationui::*, opui::*};
 
@@ -24,6 +24,7 @@ enum UiMenu {
     Two,
     List,
     Crea,
+    Test,
 }
 impl Default for UiMenu {
     fn default() -> Self {
@@ -74,6 +75,7 @@ impl eframe::App for FileApp {
                 ui.selectable_value(&mut self.operation, UiMenu::Crea, "MOC creation");
                 ui.selectable_value(&mut self.operation, UiMenu::One, "1 MOC operation");
                 ui.selectable_value(&mut self.operation, UiMenu::Two, "2 MOCs operation");
+                ui.selectable_value(&mut self.operation, UiMenu::Test, "Test");
             });
             ui.end_row();
 
@@ -83,6 +85,7 @@ impl eframe::App for FileApp {
                 UiMenu::Two => self.opui.moc_op2(ui),
                 UiMenu::List => self.list_ui(ui),
                 UiMenu::Crea => self.creation.creation_ui(ui),
+                UiMenu::Test => window_options::WindowOptions::default().show(ctx),
             }
         });
     }

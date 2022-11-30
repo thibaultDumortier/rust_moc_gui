@@ -7,8 +7,8 @@ use moc::{
     qty::{Hpx, Time},
 };
 
-use crate::loaders::store;
-use crate::{commons::*};
+use crate::commons::*;
+use crate::{loaders::store};
 
 const JD_TO_USEC: f64 = (24_u64 * 60 * 60 * 1_000_000) as f64;
 
@@ -357,9 +357,7 @@ pub fn from_valued_cells(
 ) -> Result<(), String> {
     let mut v: Vec<f64> = Vec::default();
 
-    let f: Vec<&str> = content
-        .split(|c| c == ',' || c == '\n')
-        .collect();
+    let f: Vec<&str> = content.split(|c| c == ',' || c == '\n').collect();
     // Split on line returns too
     let mut tmp: Vec<f64> = f.iter().filter_map(|f| (*f).parse::<f64>().ok()).collect();
     v.append(&mut tmp);
@@ -441,9 +439,7 @@ pub(crate) fn lat_deg2rad(lat_deg: f64) -> Result<f64, String> {
 fn vector_splitter(content: String) -> Vec<f64> {
     let mut v: Vec<f64> = Vec::default();
 
-    let f: Vec<&str> = content
-        .split(|c| c == ',' || c == '\n')
-        .collect();
+    let f: Vec<&str> = content.split(|c| c == ',' || c == '\n').collect();
     // Split on line returns too
     let mut tmp: Vec<f64> = f.iter().filter_map(|f| (*f).parse::<f64>().ok()).collect();
     v.append(&mut tmp);
