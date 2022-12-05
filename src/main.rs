@@ -14,7 +14,7 @@ fn main() {
     eframe::run_native(
         "fileapp",
         options,
-        Box::new(|_| Box::new(rust_moc_gui::FileApp::new())),
+        Box::new(|_| Box::new(rust_moc_gui::FileApp::default())),
     );
 }
 
@@ -35,7 +35,7 @@ fn main() {
     eframe::start_web(
         "filecanvas", // hardcode it
         web_options,
-        Box::new(|_| Box::new(rust_moc_gui::FileApp::new())),
+        Box::new(|_| Box::new(rust_moc_gui::FileApp::default())),
     )
     .expect("failed to start eframe");
 }

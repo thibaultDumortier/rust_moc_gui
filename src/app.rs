@@ -1,9 +1,12 @@
 #![warn(clippy::all)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
-use crate::{commons::*, window_options};
+use std::collections::BTreeSet;
+
 use crate::loaders::{store, store::get_store};
 use crate::uis::{creationui::*, opui::*};
+use crate::window_options::WindowOptions;
+use crate::{commons::*, window_options};
 
 use eframe::egui;
 use egui::menu;
@@ -50,6 +53,8 @@ pub struct FileApp {
     error: Option<String>,
     creation: CreationUis,
     opui: OpUis,
+    open: WindowOptions,
+    is_open: bool,
 }
 impl eframe::App for FileApp {
     /*
@@ -75,7 +80,14 @@ impl eframe::App for FileApp {
                 ui.selectable_value(&mut self.operation, UiMenu::Crea, "MOC creation");
                 ui.selectable_value(&mut self.operation, UiMenu::One, "1 MOC operation");
                 ui.selectable_value(&mut self.operation, UiMenu::Two, "2 MOCs operation");
-                ui.selectable_value(&mut self.operation, UiMenu::Test, "Test");
+                if ui
+                    .selectable_value(&mut self.operation, UiMenu::Test, "Test")
+                    .clicked()
+                {
+                    if !self.is_open {
+                        self.is_open = true;
+                    }
+                };
             });
             ui.end_row();
 
@@ -85,27 +97,15 @@ impl eframe::App for FileApp {
                 UiMenu::Two => self.opui.moc_op2(ui),
                 UiMenu::List => self.list_ui(ui),
                 UiMenu::Crea => self.creation.creation_ui(ui),
-                UiMenu::Test => window_options::WindowOptions::default().show(ctx),
+                UiMenu::Test => {
+                    self.open.show(ctx, &mut self.is_open);
+                    log(self.is_open.to_string().as_str());
+                }
             }
         });
     }
 }
 impl FileApp {
-    /*
-        new: function of FileApp struct
-        Description: A function handling the contents of the top bar
-        Parameters: None
-        Returns: FileApp
-    */
-    pub fn new() -> Self {
-        FileApp {
-            operation: UiMenu::default(),
-            error: None,
-            creation: CreationUis::default(),
-            opui: OpUis::default(),
-        }
-    }
-
     /*
         bar_contents: function of FileApp struct
         Description: A function handling the contents of the top bar
