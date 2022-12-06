@@ -1,12 +1,11 @@
 #![warn(clippy::all)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
-use std::collections::BTreeSet;
-
+use crate::commons::*;
+use crate::infoui::InfoWindow;
 use crate::loaders::{store, store::get_store};
 use crate::uis::{creationui::*, opui::*};
-use crate::window_options::WindowOptions;
-use crate::{commons::*, window_options};
+use std::collections::HashMap;
 
 use eframe::egui;
 use egui::menu;
@@ -53,8 +52,7 @@ pub struct FileApp {
     error: Option<String>,
     creation: CreationUis,
     opui: OpUis,
-    open: WindowOptions,
-    is_open: bool,
+    open_windows: HashMap<String, InfoWindow>,
 }
 impl eframe::App for FileApp {
     /*
@@ -80,14 +78,7 @@ impl eframe::App for FileApp {
                 ui.selectable_value(&mut self.operation, UiMenu::Crea, "MOC creation");
                 ui.selectable_value(&mut self.operation, UiMenu::One, "1 MOC operation");
                 ui.selectable_value(&mut self.operation, UiMenu::Two, "2 MOCs operation");
-                if ui
-                    .selectable_value(&mut self.operation, UiMenu::Test, "Test")
-                    .clicked()
-                {
-                    if !self.is_open {
-                        self.is_open = true;
-                    }
-                };
+                ui.selectable_value(&mut self.operation, UiMenu::Test, "Test")
             });
             ui.end_row();
 
@@ -95,12 +86,9 @@ impl eframe::App for FileApp {
             match &self.operation {
                 UiMenu::One => self.opui.moc_op1(ui),
                 UiMenu::Two => self.opui.moc_op2(ui),
-                UiMenu::List => self.list_ui(ui),
+                UiMenu::List => self.list_ui(ctx, ui).unwrap_or_default(),
                 UiMenu::Crea => self.creation.creation_ui(ui),
-                UiMenu::Test => {
-                    self.open.show(ctx, &mut self.is_open);
-                    log(self.is_open.to_string().as_str());
-                }
+                UiMenu::Test => {}
             }
         });
     }
@@ -123,6 +111,7 @@ impl FileApp {
                 ui.menu_button("Files", |ui| {
                     ui.menu_button("Load", |ui| {
                         if ui.button("FITS").clicked() {
+                            //Qty::Space here is a default it is not actually used
                             match load(&["fits"], Qty::Space) {
                                 Ok(_) => self.error = None,
                                 Err(e) => {
@@ -162,7 +151,23 @@ impl FileApp {
         });
     }
 
-    fn list_ui(&mut self, ui: &mut Ui) {
+    fn list_ui(&mut self, ctx: &egui::Context, ui: &mut Ui) -> Result<(), ()> {
+        for moc in store::list_mocs().unwrap() {
+            if self.open_windows.is_empty() {
+                self.open_windows = HashMap::new();
+                break;
+            }
+            let mut is_open = self.open_windows.contains_key(&moc);
+            if is_open {
+                self.open_windows
+                    .get(&moc)
+                    .unwrap()
+                    .to_owned()
+                    .show(ctx, &mut is_open);
+            }
+            self.set_open(&moc.clone(), is_open);
+        }
+
         let mut filenames: Vec<String> = Vec::default();
         for file in get_store().read().unwrap().iter() {
             filenames.push(file.0.to_string());
@@ -189,7 +194,15 @@ impl FileApp {
                 .body(|body| {
                     body.rows(txt_h, filenames.len(), |row_index, mut row| {
                         row.col(|ui| {
-                            ui.label(filenames.get(row_index).unwrap());
+                            if ui.button(filenames.get(row_index).unwrap()).clicked() {
+                                let name = filenames.get(row_index).unwrap().to_string();
+                                if !self.open_windows.contains_key(&name) {
+                                    self.open_windows
+                                        .insert(name.clone(), InfoWindow::new(name));
+                                } else if self.open_windows.contains_key(&name) {
+                                    self.open_windows.remove(&name);
+                                }
+                            };
                         });
                         row.col(|ui| {
                             ui.menu_button("📥", |ui| {
@@ -225,5 +238,11 @@ impl FileApp {
                     })
                 })
         });
+        Ok(())
+    }
+    fn set_open(&mut self, key: &str, is_open: bool) {
+        if !is_open {
+            self.open_windows.remove(key);
+        }
     }
 }
