@@ -1,8 +1,5 @@
 use core::fmt;
-use std::{
-    io::Cursor,
-    str::from_utf8_unchecked,
-};
+use std::{io::Cursor, str::from_utf8_unchecked};
 
 use crate::loaders::{
     load_ascii::*,
@@ -280,11 +277,13 @@ fn to_file(name: &str, ext: &str, mime: &str, data: Box<[u8]>) -> Result<(), Str
         .unwrap();
     anchor.set_href(&url);
     anchor.set_download(&filename);
-    body.append_child(&anchor).map_err(|_| "Body child appending has failed".to_string())?;
+    body.append_child(&anchor)
+        .map_err(|_| "Body child appending has failed".to_string())?;
     // Simulate a click
     anchor.click();
     // Clean
-    body.remove_child(&anchor).map_err(|_| "Body child removing has failed".to_string())?;
+    body.remove_child(&anchor)
+        .map_err(|_| "Body child removing has failed".to_string())?;
     Url::revoke_object_url(&url).map_err(|_| "URL revoking object url has failed".to_string())?;
     Ok(())
 }

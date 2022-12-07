@@ -2,18 +2,17 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
 use crate::commons::*;
-use crate::infoui::InfoWindow;
-use crate::loaders::{store, store::get_store};
+use crate::uis::infoui::ListUi;
 use crate::uis::{creationui::*, opui::*};
-use std::collections::HashMap;
 
 use eframe::egui;
 use egui::menu;
 use egui::Ui;
-use egui_extras::{Size, TableBuilder};
+#[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::wasm_bindgen;
 
 //Import javascript log function
+#[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_namespace = console)]
@@ -26,7 +25,6 @@ enum UiMenu {
     Two,
     List,
     Crea,
-    //Test,
 }
 impl Default for UiMenu {
     fn default() -> Self {
@@ -52,7 +50,7 @@ pub struct FileApp {
     error: Option<String>,
     creation: CreationUis,
     opui: OpUis,
-    open_windows: HashMap<String, InfoWindow>,
+    list: ListUi,
 }
 impl eframe::App for FileApp {
     //////////////////////
@@ -78,7 +76,6 @@ impl eframe::App for FileApp {
                 ui.selectable_value(&mut self.operation, UiMenu::Crea, "MOC creation");
                 ui.selectable_value(&mut self.operation, UiMenu::One, "1 MOC operation");
                 ui.selectable_value(&mut self.operation, UiMenu::Two, "2 MOCs operation");
-                //ui.selectable_value(&mut self.operation, UiMenu::Test, "Test")
             });
             ui.end_row();
 
@@ -86,9 +83,8 @@ impl eframe::App for FileApp {
             match &self.operation {
                 UiMenu::One => self.opui.moc_op1(ui),
                 UiMenu::Two => self.opui.moc_op2(ui),
-                UiMenu::List => self.list_ui(ctx, ui).unwrap_or_default(),
+                UiMenu::List => self.error = self.list.list_ui(ctx, ui, &self.error),
                 UiMenu::Crea => self.creation.creation_ui(ui),
-                //UiMenu::Test => {}
             }
         });
     }
@@ -149,101 +145,5 @@ impl FileApp {
                 ui.label(self.error.as_ref().unwrap());
             }
         });
-    }
-
-    fn list_ui(&mut self, ctx: &egui::Context, ui: &mut Ui) -> Result<(), ()> {
-        for moc in store::list_mocs().unwrap() {
-            if self.open_windows.is_empty() {
-                self.open_windows = HashMap::new();
-                break;
-            }
-            let mut is_open = self.open_windows.contains_key(&moc);
-            if is_open {
-                self.open_windows
-                    .get(&moc)
-                    .unwrap()
-                    .to_owned()
-                    .show(ctx, &mut is_open);
-            }
-            self.set_open(&moc.clone(), is_open);
-        }
-
-        let mut filenames: Vec<String> = Vec::default();
-        for file in get_store().read().unwrap().iter() {
-            filenames.push(file.0.to_string());
-        }
-        let txt_h = 30.0;
-        ui.vertical(|ui| {
-            TableBuilder::new(ui)
-                .striped(true)
-                .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-                .column(Size::initial(300.0).at_least(100.0))
-                .column(Size::initial(20.0).at_least(20.0))
-                .column(Size::remainder().at_least(20.0))
-                .header(20.0, |mut header| {
-                    header.col(|ui| {
-                        ui.heading("Name");
-                    });
-                    header.col(|ui| {
-                        ui.heading("📥");
-                    });
-                    header.col(|ui| {
-                        ui.heading("❌");
-                    });
-                })
-                .body(|body| {
-                    body.rows(txt_h, filenames.len(), |row_index, mut row| {
-                        row.col(|ui| {
-                            if ui.button(filenames.get(row_index).unwrap()).clicked() {
-                                let name = filenames.get(row_index).unwrap().to_string();
-                                // If an information window doesn't exist, create one.
-                                if !self.open_windows.contains_key(&name) {
-                                    self.open_windows
-                                        .insert(name.clone(), InfoWindow::new(name));
-                                } else if self.open_windows.contains_key(&name) {
-                                    self.open_windows.remove(&name);
-                                }
-                            };
-                        });
-                        row.col(|ui| {
-                            ui.menu_button("📥", |ui| {
-                                if ui.button("FITS").clicked() {
-                                    if let Err(e) = to_fits_file(filenames.get(row_index).unwrap())
-                                    {
-                                        self.error = Some(e);
-                                    }
-                                }
-                                if ui.button("ASCII").clicked()
-                                    && to_ascii_file(filenames.get(row_index).unwrap(), Some(0))
-                                        .is_err()
-                                {
-                                    self.error =
-                                        Some("Error when trying to download file".to_string());
-                                }
-                                if ui.button("JSON").clicked()
-                                    && to_json_file(filenames.get(row_index).unwrap(), Some(0))
-                                        .is_err()
-                                {
-                                    self.error =
-                                        Some("Error when trying to download file".to_string());
-                                }
-                            });
-                        });
-                        row.col(|ui| {
-                            if ui.button("❌").clicked()
-                                && store::drop(filenames.get(row_index).unwrap()).is_err()
-                            {
-                                self.error = Some("Error when trying to remove file".to_string());
-                            }
-                        });
-                    })
-                })
-        });
-        Ok(())
-    }
-    fn set_open(&mut self, key: &str, is_open: bool) {
-        if !is_open {
-            self.open_windows.remove(key);
-        }
     }
 }

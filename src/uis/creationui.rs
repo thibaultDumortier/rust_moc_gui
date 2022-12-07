@@ -9,7 +9,14 @@ use crate::op::creation::*;
 use super::creationui::CreationType;
 use eframe::egui;
 use egui::Ui;
+
+#[cfg(target_arch = "wasm32")]
 use rfd::AsyncFileDialog;
+
+#[cfg(not(target_arch = "wasm32"))]
+use rfd::FileDialog;
+use std::fs::File;
+use std::io::Read;
 
 #[derive(Default)]
 pub struct CreationUis {
@@ -296,7 +303,7 @@ impl CreationUis {
         if ui.button("Create").clicked() {
             err = None;
 
-            self.load_csv(CreationType::Coo)
+            let _ = self.load_csv(CreationType::Coo);
         }
         err
     }
@@ -319,6 +326,7 @@ impl CreationUis {
         self.coo_cones_jd_builder(ui, CreationType::DecimalJdRange, e)
     }
 
+    #[cfg(target_arch = "wasm32")]
     fn valued_c(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
         let mut err = e.clone();
 
@@ -376,6 +384,63 @@ impl CreationUis {
         err
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
+    fn valued_c(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
+        let mut err = e.clone();
+
+        self.depth_builder(ui);
+        self.threshold_builder(ui);
+
+        ui.checkbox(&mut self.density, "Density");
+        ui.checkbox(&mut self.asc, "Asc");
+        ui.checkbox(&mut self.not_strict, "Strict");
+        ui.checkbox(&mut self.split, "Split");
+        ui.checkbox(
+            &mut self.revese_recursive_descent,
+            "Revese recursive descent",
+        );
+
+        if ui.button("Create").clicked() {
+            err = None;
+
+            if let Some(path) = FileDialog::new().add_filter("MOCs", &["csv"]).pick_file() {
+                let depth = self.depth;
+                let mut name = format!("ValuedC_{}", self.depth);
+                if !self.name.is_empty() {
+                    name = self.name.clone();
+                }
+
+                let mut file =
+                    File::open(&path).map_err(|_| err = Some("Error while opening file".to_string())).unwrap();
+                let mut file_content = Vec::default();
+                file.read_to_end(&mut file_content).map_err(|e| err = Some(e.to_string())).unwrap();
+                let file_content = unsafe { String::from_utf8_unchecked(file_content) };
+
+                let density = self.density;
+                let asc = self.asc;
+                let not_strict = self.not_strict;
+                let split = self.split;
+                let revese_recursive_descent = self.revese_recursive_descent;
+                let from_threshold = self.from_threshold;
+                let to_threshold = self.to_threshold;
+
+                let _ = from_valued_cells(
+                    &name,
+                    depth,
+                    density,
+                    from_threshold,
+                    to_threshold,
+                    asc,
+                    not_strict,
+                    split,
+                    revese_recursive_descent,
+                    file_content,
+                );
+            }
+        }
+        err
+    }
+
     /////////////////////
     // COMMON BUILDERS //
 
@@ -424,7 +489,7 @@ impl CreationUis {
 
         if ui.button("Create").clicked() {
             err = None;
-            self.load_csv(typ);
+            let _ = self.load_csv(typ).map_err(|e| err = Some(e));
         }
         err
     }
@@ -569,7 +634,8 @@ impl CreationUis {
     //////////////////////
     // Useful functions //
 
-    fn load_csv(&mut self, typ: CreationType) {
+    #[cfg(target_arch = "wasm32")]
+    fn load_csv(&mut self, typ: CreationType) -> Result<(), String> {
         let task = AsyncFileDialog::new()
             .add_filter("MOCs", &["csv"])
             .pick_file();
@@ -604,9 +670,45 @@ impl CreationUis {
                 };
             }
         });
+        ok(())
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn load_csv(&mut self, typ: CreationType) -> Result<(), String> {
+        if let Some(path) = FileDialog::new().add_filter("MOCs", &["csv"]).pick_file() {
+            let depth = self.depth;
+            let mut name = format!("{}_{}", typ, self.depth);
+            if !self.name.is_empty() {
+                name = self.name.clone();
+            }
+            let complement = self.comp;
+
+            let mut file = File::open(&path).map_err(|_| "Error while opening file".to_string())?;
+            let mut file_content = Vec::default();
+            file.read_to_end(&mut file_content)
+                .map_err(|e| format!("Error while reading file: {}", e))?;
+            let file_content = unsafe { String::from_utf8_unchecked(file_content) };
+
+            let _ = match typ {
+                CreationType::Box => todo!(),
+                CreationType::Cone => todo!(),
+                CreationType::Coo => from_coo(&name, depth, file_content),
+                CreationType::DecimalJd => from_decimal_jd(&name, depth, file_content),
+                CreationType::DecimalJdRange => from_decimal_jd_range(&name, depth, file_content),
+                CreationType::EllipticalCone => todo!(),
+                CreationType::LargeCone => from_large_cones(&name, depth, file_content),
+                CreationType::Polygon => from_polygon(&name, depth, file_content, complement),
+                CreationType::Ring => todo!(),
+                CreationType::SmallCone => from_small_cones(&name, depth, file_content),
+                CreationType::ValuedCells => todo!(),
+                CreationType::Zone => todo!(),
+            };
+        }
+        Ok(())
     }
 }
 
+#[cfg(target_arch = "wasm32")]
 fn execute<F: std::future::Future<Output = ()> + 'static>(f: F) {
     wasm_bindgen_futures::spawn_local(f);
 }
