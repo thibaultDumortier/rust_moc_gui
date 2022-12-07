@@ -26,7 +26,7 @@ enum UiMenu {
     Two,
     List,
     Crea,
-    Test,
+    //Test,
 }
 impl Default for UiMenu {
     fn default() -> Self {
@@ -55,14 +55,14 @@ pub struct FileApp {
     open_windows: HashMap<String, InfoWindow>,
 }
 impl eframe::App for FileApp {
-    /*
-        update: function of FileApp struct from eframe::App
-        Description: A function updating the state of the application
-        Parameters:
-            ctx: &equi::Context, the app's context
-            frame is unused but mandatory
-        Returns: ()
-    */
+    //////////////////////
+    // Eframe functions //
+
+    // #Definition
+    //      A function updating the state of the application at a given interval
+    // #Args:
+    //  *    ctx: &equi::Context, the app's context
+    //  *    frame is unused but mandatory
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::TopBottomPanel::top("top_bar").show(ctx, |ui| {
             egui::trace!(ui);
@@ -78,7 +78,7 @@ impl eframe::App for FileApp {
                 ui.selectable_value(&mut self.operation, UiMenu::Crea, "MOC creation");
                 ui.selectable_value(&mut self.operation, UiMenu::One, "1 MOC operation");
                 ui.selectable_value(&mut self.operation, UiMenu::Two, "2 MOCs operation");
-                ui.selectable_value(&mut self.operation, UiMenu::Test, "Test")
+                //ui.selectable_value(&mut self.operation, UiMenu::Test, "Test")
             });
             ui.end_row();
 
@@ -88,19 +88,19 @@ impl eframe::App for FileApp {
                 UiMenu::Two => self.opui.moc_op2(ui),
                 UiMenu::List => self.list_ui(ctx, ui).unwrap_or_default(),
                 UiMenu::Crea => self.creation.creation_ui(ui),
-                UiMenu::Test => {}
+                //UiMenu::Test => {}
             }
         });
     }
 }
 impl FileApp {
-    /*
-        bar_contents: function of FileApp struct
-        Description: A function handling the contents of the top bar
-        Parameters:
-            ui: Ui, the ui from the app
-        Returns: ()
-    */
+    /////////////////////
+    // Basic functions //
+
+    // #Definition
+    //      A function handling the contents of the top bar
+    // #Args
+    //  *   ui: Ui, the ui from the app
     fn bar_contents(&mut self, ui: &mut Ui) {
         egui::widgets::global_dark_light_mode_switch(ui);
 
@@ -196,6 +196,7 @@ impl FileApp {
                         row.col(|ui| {
                             if ui.button(filenames.get(row_index).unwrap()).clicked() {
                                 let name = filenames.get(row_index).unwrap().to_string();
+                                // If an information window doesn't exist, create one.
                                 if !self.open_windows.contains_key(&name) {
                                     self.open_windows
                                         .insert(name.clone(), InfoWindow::new(name));

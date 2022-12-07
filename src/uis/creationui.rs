@@ -36,7 +36,8 @@ impl CreationUis {
     ////////////////////////////////////////////////
     // MAIN UI (this uses the sub UIs seen later) //
 
-    // Creation_ui, the main UI component for MOC creation
+    // #Definition
+    //      Creation_ui, the main UI component for MOC creation
     // #Args
     //  *   `ui`: the egui UI that needs to show the given components
     pub(crate) fn creation_ui(&mut self, ui: &mut Ui) {
