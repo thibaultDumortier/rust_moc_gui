@@ -44,6 +44,7 @@ impl PartialEq for UiMenu {
 }
 
 //FileApp struct
+
 #[derive(Default)]
 pub struct FileApp {
     operation: UiMenu,

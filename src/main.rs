@@ -32,10 +32,14 @@ fn main() {
         default_theme: eframe::Theme::Light,
         ..Default::default()
     };
-    eframe::start_web(
-        "filecanvas", // hardcode it
-        web_options,
-        Box::new(|_| Box::new(rust_moc_gui::FileApp::default())),
-    )
-    .expect("failed to start eframe");
+
+    wasm_bindgen_futures::spawn_local(async {
+        eframe::start_web(
+            "filecanvas", // hardcode it
+            web_options,
+            Box::new(|_| Box::new(rust_moc_gui::FileApp::default())),
+        )
+        .await
+        .expect("failed to start eframe");
+    });
 }

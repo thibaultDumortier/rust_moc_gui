@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use egui::Ui;
-use egui_extras::{Size, TableBuilder};
+use egui_extras::{Column, TableBuilder};
 
 use crate::{
     commons::{to_ascii_file, to_fits_file, to_json_file, Qty},
@@ -82,9 +82,9 @@ impl ListUi {
             TableBuilder::new(ui)
                 .striped(true)
                 .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-                .column(Size::initial(300.0).at_least(100.0))
-                .column(Size::initial(20.0).at_least(20.0))
-                .column(Size::remainder().at_least(20.0))
+                .column(Column::initial(300.0).at_least(100.0))
+                .column(Column::initial(20.0).at_least(20.0))
+                .column(Column::remainder().at_least(20.0))
                 .header(20.0, |mut header| {
                     header.col(|ui| {
                         ui.heading("Name");

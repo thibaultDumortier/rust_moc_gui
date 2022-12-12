@@ -20,6 +20,7 @@ pub(crate) fn from_fits_gen<T: Idx>(
         MocQtyType::Hpx(moc) => from_fits_hpx(moc),
         MocQtyType::Time(moc) => from_fits_time(moc),
         MocQtyType::TimeHpx(_) => Err(String::from("Only u64 ST-MOCs supported").into()),
+        MocQtyType::Freq(_) => Err(String::from("unsupported").into()),
     }
 }
 
@@ -32,6 +33,7 @@ pub(crate) fn from_fits_u64(
         MocQtyType::Hpx(moc) => from_fits_hpx(moc),
         MocQtyType::Time(moc) => from_fits_time(moc),
         MocQtyType::TimeHpx(moc2) => from_fits_spacetime(moc2),
+        MocQtyType::Freq(_) => todo!(),
     }
 }
 

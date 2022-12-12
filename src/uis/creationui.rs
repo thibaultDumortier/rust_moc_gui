@@ -74,20 +74,32 @@ impl CreationUis {
                 });
         });
 
-        match self.typ {
-            CreationType::Cone => self.error = self.cone_ui(ui, &self.error.clone()),
-            CreationType::Ring => self.error = self.ring_ui(ui, &self.error.clone()),
-            CreationType::EllipticalCone => self.error = self.eliptical_ui(ui, &self.error.clone()),
-            CreationType::Zone => self.error = self.zone_ui(ui, &self.error.clone()),
-            CreationType::Box => self.error = self.box_ui(ui, &self.error.clone()),
-            CreationType::Polygon => self.error = self.polygon_ui(ui, &self.error.clone()),
-            CreationType::Coo => self.error = self.coo_ui(ui, &self.error.clone()),
-            CreationType::SmallCone => self.error = self.smallc_ui(ui, &self.error.clone()),
-            CreationType::LargeCone => self.error = self.largec_ui(ui, &self.error.clone()),
-            CreationType::DecimalJd => self.error = self.jd_ui(ui, &self.error.clone()),
-            CreationType::DecimalJdRange => self.error = self.jdr_ui(ui, &self.error.clone()),
-            CreationType::ValuedCells => self.error = self.valued_c(ui, &self.error.clone()),
-        };
+        egui::Grid::new("my_grid")
+            .num_columns(2)
+            .spacing([40.0, 4.0])
+            .striped(true)
+            .show(ui, |ui| {
+                match self.typ {
+                    CreationType::Cone => self.error = self.cone_ui(ui, &self.error.clone()),
+                    CreationType::Ring => self.error = self.ring_ui(ui, &self.error.clone()),
+                    CreationType::EllipticalCone => {
+                        self.error = self.eliptical_ui(ui, &self.error.clone())
+                    }
+                    CreationType::Zone => self.error = self.zone_ui(ui, &self.error.clone()),
+                    CreationType::Box => self.error = self.box_ui(ui, &self.error.clone()),
+                    CreationType::Polygon => self.error = self.polygon_ui(ui, &self.error.clone()),
+                    CreationType::Coo => self.error = self.coo_ui(ui, &self.error.clone()),
+                    CreationType::SmallCone => self.error = self.smallc_ui(ui, &self.error.clone()),
+                    CreationType::LargeCone => self.error = self.largec_ui(ui, &self.error.clone()),
+                    CreationType::DecimalJd => self.error = self.jd_ui(ui, &self.error.clone()),
+                    CreationType::DecimalJdRange => {
+                        self.error = self.jdr_ui(ui, &self.error.clone())
+                    }
+                    CreationType::ValuedCells => {
+                        self.error = self.valued_c(ui, &self.error.clone())
+                    }
+                };
+            });
     }
 
     /////////////
@@ -111,10 +123,9 @@ impl CreationUis {
         self.lon_lat_deg_builder(ui);
         self.radius_builder(ui);
 
-        ui.horizontal(|ui| {
-            ui.label("New MOC name :");
-            ui.text_edit_singleline(&mut self.name);
-        });
+        ui.label("New MOC name :");
+        ui.text_edit_singleline(&mut self.name);
+        ui.end_row();
 
         if ui.button("Create").clicked() {
             err = None;
@@ -146,10 +157,9 @@ impl CreationUis {
         self.lon_lat_deg_builder(ui);
         self.radii_builder(ui);
 
-        ui.horizontal(|ui| {
-            ui.label("New MOC name :");
-            ui.text_edit_singleline(&mut self.name);
-        });
+        ui.label("New MOC name :");
+        ui.text_edit_singleline(&mut self.name);
+        ui.end_row();
 
         if ui.button("Create").clicked() {
             err = None;
@@ -220,6 +230,10 @@ impl CreationUis {
         let mut err = e.to_owned();
         self.depth_builder(ui);
         self.lons_lats_builder(ui);
+
+        ui.label("New MOC name :");
+        ui.text_edit_singleline(&mut self.name);
+        ui.end_row();
 
         if ui.button("Create").clicked() {
             err = None;
@@ -292,13 +306,14 @@ impl CreationUis {
 
         self.depth_builder(ui);
         ui.checkbox(&mut self.comp, "Complement");
+        ui.end_row();
 
-        ui.horizontal(|ui| {
-            ui.label("New MOC name :");
-            ui.text_edit_singleline(&mut self.name);
-        });
+        ui.label("New MOC name :");
+        ui.text_edit_singleline(&mut self.name);
+        ui.end_row();
 
         ui.label("Creating a MOC like this will ask you for a .csv file.");
+        ui.end_row();
 
         if ui.button("Create").clicked() {
             err = None;
@@ -334,13 +349,21 @@ impl CreationUis {
         self.threshold_builder(ui);
 
         ui.checkbox(&mut self.density, "Density");
+        ui.end_row();
         ui.checkbox(&mut self.asc, "Asc");
+        ui.end_row();
         ui.checkbox(&mut self.not_strict, "Strict");
+        ui.end_row();
         ui.checkbox(&mut self.split, "Split");
+        ui.end_row();
         ui.checkbox(
             &mut self.revese_recursive_descent,
             "Revese recursive descent",
         );
+        ui.end_row();
+        ui.label("New MOC name :");
+        ui.text_edit_singleline(&mut self.name);
+        ui.end_row();
 
         if ui.button("Create").clicked() {
             err = None;
@@ -392,13 +415,21 @@ impl CreationUis {
         self.threshold_builder(ui);
 
         ui.checkbox(&mut self.density, "Density");
+        ui.end_row();
         ui.checkbox(&mut self.asc, "Asc");
+        ui.end_row();
         ui.checkbox(&mut self.not_strict, "Strict");
+        ui.end_row();
         ui.checkbox(&mut self.split, "Split");
+        ui.end_row();
         ui.checkbox(
             &mut self.revese_recursive_descent,
             "Revese recursive descent",
         );
+        ui.end_row();
+        ui.label("New MOC name :");
+        ui.text_edit_singleline(&mut self.name);
+        ui.end_row();
 
         if ui.button("Create").clicked() {
             err = None;
@@ -410,10 +441,13 @@ impl CreationUis {
                     name = self.name.clone();
                 }
 
-                let mut file =
-                    File::open(&path).map_err(|_| err = Some("Error while opening file".to_string())).unwrap();
+                let mut file = File::open(&path)
+                    .map_err(|_| err = Some("Error while opening file".to_string()))
+                    .unwrap();
                 let mut file_content = Vec::default();
-                file.read_to_end(&mut file_content).map_err(|e| err = Some(e.to_string())).unwrap();
+                file.read_to_end(&mut file_content)
+                    .map_err(|e| err = Some(e.to_string()))
+                    .unwrap();
                 let file_content = unsafe { String::from_utf8_unchecked(file_content) };
 
                 let density = self.density;
@@ -454,10 +488,9 @@ impl CreationUis {
         self.lon_lat_deg_builder(ui);
         self.degs_builder(ui);
 
-        ui.horizontal(|ui| {
-            ui.label("New MOC name :");
-            ui.text_edit_singleline(&mut self.name);
-        });
+        ui.label("New MOC name :");
+        ui.text_edit_singleline(&mut self.name);
+        ui.end_row();
     }
 
     // #Definition
@@ -480,12 +513,12 @@ impl CreationUis {
 
         self.depth_builder(ui);
 
-        ui.horizontal(|ui| {
-            ui.label("New MOC name :");
-            ui.text_edit_singleline(&mut self.name);
-        });
+        ui.label("New MOC name :");
+        ui.text_edit_singleline(&mut self.name);
+        ui.end_row();
 
         ui.label("Creating a MOC like this will ask you for a .csv file.");
+        ui.end_row();
 
         if ui.button("Create").clicked() {
             err = None;
@@ -498,10 +531,9 @@ impl CreationUis {
     // BASIC BUILDERS //
 
     fn depth_builder(&mut self, ui: &mut Ui) {
-        ui.horizontal(|ui| {
-            ui.label("Depth:");
-            ui.add(egui::Slider::new(&mut self.depth, 0..=26));
-        });
+        ui.label("Depth:");
+        ui.add(egui::Slider::new(&mut self.depth, 0..=26));
+        ui.end_row();
     }
 
     fn lon_lat_deg_builder(&mut self, ui: &mut Ui) {
@@ -512,17 +544,15 @@ impl CreationUis {
             self.lat_deg_polf2 = 0.0;
         }
 
-        ui.horizontal(|ui| {
-            ui.label("Longitude degradation:");
-            ui.add(egui::Slider::new(&mut self.lon_deg_polf1, 0.0..=TWICE_PI));
-        });
-        ui.horizontal(|ui| {
-            ui.label("Latitude degradation:");
-            ui.add(egui::Slider::new(
-                &mut self.lat_deg_polf2,
-                -HALF_PI..=HALF_PI,
-            ));
-        });
+        ui.label("Longitude degradation:");
+        ui.add(egui::Slider::new(&mut self.lon_deg_polf1, 0.0..=TWICE_PI));
+        ui.end_row();
+        ui.label("Latitude degradation:");
+        ui.add(egui::Slider::new(
+            &mut self.lat_deg_polf2,
+            -HALF_PI..=HALF_PI,
+        ));
+        ui.end_row();
     }
 
     fn lons_lats_builder(&mut self, ui: &mut Ui) {
@@ -533,41 +563,36 @@ impl CreationUis {
             self.lat_deg_min_pa = 0.0;
         }
 
-        ui.horizontal(|ui| {
-            ui.label("Minimal longitude degradation:");
-            ui.add(egui::Slider::new(
-                &mut self.lon_deg_min_b_int,
-                0.0..=self.lon_deg_polf1,
-            ));
-        });
-        ui.horizontal(|ui| {
-            ui.label("Minimal latitude degradation:");
-            ui.add(egui::Slider::new(
-                &mut self.lat_deg_min_pa,
-                -HALF_PI..=self.lat_deg_polf2,
-            ));
-        });
-        ui.horizontal(|ui| {
-            ui.label("Maximal longitude degradation:");
-            ui.add(egui::Slider::new(
-                &mut self.lon_deg_polf1,
-                self.lon_deg_min_b_int..=TWICE_PI,
-            ));
-        });
-        ui.horizontal(|ui| {
-            ui.label("Maximal latitude degradation:");
-            ui.add(egui::Slider::new(
-                &mut self.lat_deg_polf2,
-                self.lat_deg_min_pa..=HALF_PI,
-            ));
-        });
+        ui.label("Minimal longitude degradation:");
+        ui.add(egui::Slider::new(
+            &mut self.lon_deg_min_b_int,
+            0.0..=self.lon_deg_polf1,
+        ));
+        ui.end_row();
+        ui.label("Minimal latitude degradation:");
+        ui.add(egui::Slider::new(
+            &mut self.lat_deg_min_pa,
+            -HALF_PI..=self.lat_deg_polf2,
+        ));
+        ui.end_row();
+        ui.label("Maximal longitude degradation:");
+        ui.add(egui::Slider::new(
+            &mut self.lon_deg_polf1,
+            self.lon_deg_min_b_int..=TWICE_PI,
+        ));
+        ui.end_row();
+        ui.label("Maximal latitude degradation:");
+        ui.add(egui::Slider::new(
+            &mut self.lat_deg_polf2,
+            self.lat_deg_min_pa..=HALF_PI,
+        ));
+        ui.end_row();
     }
 
     fn radius_builder(&mut self, ui: &mut Ui) {
-        ui.horizontal(|ui| {
-            ui.label("Radius:");
-            ui.add(egui::Slider::new(&mut self.radius_a, 0.0..=PI));
-        });
+        ui.label("Radius:");
+        ui.add(egui::Slider::new(&mut self.radius_a, 0.0..=PI));
+        ui.end_row();
     }
 
     fn radii_builder(&mut self, ui: &mut Ui) {
@@ -577,20 +602,18 @@ impl CreationUis {
             self.radius_a = 0.0;
             self.lon_deg_min_b_int = 0.0;
         }
-        ui.horizontal(|ui| {
-            ui.label("Internal radius:");
-            ui.add(egui::Slider::new(
-                &mut self.lon_deg_min_b_int,
-                0.0..=self.radius_a,
-            ));
-        });
-        ui.horizontal(|ui| {
-            ui.label("External radius:");
-            ui.add(egui::Slider::new(
-                &mut self.radius_a,
-                self.lon_deg_min_b_int..=PI,
-            ));
-        });
+        ui.label("Internal radius:");
+        ui.add(egui::Slider::new(
+            &mut self.lon_deg_min_b_int,
+            0.0..=self.radius_a,
+        ));
+        ui.end_row();
+        ui.label("External radius:");
+        ui.add(egui::Slider::new(
+            &mut self.radius_a,
+            self.lon_deg_min_b_int..=PI,
+        ));
+        ui.end_row();
     }
 
     fn degs_builder(&mut self, ui: &mut Ui) {
@@ -603,32 +626,27 @@ impl CreationUis {
             self.lat_deg_min_pa = 0.0;
         }
 
-        ui.horizontal(|ui| {
-            ui.label("A degradation:");
-            ui.add(egui::Slider::new(&mut self.radius_a, 0.0..=HALF_PI));
-        });
-        ui.horizontal(|ui| {
-            ui.label("B degradation:");
-            ui.add(egui::Slider::new(
-                &mut self.lon_deg_min_b_int,
-                0.0..=self.radius_a,
-            ));
-        });
-        ui.horizontal(|ui| {
-            ui.label("PA degradation:");
-            ui.add(egui::Slider::new(&mut self.lat_deg_min_pa, 0.0..=PI));
-        });
+        ui.label("A degradation:");
+        ui.add(egui::Slider::new(&mut self.radius_a, 0.0..=HALF_PI));
+        ui.end_row();
+        ui.label("B degradation:");
+        ui.add(egui::Slider::new(
+            &mut self.lon_deg_min_b_int,
+            0.0..=self.radius_a,
+        ));
+        ui.end_row();
+        ui.label("PA degradation:");
+        ui.add(egui::Slider::new(&mut self.lat_deg_min_pa, 0.0..=PI));
+        ui.end_row();
     }
 
     fn threshold_builder(&mut self, ui: &mut Ui) {
-        ui.horizontal(|ui| {
-            ui.label("From Threshold :");
-            ui.add(egui::Slider::new(&mut self.from_threshold, 0.0..=INFINITY).logarithmic(true));
-        });
-        ui.horizontal(|ui| {
-            ui.label("To Threshold:");
-            ui.add(egui::Slider::new(&mut self.to_threshold, 0.0..=INFINITY).logarithmic(true));
-        });
+        ui.label("From Threshold :");
+        ui.add(egui::Slider::new(&mut self.from_threshold, 0.0..=INFINITY).logarithmic(true));
+        ui.end_row();
+        ui.label("To Threshold:");
+        ui.add(egui::Slider::new(&mut self.to_threshold, 0.0..=INFINITY).logarithmic(true));
+        ui.end_row();
     }
 
     //////////////////////
@@ -670,7 +688,7 @@ impl CreationUis {
                 };
             }
         });
-        ok(())
+        Ok(())
     }
 
     #[cfg(not(target_arch = "wasm32"))]
