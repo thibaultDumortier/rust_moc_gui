@@ -58,49 +58,31 @@ impl OpUis {
         // An operation combo box including Intersection and Union
         let sel_text = format!("{}", self.operation);
 
-        ui.horizontal(|ui| {
-            ui.label("Operation :");
-            egui::ComboBox::from_id_source("Operation_cbox")
-                .selected_text(sel_text)
-                .show_ui(ui, |ui| {
+        ui.label("Operation :");
+        egui::ComboBox::from_id_source("Operation_cbox")
+            .selected_text(sel_text)
+            .show_ui(ui, |ui| {
+                ui.selectable_value(&mut self.operation, Op::One(Op1::Complement), "Complement");
+                ui.selectable_value(
+                    &mut self.operation,
+                    Op::One(Op1::Degrade { new_depth: 0 }),
+                    "Degrade",
+                );
+                if self.picked_file.is_some()
+                    && store::get_qty(&self.picked_file.clone().unwrap()) == Ok(Qty::Space)
+                {
+                    ui.selectable_value(&mut self.operation, Op::One(Op1::Extend), "Extend");
+                    ui.selectable_value(&mut self.operation, Op::One(Op1::Contract), "Contract");
+                    ui.selectable_value(&mut self.operation, Op::One(Op1::ExtBorder), "ExtBorder");
+                    ui.selectable_value(&mut self.operation, Op::One(Op1::IntBorder), "IntBorder");
+                    ui.selectable_value(&mut self.operation, Op::One(Op1::Split), "Split");
                     ui.selectable_value(
                         &mut self.operation,
-                        Op::One(Op1::Complement),
-                        "Complement",
+                        Op::One(Op1::SplitIndirect),
+                        "SplitIndirect",
                     );
-                    ui.selectable_value(
-                        &mut self.operation,
-                        Op::One(Op1::Degrade { new_depth: 0 }),
-                        "Degrade",
-                    );
-                    if self.picked_file.is_some()
-                        && store::get_qty(&self.picked_file.clone().unwrap()) == Ok(Qty::Space)
-                    {
-                        ui.selectable_value(&mut self.operation, Op::One(Op1::Extend), "Extend");
-                        ui.selectable_value(
-                            &mut self.operation,
-                            Op::One(Op1::Contract),
-                            "Contract",
-                        );
-                        ui.selectable_value(
-                            &mut self.operation,
-                            Op::One(Op1::ExtBorder),
-                            "ExtBorder",
-                        );
-                        ui.selectable_value(
-                            &mut self.operation,
-                            Op::One(Op1::IntBorder),
-                            "IntBorder",
-                        );
-                        ui.selectable_value(&mut self.operation, Op::One(Op1::Split), "Split");
-                        ui.selectable_value(
-                            &mut self.operation,
-                            Op::One(Op1::SplitIndirect),
-                            "SplitIndirect",
-                        );
-                    }
-                });
-        });
+                }
+            });
     }
 
     /*
@@ -115,40 +97,32 @@ impl OpUis {
         // An operation combo box including Intersection and Union
         if self.picked_file.is_some() && self.picked_second_file.is_some() {
             if self.files_have_same_type() {
-                if self.operation.eq(&Op::Two(Op2::SFold)) || self.operation.eq(&Op::Two(Op2::TFold)) {
+                if self.operation.eq(&Op::Two(Op2::SFold))
+                    || self.operation.eq(&Op::Two(Op2::TFold))
+                {
                     self.operation = Op::Two(Op2::Intersection);
                 }
                 let sel_text = format!("{}", self.operation);
 
-                ui.horizontal(|ui| {
-                    ui.label("Operation :");
-                    egui::ComboBox::from_id_source("Operation_cbox")
-                        .selected_text(sel_text)
-                        .show_ui(ui, |ui| {
-                            if self.files_have_same_type() {
-                                ui.selectable_value(
-                                    &mut self.operation,
-                                    Op::Two(Op2::Intersection),
-                                    "Intersection",
-                                );
-                                ui.selectable_value(
-                                    &mut self.operation,
-                                    Op::Two(Op2::Minus),
-                                    "Minus",
-                                );
-                                ui.selectable_value(
-                                    &mut self.operation,
-                                    Op::Two(Op2::Union),
-                                    "Union",
-                                );
-                                ui.selectable_value(
-                                    &mut self.operation,
-                                    Op::Two(Op2::Difference),
-                                    "Difference",
-                                );
-                            }
-                        });
-                });
+                ui.label("Operation :");
+                egui::ComboBox::from_id_source("Operation_cbox")
+                    .selected_text(sel_text)
+                    .show_ui(ui, |ui| {
+                        if self.files_have_same_type() {
+                            ui.selectable_value(
+                                &mut self.operation,
+                                Op::Two(Op2::Intersection),
+                                "Intersection",
+                            );
+                            ui.selectable_value(&mut self.operation, Op::Two(Op2::Minus), "Minus");
+                            ui.selectable_value(&mut self.operation, Op::Two(Op2::Union), "Union");
+                            ui.selectable_value(
+                                &mut self.operation,
+                                Op::Two(Op2::Difference),
+                                "Difference",
+                            );
+                        }
+                    });
             } else if self.files_have_stmoc() {
                 ui.horizontal(|ui| {
                     if store::get_qty(&self.picked_file.clone().unwrap()) == Ok(Qty::Space)
@@ -198,53 +172,58 @@ impl OpUis {
                 sel_text = self.picked_file.clone().unwrap();
             }
 
-            //Combo box containing the different files that can be picked from
-            ui.horizontal(|ui| {
-                ui.label("MOC : ");
-                self.make_cbox(ui, sel_text.as_str(), "file_cbox", None);
-            });
+            egui::Grid::new("my_grid")
+                .num_columns(2)
+                .spacing([40.0, 4.0])
+                .striped(true)
+                .show(ui, |ui| {
+                    //Combo box containing the different files that can be picked from
+                    ui.label("MOC : ");
+                    self.make_cbox(ui, sel_text.as_str(), "file_cbox", None);
+                    ui.end_row();
 
-            self.op_one_ui(ui);
+                    self.op_one_ui(ui);
+                    ui.end_row();
 
-            //In case of degrade option ask for new depth
-            let deg = matches!(self.operation, Op::One(Op1::Degrade { new_depth: _ }));
-            if deg {
-                ui.add(egui::Slider::new(&mut self.deg, 0..=25));
-            }
+                    //In case of degrade option ask for new depth
+                    let deg = matches!(self.operation, Op::One(Op1::Degrade { new_depth: _ }));
+                    if deg {
+                        ui.add(egui::Slider::new(&mut self.deg, 0..=25));
+                        ui.end_row();
+                    }
 
-            if self.picked_file.is_some() {
-                ui.horizontal(|ui| {
-                    ui.label("New MOC name :");
-                    ui.text_edit_singleline(&mut self.name);
+                    if self.picked_file.is_some() {
+                        ui.label("New MOC name :");
+                        ui.text_edit_singleline(&mut self.name);
+                        ui.end_row();
+
+                        //Button launching the operation
+                        if store::get_qty(&self.picked_file.clone().unwrap()) != Ok(Qty::Timespace)
+                        {
+                            if ui.button("Launch").clicked() {
+                                //self.error = None;
+                                if deg {
+                                    op = Op1::Degrade {
+                                        new_depth: self.deg,
+                                    }
+                                }
+                                let moc = self.picked_file.clone().unwrap();
+
+                                if self.name.is_empty() {
+                                    if op1(&moc, op, &format!("{}_{}", op, moc)).is_err() {
+                                        //self.error =
+                                        "Error when trying to do operation".to_string();
+                                    }
+                                } else if op1(&moc, op, &self.name).is_err() {
+                                    //self.error = Some("Error when trying to do operation".to_string());
+                                    self.name = String::default();
+                                }
+                            };
+                        } else {
+                            ui.label("SpaceTime MOCs cannot be operated on alone.");
+                        }
+                    }
                 });
-
-                //Button launching the operation
-                if store::get_qty(&self.picked_file.clone().unwrap()) != Ok(Qty::Timespace) {
-                    ui.horizontal(|ui| {
-                        if ui.button("Launch").clicked() {
-                            //self.error = None;
-                            if deg {
-                                op = Op1::Degrade {
-                                    new_depth: self.deg,
-                                }
-                            }
-                            let moc = self.picked_file.clone().unwrap();
-
-                            if self.name.is_empty() {
-                                if op1(&moc, op, &format!("{}_{}", op, moc)).is_err() {
-                                    //self.error =
-                                    "Error when trying to do operation".to_string();
-                                }
-                            } else if op1(&moc, op, &self.name).is_err() {
-                                //self.error = Some("Error when trying to do operation".to_string());
-                                self.name = String::default();
-                            }
-                        };
-                    });
-                } else {
-                    ui.label("SpaceTime MOCs cannot be operated on alone.");
-                }
-            }
         }
     }
 
@@ -275,46 +254,47 @@ impl OpUis {
             if self.picked_second_file.is_some() {
                 sel_text_2 = self.picked_second_file.clone().unwrap();
             }
-            //Combo boxes containing the different files that can be picked from
-            ui.horizontal(|ui| {
-                ui.label("First MOC :");
-                self.make_cbox(ui, &sel_text, "file_cbox", None);
-            });
-            ui.horizontal(|ui| {
-                ui.label("Second MOC :");
-                self.make_cbox(ui, &sel_text_2, "file_cbox_2", Some(1));
-            });
+            egui::Grid::new("my_grid")
+                .num_columns(2)
+                .spacing([40.0, 4.0])
+                .striped(true)
+                .show(ui, |ui| {
+                    //Combo boxes containing the different files that can be picked from
+                    ui.label("First MOC :");
+                    self.make_cbox(ui, &sel_text, "file_cbox", None);
+                    ui.end_row();
+                    ui.label("Second MOC :");
+                    self.make_cbox(ui, &sel_text_2, "file_cbox_2", Some(1));
+                    ui.end_row();
 
-            self.op_two_ui(ui);
+                    self.op_two_ui(ui);
+                    ui.end_row();
 
-            if (self.picked_file.is_some() && self.picked_second_file.is_some())
-                && (self.files_have_same_type() || self.files_have_stmoc())
-            {
-                ui.horizontal(|ui| {
-                    ui.label("New MOC name :");
-                    ui.text_edit_singleline(&mut self.name);
-                });
+                    if (self.picked_file.is_some() && self.picked_second_file.is_some())
+                        && (self.files_have_same_type() || self.files_have_stmoc())
+                    {
+                        ui.label("New MOC name :");
+                        ui.text_edit_singleline(&mut self.name);
+                        ui.end_row();
 
-                //Button launching the operation
-                ui.horizontal(|ui| {
-                    if ui.button("Launch").clicked() {
-                        //self.error = None;
-                        let mut l = self.picked_file.as_ref().unwrap();
-                        let mut r = self.picked_second_file.as_ref().unwrap();
-                        if store::get_qty(l) == Ok(Qty::Timespace) {
-                            std::mem::swap(&mut r, &mut l);
-                        }
-                        if self.name.is_empty() {
-                            if op2(l, r, op, &format!("{}_{}_{}", op, l, r)).is_err() {
-                                //self.error = Some("Error when trying to do operation".to_string());
+                        //Button launching the operation
+                        if ui.button("Launch").clicked() {
+                            let mut l = self.picked_file.as_ref().unwrap();
+                            let mut r = self.picked_second_file.as_ref().unwrap();
+                            if store::get_qty(l) == Ok(Qty::Timespace) {
+                                std::mem::swap(&mut r, &mut l);
                             }
-                        } else if op2(l, r, op, &self.name).is_err() {
-                            //self.error = Some("Error when trying to do operation".to_string());
-                            self.name = String::default();
-                        }
-                    };
+                            if self.name.is_empty() {
+                                if op2(l, r, op, &format!("{}_{}_{}", op, l, r)).is_err() {
+                                    //self.error = Some("Error when trying to do operation".to_string());
+                                }
+                            } else if op2(l, r, op, &self.name).is_err() {
+                                //self.error = Some("Error when trying to do operation".to_string());
+                                self.name = String::default();
+                            }
+                        };
+                    }
                 });
-            }
         }
     }
 
