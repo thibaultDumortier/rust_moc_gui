@@ -1,7 +1,7 @@
 use core::fmt;
 use std::{io::Cursor, str::from_utf8_unchecked};
 
-use crate::loaders::{
+use crate::models::{
     load_ascii::*,
     load_fits::*,
     load_json::*,

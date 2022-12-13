@@ -3,7 +3,7 @@ use core::fmt;
 use moc::moc::{CellMOCIntoIterator, CellMOCIterator, RangeMOCIterator};
 
 use crate::commons::{InternalMoc, Smoc, Stmoc, Tmoc};
-use crate::loaders::store;
+use crate::models::store;
 
 #[derive(Copy, Clone)]
 pub(crate) enum Op1 {

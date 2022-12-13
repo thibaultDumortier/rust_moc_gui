@@ -2,8 +2,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
 use crate::commons::*;
-use crate::uis::infoui::ListUi;
-use crate::uis::{creationui::*, opui::*};
+use crate::views::infoui::ListUi;
+use crate::views::{creationui::*, opui::*};
 
 use eframe::egui;
 use egui::menu;

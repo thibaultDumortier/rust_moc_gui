@@ -4,8 +4,8 @@
 use core::fmt;
 
 use crate::commons::*;
-use crate::loaders::{store, store::get_store, store::list_mocs};
-use crate::op::{op1::*, op2::*};
+use crate::models::{store, store::get_store, store::list_mocs};
+use crate::controllers::{op1::*, op2::*};
 
 use eframe::egui;
 use egui::Ui;

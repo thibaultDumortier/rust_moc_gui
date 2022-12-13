@@ -8,7 +8,7 @@ use moc::moc2d::{HasTwoMaxDepth, RangeMOC2IntoIterator};
 use moc::qty::{Hpx, Time};
 
 use crate::commons::{InternalMoc, Smoc, Stmoc, Tmoc};
-use crate::loaders::store;
+use crate::models::store;
 
 #[derive(Copy, Clone)]
 pub(crate) enum Op2 {

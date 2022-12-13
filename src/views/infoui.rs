@@ -5,7 +5,7 @@ use egui_extras::{Column, TableBuilder};
 
 use crate::{
     commons::{to_ascii_file, to_fits_file, to_json_file, Qty},
-    loaders::store::{self, get_store},
+    models::store::{self, get_store},
 };
 
 #[derive(Clone, PartialEq, Default, PartialOrd, Ord, Eq)]
