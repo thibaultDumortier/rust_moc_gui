@@ -82,8 +82,8 @@ impl eframe::App for FileApp {
 
             ui.separator();
             match &self.operation {
-                UiMenu::One => self.opui.moc_op1(ui),
-                UiMenu::Two => self.opui.moc_op2(ui),
+                UiMenu::One => self.error = self.opui.moc_op1(ui, &self.error),
+                UiMenu::Two => self.error = self.opui.moc_op2(ui, &self.error),
                 UiMenu::List => self.error = self.list.list_ui(ctx, ui, &self.error),
                 UiMenu::Crea => self.creation.creation_ui(ui),
             }

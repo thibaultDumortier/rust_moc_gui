@@ -113,32 +113,25 @@ impl ListUi {
                         row.col(|ui| {
                             ui.menu_button("📥", |ui| {
                                 if ui.button("FITS").clicked() {
-                                    if let Err(e) = to_fits_file(filenames.get(row_index).unwrap())
-                                    {
-                                        err = Some(e);
-                                    }
+                                    let _ = to_fits_file(filenames.get(row_index).unwrap())
+                                        .map_err(|e| err = Some(e));
                                 }
                                 if ui.button("ASCII").clicked() {
-                                    if let Err(e) =
+                                    let _ =
                                         to_ascii_file(filenames.get(row_index).unwrap(), Some(0))
-                                    {
-                                        err = Some(e);
-                                    }
+                                            .map_err(|e| err = Some(e));
                                 }
                                 if ui.button("JSON").clicked() {
-                                    if let Err(e) =
+                                    let _ =
                                         to_json_file(filenames.get(row_index).unwrap(), Some(0))
-                                    {
-                                        err = Some(e);
-                                    }
+                                            .map_err(|e| err = Some(e));
                                 }
                             });
                         });
                         row.col(|ui| {
                             if ui.button("❌").clicked() {
-                                if let Err(e) = store::drop(filenames.get(row_index).unwrap()) {
-                                    err = Some(e);
-                                }
+                                let _ = store::drop(filenames.get(row_index).unwrap())
+                                    .map_err(|e| err = Some(e));
                             }
                         });
                     })

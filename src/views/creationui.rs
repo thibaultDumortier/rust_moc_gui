@@ -74,6 +74,7 @@ impl CreationUis {
                 });
         });
 
+        // The small paragraph before the match sets a grid layout to have every element aligned
         egui::Grid::new("my_grid")
             .num_columns(2)
             .spacing([40.0, 4.0])
@@ -130,24 +131,17 @@ impl CreationUis {
         if ui.button("Create").clicked() {
             err = None;
             if self.name.is_empty() {
-                if let Err(e) = from_cone(
-                    &format!("Cone_of_rad_{}", self.radius_a.to_string().as_str()),
-                    self.depth,
-                    self.lon_deg_polf1,
-                    self.lat_deg_polf2,
-                    self.radius_a,
-                ) {
-                    err = Some(e);
-                }
-            } else if let Err(e) = from_cone(
+                self.name = format!("Cone_of_rad_{}", self.radius_a.to_string().as_str());
+            }
+            let _ = from_cone(
                 &self.name,
                 self.depth,
                 self.lon_deg_polf1,
                 self.lat_deg_polf2,
                 self.radius_a,
-            ) {
-                err = Some(e);
-            }
+            )
+            .map_err(|e| err = Some(e));
+            self.name = String::default();
         }
         err
     }
@@ -164,30 +158,22 @@ impl CreationUis {
         if ui.button("Create").clicked() {
             err = None;
             if self.name.is_empty() {
-                if let Err(e) = from_ring(
-                    &format!(
-                        "ring_of_rad_{}_{}",
-                        self.lon_deg_min_b_int.to_string().as_str(),
-                        self.radius_a.to_string().as_str()
-                    ),
-                    self.depth,
-                    self.lon_deg_polf1,
-                    self.lat_deg_polf2,
-                    self.lon_deg_min_b_int,
-                    self.radius_a,
-                ) {
-                    err = Some(e);
-                }
-            } else if let Err(e) = from_ring(
+                self.name = format!(
+                    "ring_of_rad_{}_{}",
+                    self.lon_deg_min_b_int.to_string().as_str(),
+                    self.radius_a.to_string().as_str()
+                );
+            }
+            let _ = from_ring(
                 &self.name,
                 self.depth,
                 self.lon_deg_polf1,
                 self.lat_deg_polf2,
                 self.lon_deg_min_b_int,
                 self.radius_a,
-            ) {
-                err = Some(e);
-            }
+            )
+            .map_err(|e| err = Some(e));
+            self.name = String::default();
         }
         err
     }
@@ -198,21 +184,12 @@ impl CreationUis {
         if ui.button("Create").clicked() {
             err = None;
             if self.name.is_empty() {
-                if let Err(e) = from_elliptical_cone(
-                    &format!(
-                        "ElipCone_deg_{}_{}_{}",
-                        self.radius_a, self.lon_deg_min_b_int, self.lat_deg_min_pa,
-                    ),
-                    self.depth,
-                    self.lon_deg_polf1,
-                    self.lat_deg_polf2,
-                    self.radius_a,
-                    self.lon_deg_min_b_int,
-                    self.lat_deg_min_pa,
-                ) {
-                    err = Some(e);
-                }
-            } else if let Err(e) = from_elliptical_cone(
+                self.name = format!(
+                    "ElipCone_deg_{}_{}_{}",
+                    self.radius_a, self.lon_deg_min_b_int, self.lat_deg_min_pa,
+                )
+            }
+            let _ = from_elliptical_cone(
                 &self.name,
                 self.depth,
                 self.lon_deg_polf1,
@@ -220,9 +197,9 @@ impl CreationUis {
                 self.radius_a,
                 self.lon_deg_min_b_int,
                 self.lat_deg_min_pa,
-            ) {
-                err = Some(e);
-            }
+            )
+            .map_err(|e| err = Some(e));
+            self.name = String::default();
         }
         err
     }
@@ -238,29 +215,21 @@ impl CreationUis {
         if ui.button("Create").clicked() {
             err = None;
             if self.name.is_empty() {
-                if let Err(e) = from_zone(
-                    &format!(
-                        "Zone_deg_{}_{}",
-                        self.lon_deg_min_b_int, self.lat_deg_min_pa
-                    ),
-                    self.depth,
-                    self.lon_deg_min_b_int,
-                    self.lat_deg_min_pa,
-                    self.lon_deg_polf1,
-                    self.lat_deg_polf2,
-                ) {
-                    err = Some(e);
-                }
-            } else if let Err(e) = from_zone(
+                self.name = format!(
+                    "Zone_deg_{}_{}",
+                    self.lon_deg_min_b_int, self.lat_deg_min_pa
+                );
+            }
+            let _ = from_zone(
                 &self.name,
                 self.depth,
                 self.lon_deg_min_b_int,
                 self.lat_deg_min_pa,
                 self.lon_deg_polf1,
                 self.lat_deg_polf2,
-            ) {
-                err = Some(e);
-            }
+            )
+            .map_err(|e| err = Some(e));
+            self.name = String::default();
         }
         err
     }
@@ -272,21 +241,12 @@ impl CreationUis {
         if ui.button("Create").clicked() {
             err = None;
             if self.name.is_empty() {
-                if let Err(e) = from_box(
-                    &format!(
-                        "Box_deg_{}_{}_{}",
-                        self.radius_a, self.lon_deg_min_b_int, self.lat_deg_min_pa
-                    ),
-                    self.depth,
-                    self.lon_deg_polf1,
-                    self.lat_deg_polf2,
-                    self.radius_a,
-                    self.lon_deg_min_b_int,
-                    self.lat_deg_min_pa,
-                ) {
-                    err = Some(e);
-                }
-            } else if let Err(e) = from_box(
+                self.name = format!(
+                    "Box_deg_{}_{}_{}",
+                    self.radius_a, self.lon_deg_min_b_int, self.lat_deg_min_pa
+                );
+            }
+            let _ = from_box(
                 &self.name,
                 self.depth,
                 self.lon_deg_polf1,
@@ -294,9 +254,9 @@ impl CreationUis {
                 self.radius_a,
                 self.lon_deg_min_b_int,
                 self.lat_deg_min_pa,
-            ) {
-                err = Some(e);
-            }
+            )
+            .map_err(|e| err = Some(e));
+            self.name = String::default();
         }
         err
     }
@@ -318,7 +278,8 @@ impl CreationUis {
         if ui.button("Create").clicked() {
             err = None;
 
-            let _ = self.load_csv(CreationType::Coo);
+            let _ = self.load_csv(CreationType::Coo).map_err(|e| err = Some(e));
+            self.name = String::default();
         }
         err
     }
@@ -469,7 +430,8 @@ impl CreationUis {
                     split,
                     revese_recursive_descent,
                     file_content,
-                );
+                )
+                .map_err(|e| err = Some(e));
             }
         }
         err
@@ -523,6 +485,7 @@ impl CreationUis {
         if ui.button("Create").clicked() {
             err = None;
             let _ = self.load_csv(typ).map_err(|e| err = Some(e));
+            self.name = String::default();
         }
         err
     }

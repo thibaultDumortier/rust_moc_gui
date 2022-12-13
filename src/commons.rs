@@ -24,12 +24,16 @@ use unreachable::UncheckedResultExt;
 
 #[cfg(target_arch = "wasm32")]
 use js_sys::{Array, Uint8Array};
+#[cfg(target_arch = "wasm32")]
 use rfd::AsyncFileDialog;
+#[cfg(target_arch = "wasm32")]
 use wasm_bindgen::JsCast;
+#[cfg(target_arch = "wasm32")]
 use web_sys::{Blob, BlobPropertyBag, HtmlAnchorElement, Url};
 
 #[cfg(not(target_arch = "wasm32"))]
 use rfd::FileDialog;
+#[cfg(not(target_arch = "wasm32"))]
 use std::{
     fs::File,
     io::{Read, Write},

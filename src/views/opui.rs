@@ -4,8 +4,8 @@
 use core::fmt;
 
 use crate::commons::*;
-use crate::models::{store, store::get_store, store::list_mocs};
 use crate::controllers::{op1::*, op2::*};
+use crate::models::{store, store::get_store, store::list_mocs};
 
 use eframe::egui;
 use egui::Ui;
@@ -46,16 +46,12 @@ pub struct OpUis {
     picked_second_file: Option<String>,
 }
 impl OpUis {
-    /*
-        op_one_ui: function of FileApp struct
-        Description: A function handling operations on a moc launched by the app
-        Parameters:
-            ui: Ui, the ui from the app
-            operation: Op1, operation enumerator of the selected operation
-        Returns: ()
-    */
+    // #Definition
+    //      A function handling operations on a stored MOC.
+    // #Args
+    //  *   `ui`: The ui from the app.
     fn op_one_ui(&mut self, ui: &mut Ui) {
-        // An operation combo box including Intersection and Union
+        // An operation combo box including Intersection and Union.
         let sel_text = format!("{}", self.operation);
 
         ui.label("Operation :");
@@ -85,14 +81,10 @@ impl OpUis {
             });
     }
 
-    /*
-        op_two_ui: function of FileApp struct
-        Description: A function handling operations on 2 mocs launched by the app
-        Parameters:
-            ui: Ui, the ui from the app
-            operation: Op2, operation enumerator of the selected operation
-        Returns: ()
-    */
+    // #Definition
+    //      A function handling operations on a stored MOC.
+    // #Args
+    //  *   `ui`: The ui from the app.
     fn op_two_ui(&mut self, ui: &mut Ui) {
         // An operation combo box including Intersection and Union
         if self.picked_file.is_some() && self.picked_second_file.is_some() {
@@ -147,15 +139,14 @@ impl OpUis {
         }
     }
 
-    /*
-        moc_op1: function of FileApp struct
-        Description: A function handling operations on a moc launched by the app
-        Parameters:
-            ui: Ui, the ui from the app
-            op1: Op1, operation enumerator of the selected operation
-        Returns: ()
-    */
-    pub(crate) fn moc_op1(&mut self, ui: &mut Ui) {
+    // #Definition
+    //      A function creating the UI for operations on a stored MOC.
+    // #Args
+    //  *   `ui`: The ui from the app.
+    //  *   `e`: an optional String in case of past errors to keep it visible until change
+    pub(crate) fn moc_op1(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
+        let mut err = e.to_owned();
+
         let mut op: Op1 = Op1::Complement;
         if let Op::One(o) = self.operation {
             op = o;
@@ -172,6 +163,7 @@ impl OpUis {
                 sel_text = self.picked_file.clone().unwrap();
             }
 
+            // The small paragraph before the match sets a grid layout to have every element aligned
             egui::Grid::new("my_grid")
                 .num_columns(2)
                 .spacing([40.0, 4.0])
@@ -201,7 +193,7 @@ impl OpUis {
                         if store::get_qty(&self.picked_file.clone().unwrap()) != Ok(Qty::Timespace)
                         {
                             if ui.button("Launch").clicked() {
-                                //self.error = None;
+                                err = None;
                                 if deg {
                                     op = Op1::Degrade {
                                         new_depth: self.deg,
@@ -210,14 +202,10 @@ impl OpUis {
                                 let moc = self.picked_file.clone().unwrap();
 
                                 if self.name.is_empty() {
-                                    if op1(&moc, op, &format!("{}_{}", op, moc)).is_err() {
-                                        //self.error =
-                                        "Error when trying to do operation".to_string();
-                                    }
-                                } else if op1(&moc, op, &self.name).is_err() {
-                                    //self.error = Some("Error when trying to do operation".to_string());
-                                    self.name = String::default();
+                                    self.name = format!("{}_{}", op, moc);
                                 }
+                                let _ = op1(&moc, op, &self.name).map_err(|e| err = Some(e));
+                                self.name = String::default();
                             };
                         } else {
                             ui.label("SpaceTime MOCs cannot be operated on alone.");
@@ -225,26 +213,26 @@ impl OpUis {
                     }
                 });
         }
+        err
     }
 
-    /*
-        moc_op2: function of FileApp struct
-        Description: A function handling operations on 2 mocs launched by the app
-        Parameters:
-            ui: Ui, the ui from the app
-            op2: Op2, operation enumerator of the selected operation
-        Returns: ()
-    */
-    pub(crate) fn moc_op2(&mut self, ui: &mut Ui) {
+    // #Definition
+    //      A function creating the UI for operations on 2 stored MOCs.
+    // #Args
+    //  *   `ui`: The ui from the app.
+    //  *   `e`: an optional String in case of past errors to keep it visible until change
+    pub(crate) fn moc_op2(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
+        let mut err = e.to_owned();
+
         let mut op: Op2 = Op2::Intersection;
         if let Op::Two(t) = self.operation {
             op = t;
         }
 
-        //If no file has been imported yet
+        // If no file has been imported yet.
         if list_mocs().unwrap().len() < 2 {
             ui.label("Pick at least 2 files!");
-        //If files have been imported and can be chosen from
+        // If files have been imported and can be chosen from.
         } else {
             let mut sel_text = "pick one".to_string();
             let mut sel_text_2 = "pick one".to_string();
@@ -254,6 +242,8 @@ impl OpUis {
             if self.picked_second_file.is_some() {
                 sel_text_2 = self.picked_second_file.clone().unwrap();
             }
+
+            // The small paragraph before the match sets a grid layout to have every element aligned.
             egui::Grid::new("my_grid")
                 .num_columns(2)
                 .spacing([40.0, 4.0])
@@ -285,29 +275,24 @@ impl OpUis {
                                 std::mem::swap(&mut r, &mut l);
                             }
                             if self.name.is_empty() {
-                                if op2(l, r, op, &format!("{}_{}_{}", op, l, r)).is_err() {
-                                    //self.error = Some("Error when trying to do operation".to_string());
-                                }
-                            } else if op2(l, r, op, &self.name).is_err() {
-                                //self.error = Some("Error when trying to do operation".to_string());
-                                self.name = String::default();
+                                self.name = format!("{}_{}_{}", op, l, r);
                             }
+                            let _ = op2(l, r, op, &self.name).map_err(|e| err = Some(e));
+                            self.name = String::default();
                         };
                     }
                 });
         }
+        err
     }
 
-    /*
-        make_cbox: function of FileApp struct
-        Description: A function creating comboboxes
-        Parameters:
-            ui: Ui, the ui from the app
-            sel_text: &str, the text to show in the combo box
-            id: &str, the combobox gui ID
-            op: Option<u8>, to know if there needs to be multiple selected mocs.
-        Returns: ()
-    */
+    // #Definition
+    //      A function that creates comboboxes.
+    // #Args
+    //  *   ui: Ui, the ui from the app.
+    //  *   sel_text: &str, the text to show in the combo box.
+    //  *   id: &str, the combobox gui ID.
+    //  *   op: Option<u8>, to know if there needs to be multiple selected mocs.
     fn make_cbox(&mut self, ui: &mut Ui, sel_text: &str, id: &str, op: Option<u8>) {
         egui::ComboBox::from_id_source(id)
             .selected_text(sel_text)
@@ -329,6 +314,9 @@ impl OpUis {
                 }
             });
     }
+    // #Definitions
+    //  *   files_have_stmoc: a simple check to see if a space time MOC is present in the 2 selected MOCs.
+    //  *   files_have_same_type: a simple check to see if both selected MOCs are of the same type.
     fn files_have_stmoc(&mut self) -> bool {
         store::get_qty(&self.picked_second_file.clone().unwrap()) == Ok(Qty::Timespace)
             || store::get_qty(&self.picked_file.clone().unwrap()) == Ok(Qty::Timespace)
