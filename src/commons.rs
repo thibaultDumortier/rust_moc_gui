@@ -87,7 +87,7 @@ impl InternalMoc {
         let mut buf: Vec<u8> = Default::default();
         // Uses unsafe [unchecked_unwrap_ok](https://docs.rs/unreachable/1.0.0/unreachable/trait.UncheckedResultExt.html)
         // for wasm size optimisation.
-        // We do it because no I/O error can occurs since we are writing in memory.
+        // We do it because no I/O error can occur since we are writing in memory.
         unsafe {
             match self {
                 InternalMoc::Space(moc) => moc
@@ -111,7 +111,7 @@ impl InternalMoc {
         let mut buf: Vec<u8> = Default::default();
         // Uses unsafe [unchecked_unwrap_ok](https://docs.rs/unreachable/1.0.0/unreachable/trait.UncheckedResultExt.html)
         // for wasm size optimisation.
-        // We do it because no I/O error can occurs since we are writing in memory.
+        // We do it because no I/O error can occur since we are writing in memory.
         unsafe {
             match self {
                 InternalMoc::Space(moc) => moc
@@ -138,7 +138,7 @@ impl InternalMoc {
         let mut buf: Vec<u8> = Default::default();
         // Uses unsafe [unchecked_unwrap_ok](https://docs.rs/unreachable/1.0.0/unreachable/trait.UncheckedResultExt.html)
         // for wasm size optimisation.
-        // We do it because no I/O error can occurs since we are writing in memory.
+        // We do it because no I/O error can occur since we are writing in memory.
         unsafe {
             match self {
                 InternalMoc::Space(moc) => moc

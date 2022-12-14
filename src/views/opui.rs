@@ -118,14 +118,20 @@ impl OpUis {
             } else if self.files_have_stmoc() {
                 ui.horizontal(|ui| {
                     if store::get_qty(&self.picked_file.clone().unwrap()) == Ok(Qty::Space)
-                    || store::get_qty(&self.picked_second_file.clone().unwrap()) == Ok(Qty::Space)
+                        || store::get_qty(&self.picked_second_file.clone().unwrap())
+                            == Ok(Qty::Space)
                     {
-                        ui.label("The only available operation is SFold, as such this operation as been set.");
+                        ui.label("Operation:");
+                        ui.add_enabled(false, egui::widgets::Button::new("SFold"));
+                        ui.end_row();
                         self.operation = Op::Two(Op2::SFold);
                     } else if store::get_qty(&self.picked_file.clone().unwrap()) == Ok(Qty::Time)
-                    || store::get_qty(&self.picked_second_file.clone().unwrap()) == Ok(Qty::Time)
+                        || store::get_qty(&self.picked_second_file.clone().unwrap())
+                            == Ok(Qty::Time)
                     {
-                        ui.label("The only available operation is TFold, as such this operation as been set.");
+                        ui.label("Operation:");
+                        ui.add_enabled(false, egui::widgets::Button::new("TFold"));
+                        ui.end_row();
                         self.operation = Op::Two(Op2::TFold);
                     }
                 });

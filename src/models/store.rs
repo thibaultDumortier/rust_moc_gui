@@ -3,6 +3,8 @@ use std::sync::{Once, RwLock};
 
 use crate::commons::{InternalMoc, Qty};
 
+use super::img::to_img_default;
+
 /// Fonction used only once to init the store
 static MOC_STORE_INIT: Once = Once::new();
 /// The MOC store (a simple hasmap), protected from concurrent access by a RwLock.
@@ -24,6 +26,19 @@ pub(crate) fn get_store() -> &'static RwLock<HashMap<String, InternalMoc>> {
             Some(v) => v,
             None => unreachable!(),
         }
+    }
+}
+
+pub(crate) fn get_img(name: &str, size: (u16, u16)) -> Result<Vec<u8>, String> {
+    let store = get_store();
+
+    let store = store.read().map_err(|_| "Read lock poisoned".to_string())?;
+    let moc = store
+        .get(name)
+        .ok_or_else(|| format!("MOC '{}' not found", name))?;
+    match moc {
+        InternalMoc::Space(smoc) => Ok(to_img_default(smoc, size, None, None)),
+        _ => Err("NOT SUPPOSED TO HAPPEN".to_string()),
     }
 }
 

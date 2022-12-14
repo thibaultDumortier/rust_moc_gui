@@ -4,18 +4,23 @@ use egui::Ui;
 use egui_extras::{Column, TableBuilder};
 
 use crate::{
+    app::log,
     commons::{to_ascii_file, to_fits_file, to_json_file, Qty},
     models::store::{self, get_store},
 };
 
-#[derive(Clone, PartialEq, Default, PartialOrd, Ord, Eq)]
+#[derive(Clone, PartialEq, Default, Eq)]
 pub struct InfoWindow {
     pub title: String,
+    texture: Option<egui::TextureHandle>,
 }
 
 impl InfoWindow {
     pub fn new(title: String) -> Self {
-        Self { title }
+        Self {
+            title,
+            texture: None,
+        }
     }
 
     pub fn show(&mut self, ctx: &egui::Context, open: &mut bool) {
@@ -37,9 +42,26 @@ impl InfoWindow {
         });
 
         match qty {
-            Qty::Space => ui.label("Possible operations include:\n-All solo operations.\n-All same type duo operations.\n-SFold with a SpaceTime MOC."),
-            Qty::Time => ui.label("Possible operations include:\n-Complement and degrade.\n-All same type duo operations\n-TFold with a SpaceTime MOC."),
-            Qty::Timespace => ui.label("Possible operations include:\n-No solo operations.\n-All same type duo operations.\n-SFold or TFold depending on the other MOC's type."),
+            Qty::Space => {
+                ui.label("Possible operations include:\n-All solo operations.\n-All same type duo operations.\n-SFold with a SpaceTime MOC.");
+                if let Ok(i) = store::get_img(&self.title, (300, 150)) {
+                    let texture: &egui::TextureHandle = self.texture.get_or_insert_with(|| {
+                        // Load the texture only once.
+                        ui.ctx().load_texture(
+                            "moc_img",
+                            egui::ColorImage::from_rgba_unmultiplied([300, 150], i.as_slice()),
+                            Default::default(),
+                        )
+                    });
+                    ui.image(texture, texture.size_vec2());
+                }
+            }
+            Qty::Time => {
+                ui.label("Possible operations include:\n-Complement and degrade.\n-All same type duo operations\n-TFold with a SpaceTime MOC.");
+            }
+            Qty::Timespace => {
+                ui.label("Possible operations include:\n-No solo operations.\n-All same type duo operations.\n-SFold or TFold depending on the other MOC's type.");
+            }
         };
     }
 }
