@@ -1,11 +1,13 @@
 use core::fmt;
 use std::{io::Cursor, str::from_utf8_unchecked};
 
-use crate::models::{
-    load_ascii::*,
-    load_fits::*,
-    load_json::*,
-    store::{self, *},
+use crate::{
+    models::{
+        load_ascii::*,
+        load_fits::*,
+        load_json::*,
+        store::{self, *},
+    },
 };
 use moc::{
     deser::fits::{from_fits_ivoa, ranges2d_to_fits_ivoa, MocIdxType},

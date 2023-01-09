@@ -42,6 +42,18 @@ pub(crate) fn get_img(name: &str, size: (u16, u16)) -> Result<Vec<u8>, String> {
     }
 }
 
+// UNUSED ATM
+pub(crate) fn get_info(name: &str) -> Result<String, String> {
+    let store = get_store();
+
+    let store = store.read().map_err(|_| "Read lock poisoned".to_string())?;
+    let moc = store
+        .get(name)
+        .ok_or_else(|| format!("MOC '{}' not found", name))?;
+
+    Ok("hi".to_string())
+}
+
 pub(crate) fn get_qty(name: &str) -> Result<Qty, String> {
     let store = get_store();
     // Perform read operations first

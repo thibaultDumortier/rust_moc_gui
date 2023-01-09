@@ -72,10 +72,8 @@ impl ListUi {
     pub(crate) fn list_ui(
         &mut self,
         ctx: &egui::Context,
-        ui: &mut Ui,
-        e: &Option<String>,
-    ) -> Option<String> {
-        let mut err = e.to_owned();
+        ui: &mut Ui
+    ) -> Result<(), String> {
 
         for moc in store::list_mocs().unwrap() {
             if self.open_windows.is_empty() {
@@ -134,30 +132,30 @@ impl ListUi {
                             ui.menu_button("📥", |ui| {
                                 if ui.button("FITS").clicked() {
                                     let _ = to_fits_file(filenames.get(row_index).unwrap())
-                                        .map_err(|e| err = Some(e));
+                                        .map_err(|e| return e);
                                 }
                                 if ui.button("ASCII").clicked() {
                                     let _ =
                                         to_ascii_file(filenames.get(row_index).unwrap(), Some(0))
-                                            .map_err(|e| err = Some(e));
+                                            .map_err(|e| return e);
                                 }
                                 if ui.button("JSON").clicked() {
                                     let _ =
                                         to_json_file(filenames.get(row_index).unwrap(), Some(0))
-                                            .map_err(|e| err = Some(e));
+                                            .map_err(|e| return e);
                                 }
                             });
                         });
                         row.col(|ui| {
                             if ui.button("❌").clicked() {
                                 let _ = store::drop(filenames.get(row_index).unwrap())
-                                    .map_err(|e| err = Some(e));
+                                    .map_err(|e| return e);
                             }
                         });
                     })
                 })
         });
-        err
+        Ok(())
     }
     fn set_open(&mut self, key: &str, is_open: bool) {
         if !is_open {

@@ -6,8 +6,9 @@ use crate::views::infoui::ListUi;
 use crate::views::{creationui::*, opui::*};
 
 use eframe::egui;
-use egui::menu;
+use egui::text::LayoutJob;
 use egui::Ui;
+use egui::{menu, Color32, TextFormat};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 //Import javascript log function
@@ -46,7 +47,6 @@ impl PartialEq for UiMenu {
 #[derive(Default)]
 pub struct FileApp {
     operation: UiMenu,
-    error: Option<String>,
     creation: CreationUis,
     opui: OpUis,
     list: ListUi,
@@ -65,7 +65,7 @@ impl eframe::App for FileApp {
             egui::trace!(ui);
             ui.horizontal_wrapped(|ui| {
                 ui.visuals_mut().button_frame = false;
-                self.bar_contents(ui);
+                self.bar_contents(ui, ctx);
             });
         });
 
@@ -80,10 +80,10 @@ impl eframe::App for FileApp {
 
             ui.separator();
             match &self.operation {
-                UiMenu::One => self.error = self.opui.moc_op1(ui, &self.error),
-                UiMenu::Two => self.error = self.opui.moc_op2(ui, &self.error),
-                UiMenu::List => self.error = self.list.list_ui(ctx, ui, &self.error),
-                UiMenu::Crea => self.creation.creation_ui(ui),
+                UiMenu::One => self.opui.moc_op1(ui).map_err(|e| err(&e)),
+                UiMenu::Two => self.opui.moc_op2(ui).map_err(|e| err(&e)),
+                UiMenu::List => self.list.list_ui(ctx, ui).map_err(|e| err(&e)),
+                UiMenu::Crea => self.creation.creation_ui(ui).map_err(|e| err(&e)),
             }
         });
     }
@@ -96,7 +96,7 @@ impl FileApp {
     //      A function handling the contents of the top bar
     // #Args
     //  *   ui: Ui, the ui from the app
-    fn bar_contents(&mut self, ui: &mut Ui) {
+    fn bar_contents(&mut self, ui: &mut Ui, ctx: &egui::Context) {
         egui::widgets::global_dark_light_mode_switch(ui);
 
         ui.separator();
@@ -107,12 +107,7 @@ impl FileApp {
                     ui.menu_button("Load", |ui| {
                         if ui.button("FITS").clicked() {
                             //Qty::Space here is a default it is not actually used
-                            match load(&["fits"], Qty::Space) {
-                                Ok(_) => self.error = None,
-                                Err(e) => {
-                                    self.error = Some(e);
-                                }
-                            }
+                            load(&["fits"], Qty::Space).map_err(|e| err(&e));
                         }
                         ui.menu_button("JSON", |ui| {
                             if ui.button("Space").clicked() {
@@ -139,10 +134,18 @@ impl FileApp {
                     })
                 });
             });
-            if self.error.is_some() {
-                ui.separator();
-                ui.label(self.error.as_ref().unwrap());
-            }
         });
     }
+}
+
+fn err(msg: &str) {
+    let mut job = LayoutJob::default();
+    job.append(
+        msg,
+        0.0,
+        TextFormat {
+            color: Color32::from_rgb(204, 2, 2),
+            ..Default::default()
+        },
+    );
 }

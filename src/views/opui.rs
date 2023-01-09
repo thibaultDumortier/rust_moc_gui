@@ -150,9 +150,7 @@ impl OpUis {
     // #Args
     //  *   `ui`: The ui from the app.
     //  *   `e`: an optional String in case of past errors to keep it visible until change
-    pub(crate) fn moc_op1(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
-        let mut err = e.to_owned();
-
+    pub(crate) fn moc_op1(&mut self, ui: &mut Ui) -> Result<(), String> {
         let mut op: Op1 = Op1::Complement;
         if let Op::One(o) = self.operation {
             op = o;
@@ -199,7 +197,6 @@ impl OpUis {
                         if store::get_qty(&self.picked_file.clone().unwrap()) != Ok(Qty::Timespace)
                         {
                             if ui.button("Launch").clicked() {
-                                err = None;
                                 if deg {
                                     op = Op1::Degrade {
                                         new_depth: self.deg,
@@ -210,7 +207,7 @@ impl OpUis {
                                 if self.name.is_empty() {
                                     self.name = format!("{}_{}", op, moc);
                                 }
-                                let _ = op1(&moc, op, &self.name).map_err(|e| err = Some(e));
+                                let _ = op1(&moc, op, &self.name).map_err(|e| return e);
                                 self.name = String::default();
                             };
                         } else {
@@ -219,7 +216,7 @@ impl OpUis {
                     }
                 });
         }
-        err
+        Ok(())
     }
 
     // #Definition
@@ -227,9 +224,7 @@ impl OpUis {
     // #Args
     //  *   `ui`: The ui from the app.
     //  *   `e`: an optional String in case of past errors to keep it visible until change
-    pub(crate) fn moc_op2(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
-        let mut err = e.to_owned();
-
+    pub(crate) fn moc_op2(&mut self, ui: &mut Ui) -> Result<(), String> {
         let mut op: Op2 = Op2::Intersection;
         if let Op::Two(t) = self.operation {
             op = t;
@@ -283,13 +278,13 @@ impl OpUis {
                             if self.name.is_empty() {
                                 self.name = format!("{}_{}_{}", op, l, r);
                             }
-                            let _ = op2(l, r, op, &self.name).map_err(|e| err = Some(e));
+                            let _ = op2(l, r, op, &self.name).map_err(|e| return e);
                             self.name = String::default();
                         };
                     }
                 });
         }
-        err
+        Ok(())
     }
 
     // #Definition

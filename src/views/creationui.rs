@@ -1,8 +1,6 @@
 #![warn(clippy::all)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
-use std::f64::INFINITY;
-
 use crate::controllers::creation::*;
 
 use super::creationui::CreationType;
@@ -46,7 +44,7 @@ impl CreationUis {
     //      Creation_ui, the main UI component for MOC creation
     // #Args
     //  *   `ui`: the egui UI that needs to show the given components
-    pub(crate) fn creation_ui(&mut self, ui: &mut Ui) {
+    pub(crate) fn creation_ui(&mut self, ui: &mut Ui) -> Result<(), String> {
         let sel_text = format!("{}", self.typ);
 
         ui.horizontal(|ui| {
@@ -100,6 +98,10 @@ impl CreationUis {
                     }
                 };
             });
+        if self.error.is_some() {
+            return Err(self.error.clone().unwrap());
+        }
+        Ok(())
     }
 
     /////////////
@@ -274,7 +276,7 @@ impl CreationUis {
         ui.label("Creating a MOC like this will ask you for a .csv file.");
         ui.end_row();
 
-        if ui.button("Create").clicked() {
+        if ui.button("Open file & create").clicked() {
             err = None;
 
             let _ = self.load_csv(CreationType::Coo).map_err(|e| err = Some(e));
@@ -325,7 +327,7 @@ impl CreationUis {
         ui.text_edit_singleline(&mut self.name);
         ui.end_row();
 
-        if ui.button("Create").clicked() {
+        if ui.button("Open file & create").clicked() {
             err = None;
 
             let task = AsyncFileDialog::new()
@@ -391,7 +393,7 @@ impl CreationUis {
         ui.text_edit_singleline(&mut self.name);
         ui.end_row();
 
-        if ui.button("Create").clicked() {
+        if ui.button("Open file & create").clicked() {
             err = None;
 
             if let Some(path) = FileDialog::new().add_filter("MOCs", &["csv"]).pick_file() {
@@ -481,7 +483,7 @@ impl CreationUis {
         ui.label("Creating a MOC like this will ask you for a .csv file.");
         ui.end_row();
 
-        if ui.button("Create").clicked() {
+        if ui.button("Open file & create").clicked() {
             err = None;
             let _ = self.load_csv(typ).map_err(|e| err = Some(e));
             self.name = String::default();
@@ -564,8 +566,8 @@ impl CreationUis {
         ui.end_row();
     }
 
-    //////////////////////
-    // Useful functions //
+    //////////////////////////
+    // Useful csv functions //
 
     #[cfg(target_arch = "wasm32")]
     fn load_csv(&mut self, typ: CreationType) -> Result<(), String> {
