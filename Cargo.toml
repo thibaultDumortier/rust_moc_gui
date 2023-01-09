@@ -17,7 +17,7 @@ eframe = { version = "0.20", default-features = false, features = [
     "persistence",   # Enable restoring app state when restarting the app.
 ] }
 rfd = "0.10"
-moc = "0.9.0"
+moc = {branch="main", git="https://github.com/cds-astro/cds-moc-rust"}
 wasm-bindgen = { version = "0.2.78", features = ["serde-serialize"]  }
 js-sys = "0.3.52"
 unreachable = "1.0" 

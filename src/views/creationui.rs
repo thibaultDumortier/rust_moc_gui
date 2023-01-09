@@ -3,7 +3,6 @@
 
 use std::f64::INFINITY;
 
-use crate::commons::*;
 use crate::controllers::creation::*;
 
 use super::creationui::CreationType;
@@ -500,32 +499,15 @@ impl CreationUis {
     }
 
     fn lon_lat_deg_builder(&mut self, ui: &mut Ui) {
-        if !(0.0..=TWICE_PI).contains(&self.lon_deg_polf1)
-            || !(-HALF_PI..=HALF_PI).contains(&self.lat_deg_polf2)
-        {
-            self.lon_deg_polf1 = 0.0;
-            self.lat_deg_polf2 = 0.0;
-        }
-
         ui.label("Longitude degradation:");
-        ui.add(egui::Slider::new(&mut self.lon_deg_polf1, 0.0..=TWICE_PI));
+        ui.add(egui::Slider::new(&mut self.lon_deg_polf1, 0.0..=360.0));
         ui.end_row();
         ui.label("Latitude degradation:");
-        ui.add(egui::Slider::new(
-            &mut self.lat_deg_polf2,
-            -HALF_PI..=HALF_PI,
-        ));
+        ui.add(egui::Slider::new(&mut self.lat_deg_polf2, -90.0..=90.0));
         ui.end_row();
     }
 
     fn lons_lats_builder(&mut self, ui: &mut Ui) {
-        if !(0.0..=self.lon_deg_polf1).contains(&self.lon_deg_min_b_int)
-            || !(-HALF_PI..=self.lat_deg_polf2).contains(&self.lat_deg_min_pa)
-        {
-            self.lon_deg_min_b_int = 0.0;
-            self.lat_deg_min_pa = 0.0;
-        }
-
         ui.label("Minimal longitude degradation:");
         ui.add(egui::Slider::new(
             &mut self.lon_deg_min_b_int,
@@ -535,31 +517,31 @@ impl CreationUis {
         ui.label("Minimal latitude degradation:");
         ui.add(egui::Slider::new(
             &mut self.lat_deg_min_pa,
-            -HALF_PI..=self.lat_deg_polf2,
+            -90.0..=self.lat_deg_polf2,
         ));
         ui.end_row();
         ui.label("Maximal longitude degradation:");
         ui.add(egui::Slider::new(
             &mut self.lon_deg_polf1,
-            self.lon_deg_min_b_int..=TWICE_PI,
+            self.lon_deg_min_b_int..=360.0,
         ));
         ui.end_row();
         ui.label("Maximal latitude degradation:");
         ui.add(egui::Slider::new(
             &mut self.lat_deg_polf2,
-            self.lat_deg_min_pa..=HALF_PI,
+            self.lat_deg_min_pa..=90.0,
         ));
         ui.end_row();
     }
 
     fn radius_builder(&mut self, ui: &mut Ui) {
         ui.label("Radius:");
-        ui.add(egui::Slider::new(&mut self.radius_a, 0.0..=PI));
+        ui.add(egui::Slider::new(&mut self.radius_a, 0.0..=180.0));
         ui.end_row();
     }
 
     fn radii_builder(&mut self, ui: &mut Ui) {
-        if !(self.lon_deg_min_b_int..=PI).contains(&self.radius_a)
+        if !(self.lon_deg_min_b_int..=180.0).contains(&self.radius_a)
             || !(0.0..=self.radius_a).contains(&self.lon_deg_min_b_int)
         {
             self.radius_a = 0.0;
@@ -574,23 +556,14 @@ impl CreationUis {
         ui.label("External radius:");
         ui.add(egui::Slider::new(
             &mut self.radius_a,
-            self.lon_deg_min_b_int..=PI,
+            self.lon_deg_min_b_int..=180.0,
         ));
         ui.end_row();
     }
 
     fn degs_builder(&mut self, ui: &mut Ui) {
-        if !(0.0..=HALF_PI).contains(&self.radius_a)
-            || !(0.0..=self.radius_a).contains(&self.lon_deg_min_b_int)
-            || !(0.0..=PI).contains(&self.lat_deg_min_pa)
-        {
-            self.radius_a = 0.0;
-            self.lon_deg_min_b_int = 0.0;
-            self.lat_deg_min_pa = 0.0;
-        }
-
         ui.label("A degradation:");
-        ui.add(egui::Slider::new(&mut self.radius_a, 0.0..=HALF_PI));
+        ui.add(egui::Slider::new(&mut self.radius_a, 0.0..=90.0));
         ui.end_row();
         ui.label("B degradation:");
         ui.add(egui::Slider::new(
@@ -599,7 +572,7 @@ impl CreationUis {
         ));
         ui.end_row();
         ui.label("PA degradation:");
-        ui.add(egui::Slider::new(&mut self.lat_deg_min_pa, 0.0..=PI));
+        ui.add(egui::Slider::new(&mut self.lat_deg_min_pa, 0.0..=180.0));
         ui.end_row();
     }
 

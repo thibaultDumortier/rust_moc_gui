@@ -4,7 +4,6 @@ use egui::Ui;
 use egui_extras::{Column, TableBuilder};
 
 use crate::{
-    app::log,
     commons::{to_ascii_file, to_fits_file, to_json_file, Qty},
     models::store::{self, get_store},
 };
@@ -16,17 +15,25 @@ pub struct InfoWindow {
 }
 
 impl InfoWindow {
-    pub fn new(title: String) -> Self {
-        Self {
-            title,
-            texture: None,
+    pub fn new(ctx: &egui::Context, title: String) -> Self {
+        let mut texture: Option<egui::TextureHandle> = None;
+        if let Ok(i) = store::get_img(&title, (300, 150)) {
+            texture =
+                // Load the texture only once.
+                Some(ctx.load_texture(
+                    "moc_img",
+                    egui::ColorImage::from_rgba_unmultiplied([300, 150], i.as_slice()),
+                    Default::default(),
+                ));
         }
+
+        Self { title, texture }
     }
 
     pub fn show(&mut self, ctx: &egui::Context, open: &mut bool) {
         let mut window = egui::Window::new(self.title.clone())
             .id(egui::Id::new(self.title.clone())) // required since we change the title
-            .resizable(true)
+            .resizable(false)
             .title_bar(true)
             .enabled(true);
         window = window.open(open);
@@ -44,17 +51,8 @@ impl InfoWindow {
         match qty {
             Qty::Space => {
                 ui.label("Possible operations include:\n-All solo operations.\n-All same type duo operations.\n-SFold with a SpaceTime MOC.");
-                if let Ok(i) = store::get_img(&self.title, (300, 150)) {
-                    let texture: &egui::TextureHandle = self.texture.get_or_insert_with(|| {
-                        // Load the texture only once.
-                        ui.ctx().load_texture(
-                            "moc_img",
-                            egui::ColorImage::from_rgba_unmultiplied([300, 150], i.as_slice()),
-                            Default::default(),
-                        )
-                    });
-                    ui.image(texture, texture.size_vec2());
-                }
+                let texture = &self.texture.clone().unwrap();
+                ui.image(texture, texture.size_vec2());
             }
             Qty::Time => {
                 ui.label("Possible operations include:\n-Complement and degrade.\n-All same type duo operations\n-TFold with a SpaceTime MOC.");
@@ -126,7 +124,7 @@ impl ListUi {
                                 // If an information window doesn't exist, create one.
                                 if !self.open_windows.contains_key(&name) {
                                     self.open_windows
-                                        .insert(name.clone(), InfoWindow::new(name));
+                                        .insert(name.clone(), InfoWindow::new(ctx, name));
                                 } else if self.open_windows.contains_key(&name) {
                                     self.open_windows.remove(&name);
                                 }

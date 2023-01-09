@@ -1492,14 +1492,15 @@ dependencies = [
 [[package]]
 name = "moc"
 version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f0fa8f1d7a2d3e374c2baed478ba86875c52ad67aa7848f4216281af2d8027c"
+source = "git+https://github.com/cds-astro/cds-moc-rust?branch=main#5c01c29d27b05d2f3b354d036512260db69b045c"
 dependencies = [
  "byteorder",
  "cdshealpix",
  "flate2",
+ "mapproj",
  "nom 6.2.1",
  "num",
+ "png",
  "quick-error",
  "rayon",
  "serde_json",

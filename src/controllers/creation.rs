@@ -8,7 +8,7 @@ use moc::{
 };
 
 use crate::commons::*;
-use crate::{models::store};
+use crate::models::store;
 
 const JD_TO_USEC: f64 = (24_u64 * 60 * 60 * 1_000_000) as f64;
 
