@@ -1,8 +1,3 @@
-<div style="display: flex; flex-direction: column; align-items: center;">
-    <img>
-    ![rust_moc_gui project logo](assets/icon-256.png "rust_moc_gui logo")
-</div>
-
 # Rust_moc_gui
 
 ## Goal
