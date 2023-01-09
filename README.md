@@ -1,9 +1,9 @@
-# Rust_moc_gui
-
 <div style="display: flex; flex-direction: column; align-items: center;">
     <img>
     ![rust_moc_gui project logo](assets/icon-256.png "rust_moc_gui logo")
 </div>
+
+# Rust_moc_gui
 
 ## Goal
 The goal of this project is to create a GUI in Rust using [egui]("https://crates.io/crates/egui") (more precisely [eframe]("https://crates.io/crates/eframe")) to make different operations on MOCs easily. This project also enables a user to create MOCs and view information about the MOC on an easy to use UI.
@@ -25,19 +25,15 @@ The goal of this project is to create a GUI in Rust using [egui]("https://crates
 ## Running
 
 ### Running locally
-
 Running the program locally will print logs.
 
 Make sure you are using the latest version of stable rust by running `rustup update`.
-
 `cargo run --release`
 
 On Linux you need to first run:
-
 `sudo apt-get install libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev`
 
 On Fedora Rawhide you need to run:
-
 `dnf install clang clang-devel clang-tools-extra speech-dispatcher-devel libxkbcommon-devel pkg-config openssl-devel libxcb-devel fontconfig-devel`
 
 ### Running Web Locally
