@@ -2113,6 +2113,7 @@ dependencies = [
  "egui",
  "egui_extras",
  "js-sys",
+ "log",
  "mapproj",
  "moc",
  "png",

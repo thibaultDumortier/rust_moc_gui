@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use egui::Ui;
+use egui::{Color32, Ui};
 use egui_extras::{Column, TableBuilder};
 
 use crate::{
@@ -12,22 +12,33 @@ use crate::{
 pub struct InfoWindow {
     pub title: String,
     texture: Option<egui::TextureHandle>,
+    info: String,
 }
 
 impl InfoWindow {
     pub fn new(ctx: &egui::Context, title: String) -> Self {
         let mut texture: Option<egui::TextureHandle> = None;
-        if let Ok(i) = store::get_img(&title, (300, 150)) {
+        if let Ok(i) = store::get_img(&title, (500, 250)) {
             texture =
                 // Load the texture only once.
                 Some(ctx.load_texture(
                     "moc_img",
-                    egui::ColorImage::from_rgba_unmultiplied([300, 150], i.as_slice()),
+                    egui::ColorImage::from_rgba_unmultiplied([500, 250], i.as_slice()),
                     Default::default(),
                 ));
         }
 
-        Self { title, texture }
+        let mut info = String::default();
+        let i = store::get_info(&title);
+        if i.is_ok() {
+            info = i.unwrap();
+        }
+
+        Self {
+            title,
+            texture,
+            info,
+        }
     }
 
     pub fn show(&mut self, ctx: &egui::Context, open: &mut bool) {
@@ -51,14 +62,17 @@ impl InfoWindow {
         match qty {
             Qty::Space => {
                 ui.label("Possible operations include:\n-All solo operations.\n-All same type duo operations.\n-SFold with a SpaceTime MOC.");
+                ui.label(&self.info);
                 let texture = &self.texture.clone().unwrap();
-                ui.image(texture, texture.size_vec2());
+                ui.add(egui::Image::new(texture, texture.size_vec2()).bg_fill(Color32::WHITE));
             }
             Qty::Time => {
                 ui.label("Possible operations include:\n-Complement and degrade.\n-All same type duo operations\n-TFold with a SpaceTime MOC.");
+                ui.label(&self.info);
             }
             Qty::Timespace => {
                 ui.label("Possible operations include:\n-No solo operations.\n-All same type duo operations.\n-SFold or TFold depending on the other MOC's type.");
+                ui.label(&self.info);
             }
         };
     }
@@ -69,12 +83,7 @@ pub struct ListUi {
     open_windows: HashMap<String, InfoWindow>,
 }
 impl ListUi {
-    pub(crate) fn list_ui(
-        &mut self,
-        ctx: &egui::Context,
-        ui: &mut Ui
-    ) -> Result<(), String> {
-
+    pub(crate) fn list_ui(&mut self, ctx: &egui::Context, ui: &mut Ui) -> Result<(), String> {
         for moc in store::list_mocs().unwrap() {
             if self.open_windows.is_empty() {
                 self.open_windows = HashMap::new();

@@ -16,6 +16,7 @@ eframe = { version = "0.20", default-features = false, features = [
     "wgpu",          # Use the glow rendering backend. Alternative: "wgpu".
     "persistence",   # Enable restoring app state when restarting the app.
 ] }
+log = { version = "0.4", features = ["max_level_trace", "release_max_level_warn"] }
 rfd = "0.10"
 moc = {branch="main", git="https://github.com/cds-astro/cds-moc-rust"}
 wasm-bindgen = { version = "0.2.78", features = ["serde-serialize"]  }

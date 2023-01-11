@@ -1,13 +1,11 @@
 use core::fmt;
 use std::{io::Cursor, str::from_utf8_unchecked};
 
-use crate::{
-    models::{
-        load_ascii::*,
-        load_fits::*,
-        load_json::*,
-        store::{self, *},
-    },
+use crate::models::{
+    load_ascii::*,
+    load_fits::*,
+    load_json::*,
+    store::{self, *},
 };
 use moc::{
     deser::fits::{from_fits_ivoa, ranges2d_to_fits_ivoa, MocIdxType},
@@ -18,7 +16,7 @@ use moc::{
     },
     moc2d::{
         range::RangeMOC2, CellMOC2IntoIterator, CellMOC2Iterator, CellOrCellRangeMOC2IntoIterator,
-        CellOrCellRangeMOC2Iterator, RangeMOC2IntoIterator,
+        CellOrCellRangeMOC2Iterator, RangeMOC2IntoIterator, HasTwoMaxDepth,
     },
     qty::{Hpx, Time},
 };
@@ -85,6 +83,30 @@ impl Default for InternalMoc {
     }
 }
 impl InternalMoc {
+    pub(crate) fn get_space_time_depths(&self) -> (Option<u8>, Option<u8>) {
+        match self {
+            InternalMoc::Space(moc) => (Some(moc.depth_max()), None),
+            InternalMoc::Time(moc) => (None, Some(moc.depth_max())),
+            InternalMoc::TimeSpace(moc2) => (Some(moc2.depth_max_2()), Some(moc2.depth_max_1())),
+        }
+    }
+
+    pub(crate) fn get_nranges(&self) -> u32 {
+        match self {
+            InternalMoc::Space(moc) => moc.len() as u32,
+            InternalMoc::Time(moc) => moc.len() as u32,
+            InternalMoc::TimeSpace(moc2) => moc2.compute_n_ranges() as u32,
+        }
+    }
+
+    pub(crate) fn get_coverage_percentage(&self) -> Option<f64> {
+        match self {
+            InternalMoc::Space(moc) => Some(moc.coverage_percentage() * 100.0),
+            InternalMoc::Time(moc) => Some(moc.coverage_percentage() * 100.0),
+            InternalMoc::TimeSpace(_) => None,
+        }
+    }
+
     pub(crate) fn to_fits(&self) -> Box<[u8]> {
         let mut buf: Vec<u8> = Default::default();
         // Uses unsafe [unchecked_unwrap_ok](https://docs.rs/unreachable/1.0.0/unreachable/trait.UncheckedResultExt.html)

@@ -46,12 +46,33 @@ pub(crate) fn get_img(name: &str, size: (u16, u16)) -> Result<Vec<u8>, String> {
 pub(crate) fn get_info(name: &str) -> Result<String, String> {
     let store = get_store();
 
-    let store = store.read().map_err(|_| "Read lock poisoned".to_string())?;
+    let store = store
+        .read()
+        .map_err(|_| return "Read lock poisoned".to_string())?;
     let moc = store
         .get(name)
         .ok_or_else(|| format!("MOC '{}' not found", name))?;
 
-    Ok("hi".to_string())
+    let mut res = String::default();
+    let (space, time) = moc.get_space_time_depths();
+    if space.is_some() && time.is_some() {
+        res = format!(
+            "{}\nspatial depth: {}\ntime depth: {}",
+            res,
+            space.unwrap(),
+            time.unwrap()
+        );
+    } else if space.is_some() {
+        res = format!("{}\nspatial depth: {}", res, space.unwrap());
+    } else {
+        res = format!("{}\ntime depth: {}", res, time.unwrap());
+    }
+    res = format!("{}\nranges: {}", res, moc.get_nranges());
+    let cov = moc.get_coverage_percentage();
+    if cov.is_some() {
+        res = format!("{}\ncoverage: {}", res, cov.unwrap());
+    }
+    Ok(res)
 }
 
 pub(crate) fn get_qty(name: &str) -> Result<Qty, String> {

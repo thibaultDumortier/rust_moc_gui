@@ -6,9 +6,8 @@ use crate::views::infoui::ListUi;
 use crate::views::{creationui::*, opui::*};
 
 use eframe::egui;
-use egui::text::LayoutJob;
 use egui::Ui;
-use egui::{menu, Color32, TextFormat};
+use egui::{menu};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 //Import javascript log function
@@ -80,10 +79,10 @@ impl eframe::App for FileApp {
 
             ui.separator();
             match &self.operation {
-                UiMenu::One => self.opui.moc_op1(ui).map_err(|e| err(&e)),
-                UiMenu::Two => self.opui.moc_op2(ui).map_err(|e| err(&e)),
-                UiMenu::List => self.list.list_ui(ctx, ui).map_err(|e| err(&e)),
-                UiMenu::Crea => self.creation.creation_ui(ui).map_err(|e| err(&e)),
+                UiMenu::One => self.opui.moc_op1(ui).map_err(|e| err(ctx, &e)),
+                UiMenu::Two => self.opui.moc_op2(ui).map_err(|e| err(ctx, &e)),
+                UiMenu::List => self.list.list_ui(ctx, ui).map_err(|e| err(ctx, &e)),
+                UiMenu::Crea => self.creation.creation_ui(ui).map_err(|e| err(ctx, &e)),
             }
         });
     }
@@ -107,7 +106,8 @@ impl FileApp {
                     ui.menu_button("Load", |ui| {
                         if ui.button("FITS").clicked() {
                             //Qty::Space here is a default it is not actually used
-                            load(&["fits"], Qty::Space).map_err(|e| err(&e));
+                            load(&["fits"], Qty::Space)
+                                .map_err(|e| err(ctx, &format!("Error when loading file: {}", e)));
                         }
                         ui.menu_button("JSON", |ui| {
                             if ui.button("Space").clicked() {
@@ -138,14 +138,8 @@ impl FileApp {
     }
 }
 
-fn err(msg: &str) {
-    let mut job = LayoutJob::default();
-    job.append(
-        msg,
-        0.0,
-        TextFormat {
-            color: Color32::from_rgb(204, 2, 2),
-            ..Default::default()
-        },
-    );
+fn err(ctx: &egui::Context, msg: &str) {
+    egui::TopBottomPanel::bottom("bottom_tab").show(ctx, |ui| {
+        ui.label(format!("Error: {}", msg));
+    });
 }
