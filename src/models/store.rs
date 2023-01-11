@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 use std::sync::{Once, RwLock};
 
-use crate::commons::{InternalMoc, Qty};
+use moc::deser::img::to_img_default;
 
-use super::img::to_img_default;
+use crate::commons::{InternalMoc, Qty};
 
 /// Fonction used only once to init the store
 static MOC_STORE_INIT: Once = Once::new();

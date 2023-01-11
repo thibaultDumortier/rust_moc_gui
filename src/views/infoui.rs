@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::app::log;
 use egui::{Color32, Ui};
 use egui_extras::{Column, TableBuilder};
 
@@ -12,32 +13,35 @@ use crate::{
 pub struct InfoWindow {
     pub title: String,
     texture: Option<egui::TextureHandle>,
+    size: u16,
     info: String,
 }
 
 impl InfoWindow {
     pub fn new(ctx: &egui::Context, title: String) -> Self {
         let mut texture: Option<egui::TextureHandle> = None;
-        if let Ok(i) = store::get_img(&title, (500, 250)) {
+        if let Ok(i) = store::get_img(&title, (300, 150)) {
             texture =
                 // Load the texture only once.
                 Some(ctx.load_texture(
                     "moc_img",
-                    egui::ColorImage::from_rgba_unmultiplied([500, 250], i.as_slice()),
+                    egui::ColorImage::from_rgba_unmultiplied([300, 150], i.as_slice()),
                     Default::default(),
                 ));
         }
 
         let mut info = String::default();
-        let i = store::get_info(&title);
-        if i.is_ok() {
-            info = i.unwrap();
+        if let Ok(i) = store::get_info(&title) {
+            info = i;
         }
+
+        log(&format!("size set"));
 
         Self {
             title,
             texture,
             info,
+            size: 300,
         }
     }
 
@@ -48,10 +52,10 @@ impl InfoWindow {
             .title_bar(true)
             .enabled(true);
         window = window.open(open);
-        window.show(ctx, |ui| self.ui(ui));
+        window.show(ctx, |ui| self.ui(ui, ctx));
     }
 
-    fn ui(&mut self, ui: &mut egui::Ui) {
+    fn ui(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
         let qty = store::get_qty(&self.title).unwrap();
 
         ui.horizontal(|ui| {
@@ -65,6 +69,7 @@ impl InfoWindow {
                 ui.label(&self.info);
                 let texture = &self.texture.clone().unwrap();
                 ui.add(egui::Image::new(texture, texture.size_vec2()).bg_fill(Color32::WHITE));
+                self.texture_downloader(ctx, ui)
             }
             Qty::Time => {
                 ui.label("Possible operations include:\n-Complement and degrade.\n-All same type duo operations\n-TFold with a SpaceTime MOC.");
@@ -75,6 +80,25 @@ impl InfoWindow {
                 ui.label(&self.info);
             }
         };
+    }
+
+    fn texture_downloader(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        ui.horizontal(|ui| {
+            ui.add(egui::DragValue::new(&mut self.size).speed(1.0).suffix("px"));
+            log(&format!("{:?}", self.size));
+            ui.label(format!("x {}px", self.size / 2));
+            if ui.button("Download").clicked() {
+                if let Ok(i) = store::get_img(&self.title, (self.size, self.size/2)) {
+                    self.texture =
+                            // Load the texture only once.
+                            Some(ctx.load_texture(
+                                "moc_img",
+                                egui::ColorImage::from_rgba_unmultiplied([self.size.into(), (self.size/2).into()], i.as_slice()),
+                                Default::default(),
+                            ));
+                }
+            }
+        });
     }
 }
 
