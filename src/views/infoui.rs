@@ -1,103 +1,82 @@
-use std::collections::HashMap;
+use std::{borrow::Borrow, collections::HashMap};
 
-use crate::app::log;
-use egui::{Color32, Ui};
+use crate::namestore::list_names;
+use crate::namestore::{get_name, get_store};
+use egui::Ui;
 use egui_extras::{Column, TableBuilder};
+use moc::storage::u64idx::common::MocQType;
+use moc::storage::u64idx::U64MocStore;
 
-use crate::{
-    commons::{to_ascii_file, to_fits_file, to_json_file, Qty},
-    models::store::{self, get_store},
-};
+use crate::commons::{fmtQty, to_file};
 
 #[derive(Clone, PartialEq, Default, Eq)]
 pub struct InfoWindow {
-    pub title: String,
+    pub id: usize,
     texture: Option<egui::TextureHandle>,
-    size: u16,
     info: String,
 }
 
 impl InfoWindow {
-    pub fn new(ctx: &egui::Context, title: String) -> Self {
+    pub fn new(ctx: &egui::Context, id: usize) -> Self {
         let mut texture: Option<egui::TextureHandle> = None;
-        if let Ok(i) = store::get_img(&title, (300, 150)) {
+        if let Ok(i) = U64MocStore.to_png(id, 300) {
             texture =
                 // Load the texture only once.
                 Some(ctx.load_texture(
                     "moc_img",
-                    egui::ColorImage::from_rgba_unmultiplied([300, 150], i.as_slice()),
+                    egui::ColorImage::from_rgba_unmultiplied([300, 150], i.borrow()),
                     Default::default(),
                 ));
         }
 
         let mut info = String::default();
-        if let Ok(i) = store::get_info(&title) {
-            info = i;
+        match U64MocStore.get_qty_type(id) {
+            Ok(qty) => match qty {
+                MocQType::Space => {
+                    if let Ok(s) = U64MocStore.get_smoc_depth(id) {
+                        info = format!(
+                            "Depth: {}, Coverage:{}",
+                            s.to_string(),
+                            U64MocStore.get_coverage_percentage(id).unwrap().to_string()
+                        )
+                    }
+                }
+                MocQType::Time => {
+                    if let Ok(t) = U64MocStore.get_tmoc_depth(id) {
+                        info = format!("Depth: {}", t.to_string())
+                    }
+                }
+                MocQType::Frequency => todo!(), //TODO ADD FREQUENCY ERROR
+                MocQType::TimeSpace => {
+                    if let Ok(st) = U64MocStore.get_stmoc_depths(id) {
+                        info = format!("Depth S:{}\nDepth T:{}", st.0.to_string(), st.1.to_string())
+                    }
+                }
+            },
+            Err(_) => todo!(),
         }
 
-        log(&format!("size set"));
-
-        Self {
-            title,
-            texture,
-            info,
-            size: 300,
-        }
+        Self { id, texture, info }
     }
 
     pub fn show(&mut self, ctx: &egui::Context, open: &mut bool) {
-        let mut window = egui::Window::new(self.title.clone())
-            .id(egui::Id::new(self.title.clone())) // required since we change the title
-            .resizable(false)
-            .title_bar(true)
-            .enabled(true);
-        window = window.open(open);
-        window.show(ctx, |ui| self.ui(ui, ctx));
+        if let Ok(n) = get_name(self.id) {
+            let mut window = egui::Window::new(n.clone())
+                .id(egui::Id::new(n)) // required since we change the title
+                .resizable(false)
+                .title_bar(true)
+                .enabled(true);
+            window = window.open(open);
+            window.show(ctx, |ui| self.ui(ui));
+        }
     }
 
-    fn ui(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
-        let qty = store::get_qty(&self.title).unwrap();
+    fn ui(&mut self, ui: &mut egui::Ui) {
+        let qty = U64MocStore.get_qty_type(self.id).unwrap();
 
         ui.horizontal(|ui| {
             ui.label("MOC type:");
-            ui.label(qty.to_string().as_str());
-        });
-
-        match qty {
-            Qty::Space => {
-                ui.label("Possible operations include:\n-All solo operations.\n-All same type duo operations.\n-SFold with a SpaceTime MOC.");
-                ui.label(&self.info);
-                let texture = &self.texture.clone().unwrap();
-                ui.add(egui::Image::new(texture, texture.size_vec2()).bg_fill(Color32::WHITE));
-                self.texture_downloader(ctx, ui)
-            }
-            Qty::Time => {
-                ui.label("Possible operations include:\n-Complement and degrade.\n-All same type duo operations\n-TFold with a SpaceTime MOC.");
-                ui.label(&self.info);
-            }
-            Qty::Timespace => {
-                ui.label("Possible operations include:\n-No solo operations.\n-All same type duo operations.\n-SFold or TFold depending on the other MOC's type.");
-                ui.label(&self.info);
-            }
-        };
-    }
-
-    fn texture_downloader(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
-        ui.horizontal(|ui| {
-            ui.add(egui::DragValue::new(&mut self.size).speed(1.0).suffix("px"));
-            log(&format!("{:?}", self.size));
-            ui.label(format!("x {}px", self.size / 2));
-            if ui.button("Download").clicked() {
-                if let Ok(i) = store::get_img(&self.title, (self.size, self.size/2)) {
-                    self.texture =
-                            // Load the texture only once.
-                            Some(ctx.load_texture(
-                                "moc_img",
-                                egui::ColorImage::from_rgba_unmultiplied([self.size.into(), (self.size/2).into()], i.as_slice()),
-                                Default::default(),
-                            ));
-                }
-            }
+            ui.label(fmtQty(qty));
         });
     }
 }
@@ -108,7 +87,7 @@ pub struct ListUi {
 }
 impl ListUi {
     pub(crate) fn list_ui(&mut self, ctx: &egui::Context, ui: &mut Ui) -> Result<(), String> {
-        for moc in store::list_mocs().unwrap() {
+        for moc in list_names().unwrap() {
             if self.open_windows.is_empty() {
                 self.open_windows = HashMap::new();
                 break;
@@ -124,9 +103,10 @@ impl ListUi {
             self.set_open(&moc.clone(), is_open);
         }
 
-        let mut filenames: Vec<String> = Vec::default();
-        for file in get_store().read().unwrap().iter() {
-            filenames.push(file.0.to_string());
+        let mut filenames: Vec<(&usize, &String)> = Vec::default();
+        let binding = get_store().read().unwrap();
+        for file in binding.iter() {
+            filenames.push(file);
         }
         let txt_h = 30.0;
         ui.vertical(|ui| {
@@ -150,39 +130,66 @@ impl ListUi {
                 .body(|body| {
                     body.rows(txt_h, filenames.len(), |row_index, mut row| {
                         row.col(|ui| {
-                            if ui.button(filenames.get(row_index).unwrap()).clicked() {
-                                let name = filenames.get(row_index).unwrap().to_string();
+                            if ui.button(filenames.get(row_index).unwrap().1).clicked() {
+                                let name = filenames.get(row_index).unwrap().1;
                                 // If an information window doesn't exist, create one.
-                                if !self.open_windows.contains_key(&name) {
-                                    self.open_windows
-                                        .insert(name.clone(), InfoWindow::new(ctx, name));
-                                } else if self.open_windows.contains_key(&name) {
-                                    self.open_windows.remove(&name);
+                                if !self.open_windows.contains_key(name) {
+                                    self.open_windows.insert(
+                                        name.clone(),
+                                        InfoWindow::new(ctx, *filenames.get(row_index).unwrap().0),
+                                    );
+                                } else if self.open_windows.contains_key(name) {
+                                    self.open_windows.remove(name);
                                 }
                             };
                         });
                         row.col(|ui| {
                             ui.menu_button("📥", |ui| {
                                 if ui.button("FITS").clicked() {
-                                    let _ = to_fits_file(filenames.get(row_index).unwrap())
-                                        .map_err(|e| return e);
+                                    let _ = to_file(
+                                        filenames.get(row_index).unwrap().1,
+                                        ".fits",
+                                        "application/fits",
+                                        U64MocStore
+                                            .to_fits_buff(
+                                                *filenames.get(row_index).unwrap().0,
+                                                None,
+                                            )
+                                            .unwrap(),
+                                    );
                                 }
                                 if ui.button("ASCII").clicked() {
-                                    let _ =
-                                        to_ascii_file(filenames.get(row_index).unwrap(), Some(0))
-                                            .map_err(|e| return e);
+                                    let _ = to_file(
+                                        filenames.get(row_index).unwrap().1,
+                                        ".txt",
+                                        "text/plain",
+                                        U64MocStore
+                                            .to_ascii_str(
+                                                *filenames.get(row_index).unwrap().0,
+                                                None,
+                                            )
+                                            .unwrap()
+                                            .into_bytes()
+                                            .into_boxed_slice(),
+                                    );
                                 }
                                 if ui.button("JSON").clicked() {
-                                    let _ =
-                                        to_json_file(filenames.get(row_index).unwrap(), Some(0))
-                                            .map_err(|e| return e);
+                                    let _ = to_file(
+                                        filenames.get(row_index).unwrap().1,
+                                        ".json",
+                                        "application/json",
+                                        U64MocStore
+                                            .to_json_str(*filenames.get(row_index).unwrap().0, None)
+                                            .unwrap()
+                                            .into_bytes()
+                                            .into_boxed_slice(),
+                                    );
                                 }
                             });
                         });
                         row.col(|ui| {
                             if ui.button("❌").clicked() {
-                                let _ = store::drop(filenames.get(row_index).unwrap())
-                                    .map_err(|e| return e);
+                                let _ = U64MocStore.drop(*filenames.get(row_index).unwrap().0);
                             }
                         });
                     })

@@ -3,12 +3,13 @@
 
 use core::fmt;
 
-use crate::commons::*;
 use crate::controllers::{op1::*, op2::*};
-use crate::models::{store, store::get_store, store::list_mocs};
+use crate::namestore::{get_name, get_store, list_names};
 
 use eframe::egui;
 use egui::Ui;
+use moc::storage::u64idx::common::MocQType;
+use moc::storage::u64idx::U64MocStore;
 
 enum Op {
     One(Op1),
@@ -42,8 +43,8 @@ pub struct OpUis {
     name: String,
     operation: Op,
     deg: u8,
-    picked_file: Option<String>,
-    picked_second_file: Option<String>,
+    picked_file: Option<usize>,
+    picked_second_file: Option<usize>,
 }
 impl OpUis {
     // #Definition
@@ -65,7 +66,10 @@ impl OpUis {
                     "Degrade",
                 );
                 if self.picked_file.is_some()
-                    && store::get_qty(&self.picked_file.clone().unwrap()) == Ok(Qty::Space)
+                    && matches!(
+                        U64MocStore.get_qty_type(self.picked_file.unwrap()),
+                        Ok(MocQType::Space)
+                    )
                 {
                     ui.selectable_value(&mut self.operation, Op::One(Op1::Extend), "Extend");
                     ui.selectable_value(&mut self.operation, Op::One(Op1::Contract), "Contract");
@@ -117,18 +121,18 @@ impl OpUis {
                     });
             } else if self.files_have_stmoc() {
                 ui.horizontal(|ui| {
-                    if store::get_qty(&self.picked_file.clone().unwrap()) == Ok(Qty::Space)
-                        || store::get_qty(&self.picked_second_file.clone().unwrap())
-                            == Ok(Qty::Space)
-                    {
+                    if matches!(
+                        U64MocStore.get_qty_type(self.picked_file.unwrap()),
+                        Ok(MocQType::Space)
+                    ) {
                         ui.label("Operation:");
                         ui.add_enabled(false, egui::widgets::Button::new("SFold"));
                         ui.end_row();
                         self.operation = Op::Two(Op2::SFold);
-                    } else if store::get_qty(&self.picked_file.clone().unwrap()) == Ok(Qty::Time)
-                        || store::get_qty(&self.picked_second_file.clone().unwrap())
-                            == Ok(Qty::Time)
-                    {
+                    } else if matches!(
+                        U64MocStore.get_qty_type(self.picked_file.unwrap()),
+                        Ok(MocQType::Time)
+                    ) {
                         ui.label("Operation:");
                         ui.add_enabled(false, egui::widgets::Button::new("TFold"));
                         ui.end_row();
@@ -157,14 +161,14 @@ impl OpUis {
         }
 
         //If no file has been imported yet
-        if list_mocs().unwrap().is_empty() {
+        if list_names().unwrap().is_empty() {
             ui.label("Pick a file!");
         //If files have been imported and can be chosen from
         } else {
             //Defaults to "pick one" before leaving the user choose which moc he wants to operate on
             let mut sel_text = "pick one".to_string();
             if self.picked_file.is_some() {
-                sel_text = self.picked_file.clone().unwrap();
+                sel_text = get_name(self.picked_file.unwrap()).map_err(|e| return e)?;
             }
 
             // The small paragraph before the match sets a grid layout to have every element aligned
@@ -194,20 +198,26 @@ impl OpUis {
                         ui.end_row();
 
                         //Button launching the operation
-                        if store::get_qty(&self.picked_file.clone().unwrap()) != Ok(Qty::Timespace)
-                        {
+                        if !matches!(
+                            U64MocStore.get_qty_type(self.picked_file.unwrap()),
+                            Ok(MocQType::Time)
+                        ) {
                             if ui.button("Launch").clicked() {
                                 if deg {
                                     op = Op1::Degrade {
                                         new_depth: self.deg,
                                     }
                                 }
-                                let moc = self.picked_file.clone().unwrap();
 
                                 if self.name.is_empty() {
-                                    self.name = format!("{}_{}", op, moc);
+                                    self.name = format!(
+                                        "{}_{}",
+                                        op,
+                                        get_name(self.picked_file.unwrap()).unwrap()
+                                    );
                                 }
-                                let _ = op1(&moc, op, &self.name).map_err(|e| return e);
+                                let _ = op1(self.picked_file.unwrap(), op, &self.name)
+                                    .map_err(|e| return e);
                                 self.name = String::default();
                             };
                         } else {
@@ -231,17 +241,17 @@ impl OpUis {
         }
 
         // If no file has been imported yet.
-        if list_mocs().unwrap().len() < 2 {
+        if list_names().unwrap().len() < 2 {
             ui.label("Pick at least 2 files!");
         // If files have been imported and can be chosen from.
         } else {
             let mut sel_text = "pick one".to_string();
             let mut sel_text_2 = "pick one".to_string();
             if self.picked_file.is_some() {
-                sel_text = self.picked_file.clone().unwrap();
+                sel_text = get_name(self.picked_file.unwrap()).map_err(|e| return e)?;
             }
             if self.picked_second_file.is_some() {
-                sel_text_2 = self.picked_second_file.clone().unwrap();
+                sel_text_2 = get_name(self.picked_file.unwrap()).map_err(|e| return e)?;
             }
 
             // The small paragraph before the match sets a grid layout to have every element aligned.
@@ -272,13 +282,16 @@ impl OpUis {
                         if ui.button("Launch").clicked() {
                             let mut l = self.picked_file.as_ref().unwrap();
                             let mut r = self.picked_second_file.as_ref().unwrap();
-                            if store::get_qty(l) == Ok(Qty::Timespace) {
+                            if matches!(
+                                U64MocStore.get_qty_type(self.picked_file.unwrap()),
+                                Ok(MocQType::TimeSpace)
+                            ) {
                                 std::mem::swap(&mut r, &mut l);
                             }
                             if self.name.is_empty() {
                                 self.name = format!("{}_{}_{}", op, l, r);
                             }
-                            let _ = op2(l, r, op, &self.name).map_err(|e| return e);
+                            let _ = op2(*l, *r, op, &self.name).map_err(|e| return e);
                             self.name = String::default();
                         };
                     }
@@ -300,17 +313,9 @@ impl OpUis {
             .show_ui(ui, |ui| {
                 for file in get_store().read().unwrap().iter() {
                     if op.is_none() {
-                        ui.selectable_value(
-                            &mut self.picked_file,
-                            Some(file.0.to_string()),
-                            file.0,
-                        );
+                        ui.selectable_value(&mut self.picked_file, Some(*file.0), file.1);
                     } else {
-                        ui.selectable_value(
-                            &mut self.picked_second_file,
-                            Some(file.0.to_string()),
-                            file.0,
-                        );
+                        ui.selectable_value(&mut self.picked_second_file, Some(*file.0), file.1);
                     }
                 }
             });
@@ -319,11 +324,19 @@ impl OpUis {
     //  *   files_have_stmoc: a simple check to see if a space time MOC is present in the 2 selected MOCs.
     //  *   files_have_same_type: a simple check to see if both selected MOCs are of the same type.
     fn files_have_stmoc(&mut self) -> bool {
-        store::get_qty(&self.picked_second_file.clone().unwrap()) == Ok(Qty::Timespace)
-            || store::get_qty(&self.picked_file.clone().unwrap()) == Ok(Qty::Timespace)
+        matches!(
+            U64MocStore.get_qty_type(self.picked_second_file.unwrap()),
+            Ok(MocQType::TimeSpace)
+        ) || matches!(
+            U64MocStore.get_qty_type(self.picked_file.unwrap()),
+            Ok(MocQType::TimeSpace)
+        )
     }
     fn files_have_same_type(&mut self) -> bool {
-        store::get_qty(&self.picked_file.clone().unwrap())
-            .eq(&store::get_qty(&self.picked_second_file.clone().unwrap()))
+        let second_qty = U64MocStore.get_qty_type(self.picked_file.unwrap());
+        matches!(
+            U64MocStore.get_qty_type(self.picked_second_file.unwrap()),
+            second_qty
+        )
     }
 }

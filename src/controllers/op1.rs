@@ -1,9 +1,7 @@
 use core::fmt;
 
-use moc::moc::{CellMOCIntoIterator, CellMOCIterator, RangeMOCIterator};
-
-use crate::commons::{InternalMoc, Smoc, Stmoc, Tmoc};
-use crate::models::store;
+use crate::namestore::add;
+use moc::storage::u64idx::{common::MocQType, U64MocStore};
 
 #[derive(Copy, Clone)]
 pub(crate) enum Op1 {
@@ -60,23 +58,65 @@ impl Op1 {
         matches!(self, Op1::SplitIndirect)
     }
 
-    fn perform_op_on_smoc(self, moc: &Smoc) -> Result<Smoc, String> {
+    fn perform_op_on_smoc(self, id: usize, n: &str) -> Result<(), String> {
+        let name = n.to_string();
         match self {
-            Op1::Complement => Ok(moc.not()),
-            Op1::Degrade { new_depth } => Ok(moc.degraded(new_depth)),
-            Op1::Extend => Ok(moc.expanded()),
-            Op1::Contract => Ok(moc.contracted()),
-            Op1::ExtBorder => Ok(moc.external_border()),
-            Op1::IntBorder => Ok(moc.internal_border()),
+            Op1::Complement => {
+                if let Ok(index) = U64MocStore.complement(id) {
+                    add(name, index);
+                }
+                Ok(())
+            }
+            Op1::Degrade { new_depth } => {
+                if let Ok(index) = U64MocStore.degrade(id, new_depth) {
+                    add(name, index);
+                }
+                Ok(())
+            }
+            Op1::Extend => {
+                if let Ok(index) = U64MocStore.extend(id) {
+                    add(name, index);
+                }
+                Ok(())
+            }
+            Op1::Contract => {
+                if let Ok(index) = U64MocStore.contract(id) {
+                    add(name, index);
+                }
+                Ok(())
+            }
+            Op1::ExtBorder => {
+                if let Ok(index) = U64MocStore.ext_border(id) {
+                    add(name, index);
+                }
+                Ok(())
+            }
+            Op1::IntBorder => {
+                if let Ok(index) = U64MocStore.int_border(id) {
+                    add(name, index);
+                }
+                Ok(())
+            }
             Op1::Split | Op1::SplitIndirect => {
                 Err(String::from("Split must be catch before this :o/."))
             }
         }
     }
-    fn perform_op_on_tmoc(self, moc: &Tmoc) -> Result<Tmoc, String> {
+    fn perform_op_on_tmoc(self, id: usize, n: &str) -> Result<(), String> {
+        let name = n.to_string();
         match self {
-            Op1::Complement => Ok(moc.not()),
-            Op1::Degrade { new_depth } => Ok(moc.degraded(new_depth)),
+            Op1::Complement => {
+                if let Ok(index) = U64MocStore.complement(id) {
+                    add(name, index);
+                }
+                Ok(())
+            }
+            Op1::Degrade { new_depth } => {
+                if let Ok(index) = U64MocStore.degrade(id, new_depth) {
+                    add(name, index);
+                }
+                Ok(())
+            }
             Op1::Extend => Err(String::from(
                 "Extend border not implemented (yet) for T-MOCs.",
             )),
@@ -94,66 +134,37 @@ impl Op1 {
             }
         }
     }
-    fn perform_op_on_stmoc(self, _moc: &Stmoc) -> Result<Stmoc, String> {
-        match self {
-            Op1::Complement => Err(String::from(
-                "Complement not implemented (yet) for ST-MOCs.",
-            )),
-            Op1::Degrade { new_depth: _ } => {
-                Err(String::from("Degrade not implemented (yet) for ST-MOCs."))
-            }
-            Op1::Extend => Err(String::from(
-                "Extend border not implemented (yet) for ST-MOCs.",
-            )),
-            Op1::Contract => Err(String::from(
-                "Contract border not implemented (yet) for ST-MOCs.",
-            )),
-            Op1::ExtBorder => Err(String::from(
-                "External border not implemented (yet) for ST-MOCs.",
-            )),
-            Op1::IntBorder => Err(String::from(
-                "Internal border not implemented (yet) for ST-MOCs.",
-            )),
-            Op1::Split | Op1::SplitIndirect => {
-                Err(String::from("Split not implemented for ST-MOCs."))
-            }
-        }
-    }
 }
 
 /// Performs the given operation on the given MOC and store the resulting MOC in the store.
-pub(crate) fn op1(name: &str, op: Op1, res_name: &str) -> Result<(), String> {
-    if op.is_split_4neigh() || op.is_split_8neigh() {
-        store::op1_multi_res(
-            name,
-            move |moc| match moc {
-                InternalMoc::Space(m) => {
-                    let mut cellmocs = m.split_into_joint_mocs(op.is_split_8neigh());
-                    Ok(cellmocs
-                        .drain(..)
-                        .map(|cell_moc| {
-                            InternalMoc::Space(
-                                cell_moc.into_cell_moc_iter().ranges().into_range_moc(),
-                            )
-                        })
-                        .collect())
+pub(crate) fn op1(id: usize, op: Op1, res_name: &str) -> Result<(), String> {
+    if let Ok(moc) = U64MocStore.get_qty_type(id) {
+        if op.is_split_4neigh() || op.is_split_8neigh() {
+            match moc {
+                MocQType::Space => {
+                    U64MocStore.split_count(id);
+                    if let Ok(indexes) = U64MocStore.split(id) {
+                        for i in indexes {
+                            add(format!("{}({})", res_name, i), id);
+                        }
+                    }
+                    Ok(())
                 }
-                InternalMoc::Time(_) => Err(String::from("Split not implemented for T-MOCs.")),
-                InternalMoc::TimeSpace(_) => {
-                    Err(String::from("Split not implemented for ST-MOCs."))
+                MocQType::Time => Err(String::from("Split not implemented for T-MOCs.")),
+                MocQType::TimeSpace => Err(String::from("Split not implemented for ST-MOCs.")),
+                MocQType::Frequency => Err(String::from("Frequency MOCs not supported.")),
+            }
+        } else {
+            match moc {
+                MocQType::Space => op.perform_op_on_smoc(id, res_name),
+                MocQType::Time => op.perform_op_on_tmoc(id, res_name),
+                MocQType::TimeSpace => {
+                    Err(String::from("Operations are not implemented for ST-MOCs."))
                 }
-            },
-            res_name,
-        )
+                MocQType::Frequency => Err(String::from("Frequency MOCs not supported.")),
+            }
+        }
     } else {
-        store::op1(
-            name,
-            move |moc| match moc {
-                InternalMoc::Space(m) => op.perform_op_on_smoc(m).map(InternalMoc::Space),
-                InternalMoc::Time(m) => op.perform_op_on_tmoc(m).map(InternalMoc::Time),
-                InternalMoc::TimeSpace(m) => op.perform_op_on_stmoc(m).map(InternalMoc::TimeSpace),
-            },
-            res_name,
-        )
+        Err(String::from("Could not get moc QTY type"))
     }
 }

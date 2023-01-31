@@ -1,14 +1,8 @@
 use core::fmt;
 
-use moc::{
-    elem::valuedcell::valued_cells_to_moc_with_opt,
-    elemset::range::HpxRanges,
-    moc::range::RangeMOC,
-    qty::{Hpx, Time},
-};
+use moc::storage::u64idx::U64MocStore;
 
 use crate::commons::*;
-use crate::models::store;
 
 const JD_TO_USEC: f64 = (24_u64 * 60 * 60 * 1_000_000) as f64;
 
@@ -70,145 +64,31 @@ impl Default for CreationType {
     }
 }
 
-pub fn from_cone(
-    name: &str,
-    depth: u8,
-    lon_deg: f64,
-    lat_deg: f64,
-    radius_deg: f64,
-) -> Result<(), String> {
-    let lon = lon_deg2rad(lon_deg)?;
-    let lat = lat_deg2rad(lat_deg)?;
-    let r = radius_deg.to_radians();
-    if r <= 0.0 || PI <= r {
-        Err("Radius must be in ]0, pi[".to_string())
-    } else {
-        let moc: RangeMOC<u64, Hpx<u64>> = RangeMOC::from_cone(lon, lat, r, depth, 2);
-        store::add(name, InternalMoc::Space(moc))
-    }
-}
-
-pub fn from_ring(
-    name: &str,
-    depth: u8,
-    lon_deg: f64,
-    lat_deg: f64,
-    internal_radius_deg: f64,
-    external_radius_deg: f64,
-) -> Result<(), String> {
-    let lon = lon_deg2rad(lon_deg)?;
-    let lat = lat_deg2rad(lat_deg)?;
-    let r_int = internal_radius_deg.to_radians();
-    let r_ext = external_radius_deg.to_radians();
-    if r_int <= 0.0 || PI <= r_int {
-        Err("Internal radius must be in ]0, pi[".to_string())
-    } else if r_ext <= 0.0 || PI <= r_ext {
-        Err("External radius must be in ]0, pi[".to_string())
-    } else if r_ext < r_int {
-        Err("External radius must be larger than the internal radius".to_string())
-    } else {
-        let moc: RangeMOC<u64, Hpx<u64>> = RangeMOC::from_ring(lon, lat, r_int, r_ext, depth, 2);
-        store::add(name, InternalMoc::Space(moc))
-    }
-}
-
-pub fn from_elliptical_cone(
-    name: &str,
-    depth: u8,
-    lon_deg: f64,
-    lat_deg: f64,
-    a_deg: f64,
-    b_deg: f64,
-    pa_deg: f64,
-) -> Result<(), String> {
-    let lon = lon_deg2rad(lon_deg)?;
-    let lat = lat_deg2rad(lat_deg)?;
-    let a = a_deg.to_radians();
-    let b = b_deg.to_radians();
-    let pa = pa_deg.to_radians();
-    if a <= 0.0 || HALF_PI <= a {
-        Err("Semi-major axis must be in ]0, pi/2]".to_string())
-    } else if b <= 0.0 || a <= b {
-        Err("Semi-minor axis must be in ]0, a[".to_string())
-    } else if !(0.0..HALF_PI).contains(&pa) {
-        Err("Position angle must be in [0, pi[".to_string())
-    } else {
-        let moc: RangeMOC<u64, Hpx<u64>> =
-            RangeMOC::from_elliptical_cone(lon, lat, a, b, pa, depth, 2);
-        store::add(name, InternalMoc::Space(moc))
-    }
-}
-
-pub fn from_zone(
-    name: &str,
-    depth: u8,
-    lon_deg_min: f64,
-    lat_deg_min: f64,
-    lon_deg_max: f64,
-    lat_deg_max: f64,
-) -> Result<(), String> {
-    let lon_min = lon_deg2rad(lon_deg_min)?;
-    let lat_min = lat_deg2rad(lat_deg_min)?;
-    let lon_max = lon_deg2rad(lon_deg_max)?;
-    let lat_max = lat_deg2rad(lat_deg_max)?;
-    let moc: RangeMOC<u64, Hpx<u64>> =
-        RangeMOC::from_zone(lon_min, lat_min, lon_max, lat_max, depth);
-    store::add(name, InternalMoc::Space(moc))
-}
-
-pub fn from_box(
-    name: &str,
-    depth: u8,
-    lon_deg: f64,
-    lat_deg: f64,
-    a_deg: f64,
-    b_deg: f64,
-    pa_deg: f64,
-) -> Result<(), String> {
-    let lon = lon_deg2rad(lon_deg)?;
-    let lat = lat_deg2rad(lat_deg)?;
-    let a = a_deg.to_radians();
-    let b = b_deg.to_radians();
-    let pa = pa_deg.to_radians();
-    if a <= 0.0 || HALF_PI <= a {
-        Err("Semi-major axis must be in ]0, pi/2]".to_string())
-    } else if b <= 0.0 || a < b {
-        Err("Semi-minor axis must be in ]0, a[".to_string())
-    } else if !(0.0..PI).contains(&pa) {
-        Err("Position angle must be in [0, pi[".to_string())
-    } else {
-        let moc: RangeMOC<u64, Hpx<u64>> = RangeMOC::from_box(lon, lat, a, b, pa, depth);
-        store::add(name, InternalMoc::Space(moc))
-    }
-}
-
 /// Create a new MOC from the given polygon vertices.
 /// # Params
 /// * `name`: the name to be given to the MOC
 /// * `depth`: MOC maximum depth in `[0, 29]`
 /// * `vertices_deg`: vertices coordinates in degrees `[lon_v1, lat_v1, lon_v2, lat_v2, ..., lon_vn, lat_vn]`
 /// * `complement`: reverse the default inside/outside of the polygon
-pub fn from_polygon(
-    name: &str,
-    depth: u8,
-    content: String,
-    complement: bool,
-) -> Result<(), String> {
+pub fn from_polygon(depth: u8, content: String, complement: bool) -> Result<usize, String> {
     let v = vector_splitter(content);
 
     // An other solution would be to go unsafe to transmute in Box<[[f64; 2]]> ...
-    let vertices = v
-        .iter()
-        .step_by(2)
-        .zip(v.iter().skip(1).step_by(2))
-        .map(|(lon_deg, lat_deg)| {
-            let lon = lon_deg2rad(*lon_deg)?;
-            let lat = lat_deg2rad(*lat_deg)?;
-            Ok((lon, lat))
-        })
-        .collect::<Result<Vec<(f64, f64)>, String>>()?;
-    let moc: RangeMOC<u64, Hpx<u64>> = RangeMOC::from_polygon(&vertices, complement, depth);
-    store::add(name, InternalMoc::Space(moc))
+    U64MocStore.from_polygon(
+        v.iter()
+            .step_by(2)
+            .zip(v.iter().skip(1).step_by(2))
+            .filter_map(|(lon_deg, lat_deg)| {
+                let lon = lon_deg2rad(*lon_deg).ok();
+                let lat = lat_deg2rad(*lat_deg).ok();
+                match (lon, lat) {
+                    (Some(lon), Some(lat)) => Some((lon, lat)),
+                    _ => None,
+                }
+            }),
+        complement,
+        depth,
+    )
 }
 
 /// Create a new MOC from the given list of coordinates (assumed to be equatorial)
@@ -216,11 +96,11 @@ pub fn from_polygon(
 /// * `name`: the name to be given to the MOC
 /// * `depth`: MOC maximum depth in `[0, 29]`
 /// * `coos_deg`: list of coordinates in degrees `[lon_1, lat_1, lon_2, lat_2, ..., lon_n, lat_n]`
-pub fn from_coo(name: &str, depth: u8, content: String) -> Result<(), String> {
+pub fn from_coo(depth: u8, content: String) -> Result<usize, String> {
     let v = vector_splitter(content);
 
     // An other solution would be to go unsafe to transmute coos_deg in Box<[[f64; 2]]> ...
-    let moc: RangeMOC<u64, Hpx<u64>> = RangeMOC::from_coos(
+    U64MocStore.from_coo(
         depth,
         v.iter()
             .step_by(2)
@@ -233,9 +113,7 @@ pub fn from_coo(name: &str, depth: u8, content: String) -> Result<(), String> {
                     _ => None,
                 }
             }),
-        None,
-    );
-    store::add(name, InternalMoc::Space(moc))
+    )
 }
 
 /// Create a new MOC from the given list of cone centers and radii
@@ -245,24 +123,25 @@ pub fn from_coo(name: &str, depth: u8, content: String) -> Result<(), String> {
 /// * `depth`: MOC maximum depth in `[0, 29]`
 /// * `coos_and_radius_deg`: list of coordinates adn radii in degrees
 ///   `[lon_1, lat_1, rad_1, lon_2, lat_2, rad_2, ..., lon_n, lat_n, rad_n]`
-pub fn from_small_cones(name: &str, depth: u8, content: String) -> Result<(), String> {
+pub fn from_small_cones(depth: u8, content: String) -> Result<usize, String> {
     let v = vector_splitter(content);
 
-    let coos_rad = v
-        .iter()
-        .step_by(3)
-        .zip(v.iter().skip(1).step_by(3))
-        .zip(v.iter().skip(2).step_by(3))
-        .filter_map(|((lon_deg, lat_deg), radius_deg)| {
-            let lon = lon_deg2rad(*lon_deg).ok();
-            let lat = lat_deg2rad(*lat_deg).ok();
-            match (lon, lat) {
-                (Some(lon), Some(lat)) => Some((lon, lat, (*radius_deg).to_radians())),
-                _ => None,
-            }
-        });
-    let moc: RangeMOC<u64, Hpx<u64>> = RangeMOC::from_small_cones(depth, 2, coos_rad, None);
-    store::add(name, InternalMoc::Space(moc))
+    U64MocStore.from_small_cones(
+        depth,
+        2,
+        v.iter()
+            .step_by(3)
+            .zip(v.iter().skip(1).step_by(3))
+            .zip(v.iter().skip(2).step_by(3))
+            .filter_map(|((lon_deg, lat_deg), radius_deg)| {
+                let lon = lon_deg2rad(*lon_deg).ok();
+                let lat = lat_deg2rad(*lat_deg).ok();
+                match (lon, lat) {
+                    (Some(lon), Some(lat)) => Some(((lon, lat), (*radius_deg).to_radians())),
+                    _ => None,
+                }
+            }),
+    )
 }
 
 /// Create a new MOC from the given list of cone centers and radii
@@ -272,24 +151,25 @@ pub fn from_small_cones(name: &str, depth: u8, content: String) -> Result<(), St
 /// * `depth`: MOC maximum depth in `[0, 29]`
 /// * `coos_and_radius_deg`: list of coordinates adn radii in degrees
 ///   `[lon_1, lat_1, rad_1, lon_2, lat_2, rad_2, ..., lon_n, lat_n, rad_n]`
-pub fn from_large_cones(name: &str, depth: u8, content: String) -> Result<(), String> {
+pub fn from_large_cones(depth: u8, content: String) -> Result<usize, String> {
     let v = vector_splitter(content);
 
-    let coos_rad = v
-        .iter()
-        .step_by(3)
-        .zip(v.iter().skip(1).step_by(3))
-        .zip(v.iter().skip(2).step_by(3))
-        .filter_map(|((lon_deg, lat_deg), radius_deg)| {
-            let lon = lon_deg2rad(*lon_deg).ok();
-            let lat = lat_deg2rad(*lat_deg).ok();
-            match (lon, lat) {
-                (Some(lon), Some(lat)) => Some((lon, lat, (*radius_deg).to_radians())),
-                _ => None,
-            }
-        });
-    let moc: RangeMOC<u64, Hpx<u64>> = RangeMOC::from_large_cones(depth, 2, coos_rad);
-    store::add(name, InternalMoc::Space(moc))
+    U64MocStore.from_large_cones(
+        depth,
+        2,
+        v.iter()
+            .step_by(3)
+            .zip(v.iter().skip(1).step_by(3))
+            .zip(v.iter().skip(2).step_by(3))
+            .filter_map(|((lon_deg, lat_deg), radius_deg)| {
+                let lon = lon_deg2rad(*lon_deg).ok();
+                let lat = lat_deg2rad(*lat_deg).ok();
+                match (lon, lat) {
+                    (Some(lon), Some(lat)) => Some(((lon, lat), (*radius_deg).to_radians())),
+                    _ => None,
+                }
+            }),
+    )
 }
 
 /// Create a new T-MOC from the given list of decimal Julian Days (JD) times.
@@ -305,29 +185,22 @@ pub fn from_large_cones(name: &str, depth: u8, content: String) -> Result<(), St
 /// The other approach is to use a couple of `f64`: one for the integer part of the JD, the
 /// other for the fractional part of the JD.
 /// We will add such a method later if required by users.
-pub fn from_decimal_jd(name: &str, depth: u8, content: String) -> Result<(), String> {
+pub fn from_decimal_jd(depth: u8, content: String) -> Result<usize, String> {
     let v = vector_splitter(content);
 
-    let moc = RangeMOC::<u64, Time<u64>>::from_microsec_since_jd0(
-        depth,
-        v.iter().map(|jd| (jd * JD_TO_USEC) as u64),
-        None,
-    );
-    store::add(name, InternalMoc::Time(moc))
+    U64MocStore.from_decimal_jd_values(depth, v.iter().map(|jd| (jd * JD_TO_USEC)))
 }
 
-pub fn from_decimal_jd_range(name: &str, depth: u8, content: String) -> Result<(), String> {
+pub fn from_decimal_jd_range(depth: u8, content: String) -> Result<usize, String> {
     let v = vector_splitter(content);
 
-    let moc = RangeMOC::<u64, Time<u64>>::from_microsec_ranges_since_jd0(
+    U64MocStore.from_decimal_jd_ranges(
         depth,
         v.iter()
             .step_by(2)
             .zip(v.iter().skip(1).step_by(2))
-            .map(|(jd_min, jd_max)| (jd_min * JD_TO_USEC) as u64..(jd_max * JD_TO_USEC) as u64),
-        None,
-    );
-    store::add(name, InternalMoc::Time(moc))
+            .map(|(jd_min, jd_max)| (jd_min * JD_TO_USEC)..(jd_max * JD_TO_USEC)),
+    )
 }
 
 /// Create a new S-MOC from the given lists of UNIQ and Values.
@@ -344,7 +217,6 @@ pub fn from_decimal_jd_range(name: &str, depth: u8, content: String) -> Result<(
 /// * `uniqs`: array of uniq HEALPix cells
 /// * `values`: array of values associated to the HEALPix cells
 pub fn from_valued_cells(
-    name: &str,
     depth: u8,
     density: bool,
     from_threshold: f64,
@@ -354,7 +226,7 @@ pub fn from_valued_cells(
     split: bool,
     revese_recursive_descent: bool,
     content: String,
-) -> Result<(), String> {
+) -> Result<usize, String> {
     let mut v: Vec<f64> = Vec::default();
 
     let f: Vec<&str> = content.split(|c| c == ',' || c == '\n').collect();
@@ -362,60 +234,21 @@ pub fn from_valued_cells(
     let mut tmp: Vec<f64> = f.iter().filter_map(|f| (*f).parse::<f64>().ok()).collect();
     v.append(&mut tmp);
 
-    let uniqs: Vec<f64> = v.iter().step_by(2).copied().collect();
-    let values: Vec<f64> = v.iter().skip(1).step_by(2).copied().collect();
-
-    let depth = depth.max(
-        uniqs
-            .iter()
-            .map(|uniq| Hpx::<u64>::from_uniq_hpx(*uniq as u64).0)
-            .max()
-            .unwrap_or(depth),
-    );
-    let area_per_cell = (PI / 3.0) / (1_u64 << (depth << 1) as u32) as f64; // = 4pi / (12*4^depth)
-    let ranges: HpxRanges<u64> = if density {
-        valued_cells_to_moc_with_opt::<u64, f64>(
-            depth,
-            uniqs
-                .iter()
-                .zip(values.iter())
-                .map(|(uniq, dens)| {
-                    let uniq = *uniq as u64;
-                    let (cdepth, _ipix) = Hpx::<u64>::from_uniq_hpx(uniq);
-                    let n_sub_cells = (1_u64 << (((depth - cdepth) << 1) as u32)) as f64;
-                    (uniq, dens * n_sub_cells * area_per_cell, *dens)
-                })
-                .collect(),
-            from_threshold,
-            to_threshold,
-            asc,
-            !not_strict,
-            !split,
-            revese_recursive_descent,
-        )
-    } else {
-        valued_cells_to_moc_with_opt::<u64, f64>(
-            depth,
-            uniqs
-                .iter()
-                .zip(values.iter())
-                .map(|(uniq, val)| {
-                    let uniq = *uniq as u64;
-                    let (cdepth, _ipix) = Hpx::<u64>::from_uniq_hpx(uniq);
-                    let n_sub_cells = (1_u64 << (((depth - cdepth) << 1) as u32)) as f64;
-                    (uniq, *val, val / (n_sub_cells * area_per_cell))
-                })
-                .collect(),
-            from_threshold,
-            to_threshold,
-            asc,
-            !not_strict,
-            !split,
-            revese_recursive_descent,
-        )
-    };
-    let moc = RangeMOC::new(depth, ranges);
-    store::add(name, InternalMoc::Space(moc))
+    let uniq_vals = v
+        .iter()
+        .zip(v.iter().step_by(2))
+        .map(|(uniq, val)| (*uniq as u64, *val));
+    U64MocStore.from_valued_cells(
+        depth,
+        density,
+        from_threshold,
+        to_threshold,
+        asc,
+        not_strict,
+        split,
+        revese_recursive_descent,
+        uniq_vals,
+    )
 }
 
 pub(crate) fn lon_deg2rad(lon_deg: f64) -> Result<f64, String> {

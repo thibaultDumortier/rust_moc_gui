@@ -1,14 +1,8 @@
 use core::fmt;
-use std::{io::Cursor, str::from_utf8_unchecked};
+use std::str::from_utf8_unchecked;
 
-use crate::models::{
-    load_ascii::*,
-    load_fits::*,
-    load_json::*,
-    store::{self, *},
-};
 use moc::{
-    deser::fits::{from_fits_ivoa, ranges2d_to_fits_ivoa, MocIdxType},
+    deser::fits::ranges2d_to_fits_ivoa,
     elemset::range::MocRanges,
     moc::{
         range::RangeMOC, CellMOCIterator, CellOrCellRangeMOCIterator, RangeMOCIntoIterator,
@@ -16,9 +10,10 @@ use moc::{
     },
     moc2d::{
         range::RangeMOC2, CellMOC2IntoIterator, CellMOC2Iterator, CellOrCellRangeMOC2IntoIterator,
-        CellOrCellRangeMOC2Iterator, RangeMOC2IntoIterator, HasTwoMaxDepth,
+        CellOrCellRangeMOC2Iterator, HasTwoMaxDepth, RangeMOC2IntoIterator,
     },
     qty::{Hpx, Time},
+    storage::u64idx::{common::MocQType, U64MocStore},
 };
 use unreachable::UncheckedResultExt;
 
@@ -188,66 +183,29 @@ impl InternalMoc {
     }
 }
 
-pub(crate) fn from_fits(data: &[u8]) -> Result<InternalMoc, String> {
-    // Build the MOC
-    let moc = match from_fits_ivoa(Cursor::new(data)).map_err(|e| e.to_string())? {
-        MocIdxType::U16(moc) => from_fits_gen(moc),
-        MocIdxType::U32(moc) => from_fits_gen(moc),
-        MocIdxType::U64(moc) => from_fits_u64(moc),
-    }
-    .map_err(|e| e.to_string())?;
-    Ok(moc)
-}
-
-pub(crate) fn type_reading(rtype: &str, moct: &Qty, data: &[u8]) -> Result<InternalMoc, String> {
+pub(crate) fn type_reading(rtype: &str, moct: &Qty, data: &[u8]) -> Result<usize, String> {
     match rtype {
-        "fits" => from_fits(data),
+        "fits" => U64MocStore.load_from_fits(data),
         "json" => match moct {
-            Qty::Space => smoc_from_json(unsafe { from_utf8_unchecked(data) }),
-            Qty::Time => tmoc_from_json(unsafe { from_utf8_unchecked(data) }),
-            Qty::Timespace => stmoc_from_json(unsafe { from_utf8_unchecked(data) }),
+            Qty::Space => U64MocStore.load_smoc_from_json(unsafe { from_utf8_unchecked(data) }),
+            Qty::Time => U64MocStore.load_tmoc_from_json(unsafe { from_utf8_unchecked(data) }),
+            Qty::Timespace => {
+                U64MocStore.load_stmoc_from_json(unsafe { from_utf8_unchecked(data) })
+            }
         },
         "txt" | "ascii" => match moct {
-            Qty::Space => smoc_from_ascii(unsafe { from_utf8_unchecked(data) }),
-            Qty::Time => tmoc_from_ascii(unsafe { from_utf8_unchecked(data) }),
-            Qty::Timespace => stmoc_from_ascii(unsafe { from_utf8_unchecked(data) }),
+            Qty::Space => U64MocStore.load_smoc_from_ascii(unsafe { from_utf8_unchecked(data) }),
+            Qty::Time => U64MocStore.load_tmoc_from_ascii(unsafe { from_utf8_unchecked(data) }),
+            Qty::Timespace => {
+                U64MocStore.load_stmoc_from_ascii(unsafe { from_utf8_unchecked(data) })
+            }
         },
         _ => unreachable!(), // since file_input.set_attribute("accept", ".fits, .json, .ascii, .txt");
     }
 }
 
-pub fn to_ascii_file(name: &str, fold: Option<usize>) -> Result<(), String> {
-    let data: String = store::exec(name, move |moc| moc.to_ascii(fold))
-        .ok_or_else(|| "MOC not found".to_string())?;
-    to_file(
-        name,
-        ".txt",
-        "text/plain",
-        data.into_bytes().into_boxed_slice(),
-    )
-}
-
-pub fn to_json_file(name: &str, fold: Option<usize>) -> Result<(), String> {
-    let data: String = store::exec(name, move |moc| moc.to_json(fold))
-        .ok_or_else(|| "MOC not found".to_string())?;
-    to_file(
-        name,
-        ".json",
-        "application/json",
-        data.into_bytes().into_boxed_slice(),
-    )
-}
-
-pub fn to_fits_file(name: &str) -> Result<(), String> {
-    if let Some(data) = store::exec(name, move |moc| moc.to_fits()) {
-        to_file(name, ".fits", "application/fits", data)
-    } else {
-        Err("Encountered an issue during fits conversion".to_string())
-    }
-}
-
 #[cfg(not(target_arch = "wasm32"))]
-fn to_file(name: &str, ext: &str, _mime: &str, data: Box<[u8]>) -> Result<(), String> {
+pub fn to_file(name: &str, ext: &str, _mime: &str, data: Box<[u8]>) -> Result<(), String> {
     let path = rfd::FileDialog::new()
         .set_directory("../")
         .set_file_name(&(name.to_owned() + ext))
@@ -271,7 +229,7 @@ fn to_file(name: &str, ext: &str, _mime: &str, data: Box<[u8]>) -> Result<(), St
 }
 
 #[cfg(target_arch = "wasm32")]
-fn to_file(name: &str, ext: &str, mime: &str, data: Box<[u8]>) -> Result<(), String> {
+pub fn to_file(name: &str, ext: &str, mime: &str, data: Box<[u8]>) -> Result<(), String> {
     // Set filename
     let mut filename = String::from(name);
     if !filename.ends_with(ext) {
@@ -318,6 +276,8 @@ fn to_file(name: &str, ext: &str, mime: &str, data: Box<[u8]>) -> Result<(), Str
 
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn load(rtype: &[&str], moct: Qty) -> Result<(), String> {
+    use crate::namestore::add;
+
     let reading = if rtype.contains(&"fits") {
         "fits"
     } else if rtype.contains(&"json") {
@@ -341,9 +301,9 @@ pub(crate) fn load(rtype: &[&str], moct: Qty) -> Result<(), String> {
             let mut file_content = Vec::default();
             file.read_to_end(&mut file_content)
                 .map_err(|e| format!("Error while reading file: {}", e))?;
-            let res = type_reading(reading, &moct, file_content.as_slice());
-            if let Ok(r) = res {
-                add(file_name, r).expect("A problem has occured while trying to add the MOC");
+
+            if let Ok(id) = type_reading(reading, &moct, file_content.as_slice()) {
+                add(file_name.to_owned(), id);
             }
         }
     }
@@ -376,10 +336,8 @@ pub(crate) fn load(rtype: &[&str], moct: Qty) -> Result<(), String> {
                 let file_name = path.file_name();
                 //Reads file contents and adds it to the data
                 let file_content = path.read().await;
-                let res = type_reading(reading, &moct, file_content.as_slice());
-                if res.is_ok() {
-                    add(&file_name, res.unwrap())
-                        .expect("A problem has occured while trying to add the MOC");
+                if let Ok(id) = type_reading(reading, &moct, file_content.as_slice()) {
+                    add(file_name.to_owned(), id);
                 }
             }
         }
@@ -389,4 +347,13 @@ pub(crate) fn load(rtype: &[&str], moct: Qty) -> Result<(), String> {
 #[cfg(target_arch = "wasm32")]
 fn execute<F: std::future::Future<Output = ()> + 'static>(f: F) {
     wasm_bindgen_futures::spawn_local(f);
+}
+
+pub fn fmtQty(typ: MocQType) -> String {
+    match typ {
+        MocQType::Space => "Space".to_string(),
+        MocQType::Time => "Time".to_string(),
+        MocQType::TimeSpace => "Timespace".to_string(),
+        MocQType::Frequency => todo!(), //TODO ADD FREQUENCY ERROR
+    }
 }

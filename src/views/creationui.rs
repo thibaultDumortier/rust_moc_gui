@@ -2,11 +2,13 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
 use crate::controllers::creation::*;
+use crate::namestore::add;
 
 use super::creationui::CreationType;
 use eframe::egui;
 use egui::Ui;
 
+use moc::storage::u64idx::U64MocStore;
 #[cfg(target_arch = "wasm32")]
 use rfd::AsyncFileDialog;
 
@@ -134,14 +136,18 @@ impl CreationUis {
             if self.name.is_empty() {
                 self.name = format!("Cone_of_rad_{}", self.radius_a.to_string().as_str());
             }
-            let _ = from_cone(
-                &self.name,
-                self.depth,
-                self.lon_deg_polf1,
-                self.lat_deg_polf2,
-                self.radius_a,
-            )
-            .map_err(|e| err = Some(e));
+            if let Ok(id) = U64MocStore
+                .from_cone(
+                    self.lon_deg_polf1,
+                    self.lat_deg_polf2,
+                    self.radius_a,
+                    self.depth,
+                    2,
+                )
+                .map_err(|e| err = Some(e))
+            {
+                add(self.name.clone(), id);
+            }
             self.name = String::default();
         }
         err
@@ -165,15 +171,19 @@ impl CreationUis {
                     self.radius_a.to_string().as_str()
                 );
             }
-            let _ = from_ring(
-                &self.name,
-                self.depth,
-                self.lon_deg_polf1,
-                self.lat_deg_polf2,
-                self.lon_deg_min_b_int,
-                self.radius_a,
-            )
-            .map_err(|e| err = Some(e));
+            if let Ok(id) = U64MocStore
+                .from_ring(
+                    self.lon_deg_polf1,
+                    self.lat_deg_polf2,
+                    self.lon_deg_min_b_int,
+                    self.radius_a,
+                    self.depth,
+                    2,
+                )
+                .map_err(|e| err = Some(e))
+            {
+                add(self.name.clone(), id);
+            }
             self.name = String::default();
         }
         err
@@ -190,16 +200,20 @@ impl CreationUis {
                     self.radius_a, self.lon_deg_min_b_int, self.lat_deg_min_pa,
                 )
             }
-            let _ = from_elliptical_cone(
-                &self.name,
-                self.depth,
-                self.lon_deg_polf1,
-                self.lat_deg_polf2,
-                self.radius_a,
-                self.lon_deg_min_b_int,
-                self.lat_deg_min_pa,
-            )
-            .map_err(|e| err = Some(e));
+            if let Ok(id) = U64MocStore
+                .from_elliptical_cone(
+                    self.lon_deg_polf1,
+                    self.lat_deg_polf2,
+                    self.radius_a,
+                    self.lon_deg_min_b_int,
+                    self.lat_deg_min_pa,
+                    self.depth,
+                    2,
+                )
+                .map_err(|e| err = Some(e))
+            {
+                add(self.name.clone(), id);
+            }
             self.name = String::default();
         }
         err
@@ -221,15 +235,18 @@ impl CreationUis {
                     self.lon_deg_min_b_int, self.lat_deg_min_pa
                 );
             }
-            let _ = from_zone(
-                &self.name,
-                self.depth,
-                self.lon_deg_min_b_int,
-                self.lat_deg_min_pa,
-                self.lon_deg_polf1,
-                self.lat_deg_polf2,
-            )
-            .map_err(|e| err = Some(e));
+            if let Ok(id) = U64MocStore
+                .from_zone(
+                    self.lon_deg_min_b_int,
+                    self.lat_deg_min_pa,
+                    self.lon_deg_polf1,
+                    self.lat_deg_polf2,
+                    self.depth,
+                )
+                .map_err(|e| err = Some(e))
+            {
+                add(self.name.clone(), id);
+            }
             self.name = String::default();
         }
         err
@@ -247,16 +264,19 @@ impl CreationUis {
                     self.radius_a, self.lon_deg_min_b_int, self.lat_deg_min_pa
                 );
             }
-            let _ = from_box(
-                &self.name,
-                self.depth,
-                self.lon_deg_polf1,
-                self.lat_deg_polf2,
-                self.radius_a,
-                self.lon_deg_min_b_int,
-                self.lat_deg_min_pa,
-            )
-            .map_err(|e| err = Some(e));
+            if let Ok(id) = U64MocStore
+                .from_box(
+                    self.lon_deg_polf1,
+                    self.lat_deg_polf2,
+                    self.radius_a,
+                    self.lon_deg_min_b_int,
+                    self.lat_deg_min_pa,
+                    self.depth,
+                )
+                .map_err(|e| err = Some(e))
+            {
+                add(self.name.clone(), id);
+            }
             self.name = String::default();
         }
         err
@@ -351,8 +371,7 @@ impl CreationUis {
                 let handle = task.await;
                 if let Some(file) = handle {
                     let file_content = unsafe { String::from_utf8_unchecked(file.read().await) };
-                    let _ = from_valued_cells(
-                        &name,
+                    if let Ok(id) = from_valued_cells(
                         depth,
                         density,
                         from_threshold,
@@ -362,7 +381,11 @@ impl CreationUis {
                         split,
                         revese_recursive_descent,
                         file_content,
-                    );
+                    )
+                    .map_err(|e| err = Some(e))
+                    {
+                        add(self.name, id);
+                    }
                 }
             });
         }
@@ -420,8 +443,7 @@ impl CreationUis {
                 let from_threshold = self.from_threshold;
                 let to_threshold = self.to_threshold;
 
-                let _ = from_valued_cells(
-                    &name,
+                if let Ok(id) = from_valued_cells(
                     depth,
                     density,
                     from_threshold,
@@ -432,7 +454,10 @@ impl CreationUis {
                     revese_recursive_descent,
                     file_content,
                 )
-                .map_err(|e| err = Some(e));
+                .map_err(|e| err = Some(e))
+                {
+                    add(self.name.clone(), id);
+                }
             }
         }
         err
@@ -587,22 +612,22 @@ impl CreationUis {
             if let Some(file) = handle {
                 let file_content = unsafe { String::from_utf8_unchecked(file.read().await) };
 
-                let _ = match typ {
+                if let Ok(id) = match typ {
                     CreationType::Box => todo!(),
                     CreationType::Cone => todo!(),
-                    CreationType::Coo => from_coo(&name, depth, file_content),
-                    CreationType::DecimalJd => from_decimal_jd(&name, depth, file_content),
-                    CreationType::DecimalJdRange => {
-                        from_decimal_jd_range(&name, depth, file_content)
-                    }
+                    CreationType::Coo => from_coo(depth, file_content),
+                    CreationType::DecimalJd => from_decimal_jd(depth, file_content),
+                    CreationType::DecimalJdRange => from_decimal_jd_range(depth, file_content),
                     CreationType::EllipticalCone => todo!(),
-                    CreationType::LargeCone => from_large_cones(&name, depth, file_content),
-                    CreationType::Polygon => from_polygon(&name, depth, file_content, complement),
+                    CreationType::LargeCone => from_large_cones(depth, file_content),
+                    CreationType::Polygon => from_polygon(depth, file_content, complement),
                     CreationType::Ring => todo!(),
-                    CreationType::SmallCone => from_small_cones(&name, depth, file_content),
+                    CreationType::SmallCone => from_small_cones(depth, file_content),
                     CreationType::ValuedCells => todo!(),
                     CreationType::Zone => todo!(),
-                };
+                } {
+                    add(self.name, id);
+                }
             }
         });
         Ok(())
@@ -624,20 +649,22 @@ impl CreationUis {
                 .map_err(|e| format!("Error while reading file: {}", e))?;
             let file_content = unsafe { String::from_utf8_unchecked(file_content) };
 
-            let _ = match typ {
+            if let Ok(id) = match typ {
                 CreationType::Box => todo!(),
                 CreationType::Cone => todo!(),
-                CreationType::Coo => from_coo(&name, depth, file_content),
-                CreationType::DecimalJd => from_decimal_jd(&name, depth, file_content),
-                CreationType::DecimalJdRange => from_decimal_jd_range(&name, depth, file_content),
+                CreationType::Coo => from_coo(depth, file_content),
+                CreationType::DecimalJd => from_decimal_jd(depth, file_content),
+                CreationType::DecimalJdRange => from_decimal_jd_range(depth, file_content),
                 CreationType::EllipticalCone => todo!(),
-                CreationType::LargeCone => from_large_cones(&name, depth, file_content),
-                CreationType::Polygon => from_polygon(&name, depth, file_content, complement),
+                CreationType::LargeCone => from_large_cones(depth, file_content),
+                CreationType::Polygon => from_polygon(depth, file_content, complement),
                 CreationType::Ring => todo!(),
-                CreationType::SmallCone => from_small_cones(&name, depth, file_content),
+                CreationType::SmallCone => from_small_cones(depth, file_content),
                 CreationType::ValuedCells => todo!(),
                 CreationType::Zone => todo!(),
-            };
+            } {
+                add(self.name.clone(), id);
+            }
         }
         Ok(())
     }
