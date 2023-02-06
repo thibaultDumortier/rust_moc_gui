@@ -194,18 +194,3 @@ jobs:
           asset_path: "mocset-${{ needs.create-github-release.outputs.version }}-${{ matrix.config.target }}.zip"
           asset_name: "mocset-${{ needs.create-github-release.outputs.version }}-${{ matrix.config.target }}.zip"
           asset_content_type: application/gzip
-
-
-# Done manually so far!
-  #build-deb-releases:
-  #  name: Install cargo-deb (Ubuntu)
-  #  run: |
-  #    ci/build_deb.bash
-
-
-  #build-wasm-releases:
-  #  name: Release WASM assets
-  #  needs: create-github-release
- 
-
-
