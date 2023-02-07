@@ -8,6 +8,7 @@ use crate::views::{creationui::*, opui::*};
 use eframe::egui;
 use egui::menu;
 use egui::Ui;
+use rfd::MessageDialog;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 //Import javascript log function
@@ -79,10 +80,10 @@ impl eframe::App for FileApp {
 
             ui.separator();
             match &self.operation {
-                UiMenu::One => self.opui.moc_op1(ui).map_err(|e| err(ctx, &e)),
-                UiMenu::Two => self.opui.moc_op2(ui).map_err(|e| err(ctx, &e)),
-                UiMenu::List => self.list.list_ui(ctx, ui).map_err(|e| err(ctx, &e)),
-                UiMenu::Crea => self.creation.creation_ui(ui).map_err(|e| err(ctx, &e)),
+                UiMenu::One => self.opui.moc_op1(ui).map_err(|e| self.err(&e)),
+                UiMenu::Two => self.opui.moc_op2(ui).map_err(|e| self.err(&e)),
+                UiMenu::List => self.list.list_ui(ctx, ui).map_err(|e| self.err(&e)),
+                UiMenu::Crea => self.creation.creation_ui(ui).map_err(|e| self.err(&e)),
             }
         });
     }
@@ -135,10 +136,29 @@ impl FileApp {
             });
         });
     }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn err(&mut self, msg: &str) {
+        self.operation = UiMenu::List;
+        let m = MessageDialog::new()
+            .set_buttons(rfd::MessageButtons::Ok)
+            .set_title("Error !")
+            .set_description(msg);
+        m.show();
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn err(&mut self, msg: &str) {
+        self.operation = UiMenu::List;
+        let m = AsyncMessageDialog::new()
+            .set_buttons(rfd::MessageButtons::Ok)
+            .set_title("Error !")
+            .set_description(msg);
+        execute(async move { m.show() });
+    }
 }
 
-fn err(ctx: &egui::Context, msg: &str) {
-    egui::TopBottomPanel::bottom("bottom_tab").show(ctx, |ui| {
-        ui.label(format!("Error: {}", msg));
-    });
+#[cfg(target_arch = "wasm32")]
+fn execute<F: std::future::Future<Output = ()> + 'static>(f: F) {
+    wasm_bindgen_futures::spawn_local(f);
 }
