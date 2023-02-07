@@ -50,25 +50,25 @@ impl Op2 {
         match self {
             Op2::Intersection => {
                 if let Ok(index) = U64MocStore.intersection(left, right) {
-                    add(name, index)?;
+                    add(&name, index)?;
                 }
                 Ok(())
             }
             Op2::Union => {
                 if let Ok(index) = U64MocStore.union(left, right) {
-                    add(name, index)?;
+                    add(&name, index)?;
                 }
                 Ok(())
             }
             Op2::Difference => {
                 if let Ok(index) = U64MocStore.difference(left, right) {
-                    add(name, index)?;
+                    add(&name, index)?;
                 }
                 Ok(())
             }
             Op2::Minus => {
                 if let Ok(index) = U64MocStore.minus(left, right) {
-                    add(name, index)?;
+                    add(&name, index)?;
                 }
                 Ok(())
             }
@@ -86,25 +86,25 @@ impl Op2 {
         match self {
             Op2::Intersection => {
                 if let Ok(index) = U64MocStore.intersection(left, right) {
-                    add(name, index)?;
+                    add(&name, index)?;
                 }
                 Ok(())
             }
             Op2::Union => {
                 if let Ok(index) = U64MocStore.union(left, right) {
-                    add(name, index)?;
+                    add(&name, index)?;
                 }
                 Ok(())
             }
             Op2::Difference => {
                 if let Ok(index) = U64MocStore.difference(left, right) {
-                    add(name, index)?;
+                    add(&name, index)?;
                 }
                 Ok(())
             }
             Op2::Minus => {
                 if let Ok(index) = U64MocStore.minus(left, right) {
-                    add(name, index)?;
+                    add(&name, index)?;
                 }
                 Ok(())
             }
@@ -122,13 +122,13 @@ impl Op2 {
         match self {
             Op2::Intersection => {
                 if let Ok(index) = U64MocStore.intersection(left, right) {
-                    add(name, index)?;
+                    add(&name, index)?;
                 }
                 Ok(())
             }
             Op2::Union => {
                 if let Ok(index) = U64MocStore.union(left, right) {
-                    add(name, index)?;
+                    add(&name, index)?;
                 }
                 Ok(())
             }
@@ -139,7 +139,7 @@ impl Op2 {
             }
             Op2::Minus => {
                 if let Ok(index) = U64MocStore.minus(left, right) {
-                    add(name, index)?;
+                    add(&name, index)?;
                 }
                 Ok(())
             }
@@ -164,7 +164,7 @@ impl Op2 {
             ))
         } else {
             if let Ok(index) = U64MocStore.space_fold(left, right) {
-                add(name, index)?;
+                add(&name, index)?;
             }
             Ok(())
         }
@@ -178,7 +178,7 @@ impl Op2 {
             ))
         } else {
             if let Ok(index) = U64MocStore.time_fold(left, right) {
-                add(name, index)?;
+                add(&name, index)?;
             }
             Ok(())
         }

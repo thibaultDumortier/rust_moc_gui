@@ -4,6 +4,7 @@ use std::str::from_utf8_unchecked;
 use moc::{
     storage::u64idx::{common::MocQType, U64MocStore},
 };
+use crate::utils::namestore::add;
 
 #[cfg(target_arch = "wasm32")]
 use js_sys::{Array, Uint8Array};
@@ -139,8 +140,6 @@ pub fn to_file(name: &str, ext: &str, mime: &str, data: Box<[u8]>) -> Result<(),
 
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn load(rtype: &[&str], moct: Qty) -> Result<(), String> {
-    use crate::utils::namestore::add;
-
     let reading = if rtype.contains(&"fits") {
         "fits"
     } else if rtype.contains(&"json") {
@@ -166,7 +165,7 @@ pub(crate) fn load(rtype: &[&str], moct: Qty) -> Result<(), String> {
                 .map_err(|e| format!("Error while reading file: {}", e))?;
 
             if let Ok(id) = type_reading(reading, &moct, file_content.as_slice()) {
-                add(file_name.to_owned(), id)?;
+                add(file_name, id)?;
             }
         }
     }
@@ -200,7 +199,7 @@ pub(crate) fn load(rtype: &[&str], moct: Qty) -> Result<(), String> {
                 //Reads file contents and adds it to the data
                 let file_content = path.read().await;
                 if let Ok(id) = type_reading(reading, &moct, file_content.as_slice()) {
-                    add(file_name.to_owned(), id);
+                    add(&file_name, id);
                 }
             }
         }

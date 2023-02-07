@@ -63,37 +63,37 @@ impl Op1 {
         match self {
             Op1::Complement => {
                 if let Ok(index) = U64MocStore.complement(id) {
-                    add(name, index)?;
+                    add(&name, index)?;
                 }
                 Ok(())
             }
             Op1::Degrade { new_depth } => {
                 if let Ok(index) = U64MocStore.degrade(id, new_depth) {
-                    add(name, index)?;
+                    add(&name, index)?;
                 }
                 Ok(())
             }
             Op1::Extend => {
                 if let Ok(index) = U64MocStore.extend(id) {
-                    add(name, index)?;
+                    add(&name, index)?;
                 }
                 Ok(())
             }
             Op1::Contract => {
                 if let Ok(index) = U64MocStore.contract(id) {
-                    add(name, index)?;
+                    add(&name, index)?;
                 }
                 Ok(())
             }
             Op1::ExtBorder => {
                 if let Ok(index) = U64MocStore.ext_border(id) {
-                    add(name, index)?;
+                    add(&name, index)?;
                 }
                 Ok(())
             }
             Op1::IntBorder => {
                 if let Ok(index) = U64MocStore.int_border(id) {
-                    add(name, index)?;
+                    add(&name, index)?;
                 }
                 Ok(())
             }
@@ -107,13 +107,13 @@ impl Op1 {
         match self {
             Op1::Complement => {
                 if let Ok(index) = U64MocStore.complement(id) {
-                    add(name, index)?;
+                    add(&name, index)?;
                 }
                 Ok(())
             }
             Op1::Degrade { new_depth } => {
                 if let Ok(index) = U64MocStore.degrade(id, new_depth) {
-                    add(name, index)?;
+                    add(&name, index)?;
                 }
                 Ok(())
             }
@@ -145,7 +145,7 @@ pub(crate) fn op1(id: usize, op: Op1, res_name: &str) -> Result<(), String> {
                     U64MocStore.split_count(id)?;
                     if let Ok(indexes) = U64MocStore.split(id) {
                         for i in indexes {
-                            add(format!("{}({})", res_name, i), id)?;
+                            add(&format!("{}({})", res_name, i), id)?;
                         }
                     }
                     Ok(())

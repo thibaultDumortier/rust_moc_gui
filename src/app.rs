@@ -8,7 +8,6 @@ use crate::views::{creationui::*, opui::*};
 use eframe::egui;
 use egui::menu;
 use egui::Ui;
-use rfd::MessageDialog;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 //Import javascript log function
@@ -139,6 +138,8 @@ impl FileApp {
 
     #[cfg(not(target_arch = "wasm32"))]
     fn err(&mut self, msg: &str) {
+        use rfd::MessageDialog;
+
         self.operation = UiMenu::List;
         let m = MessageDialog::new()
             .set_buttons(rfd::MessageButtons::Ok)
@@ -149,16 +150,13 @@ impl FileApp {
 
     #[cfg(target_arch = "wasm32")]
     fn err(&mut self, msg: &str) {
+        use rfd::AsyncMessageDialog;
+
         self.operation = UiMenu::List;
         let m = AsyncMessageDialog::new()
             .set_buttons(rfd::MessageButtons::Ok)
             .set_title("Error !")
             .set_description(msg);
-        execute(async move { m.show() });
+        m.show();
     }
-}
-
-#[cfg(target_arch = "wasm32")]
-fn execute<F: std::future::Future<Output = ()> + 'static>(f: F) {
-    wasm_bindgen_futures::spawn_local(f);
 }

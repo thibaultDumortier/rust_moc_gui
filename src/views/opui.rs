@@ -4,6 +4,7 @@
 use core::fmt;
 
 use crate::controllers::{op1::*, op2::*};
+use crate::utils::commons::fmt_qty;
 use crate::utils::namestore::{get_name, get_store, list_names};
 
 use eframe::egui;
@@ -124,6 +125,9 @@ impl OpUis {
                     if matches!(
                         U64MocStore.get_qty_type(self.picked_file.unwrap()),
                         Ok(MocQType::Space)
+                    ) || matches!(
+                        U64MocStore.get_qty_type(self.picked_second_file.unwrap()),
+                        Ok(MocQType::Space)
                     ) {
                         ui.label("Operation:");
                         ui.add_enabled(false, egui::widgets::Button::new("SFold"));
@@ -131,6 +135,9 @@ impl OpUis {
                         self.operation = Op::Two(Op2::SFold);
                     } else if matches!(
                         U64MocStore.get_qty_type(self.picked_file.unwrap()),
+                        Ok(MocQType::Time)
+                    ) || matches!(
+                        U64MocStore.get_qty_type(self.picked_second_file.unwrap()),
                         Ok(MocQType::Time)
                     ) {
                         ui.label("Operation:");
@@ -140,9 +147,7 @@ impl OpUis {
                     }
                 });
             } else {
-                ui.label(
-                    "Files need to be of same type or Space or Time and Timespace (for folds)",
-                );
+                ui.label("Files need to be of same type or Space/Time and SpaceTime (for folds)");
             }
         } else {
             ui.label("Pick files on which to do operation");
@@ -251,7 +256,7 @@ impl OpUis {
                 sel_text = get_name(self.picked_file.unwrap()).map_err(|e| return e)?;
             }
             if self.picked_second_file.is_some() {
-                sel_text_2 = get_name(self.picked_file.unwrap()).map_err(|e| return e)?;
+                sel_text_2 = get_name(self.picked_second_file.unwrap()).map_err(|e| return e)?;
             }
 
             // The small paragraph before the match sets a grid layout to have every element aligned.
@@ -333,10 +338,12 @@ impl OpUis {
         )
     }
     fn files_have_same_type(&mut self) -> bool {
-        let second_qty = U64MocStore.get_qty_type(self.picked_file.unwrap());
-        matches!(
-            U64MocStore.get_qty_type(self.picked_second_file.unwrap()),
-            second_qty
-        )
+        let a = fmt_qty(U64MocStore.get_qty_type(self.picked_file.unwrap()).unwrap());
+        let b = fmt_qty(
+            U64MocStore
+                .get_qty_type(self.picked_second_file.unwrap())
+                .unwrap(),
+        );
+        a == b
     }
 }

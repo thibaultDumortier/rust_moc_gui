@@ -1,7 +1,7 @@
 # Rust_moc_gui
 
 ## Goal
-The goal of this project is to create a GUI in Rust using [egui]("https://crates.io/crates/egui") (more precisely [eframe]("https://crates.io/crates/eframe")) to make different operations on MOCs easily. This project also enables a user to create MOCs and view information about the MOC on an easy to use UI.
+The goal of this project is to create a GUI in Rust using [egui]("https://crates.io/crates/egui") (more precisely [eframe]("https://crates.io/crates/eframe")) to make different operations on MOCs easier. This project also enables a user to create MOCs and view information about the MOC on a user-friendly UI.
 
 ## Features
 - [X] The user can launch an operation on a MOC.
@@ -20,8 +20,6 @@ The goal of this project is to create a GUI in Rust using [egui]("https://crates
 ## Running
 
 ### Running locally
-Running the program locally will print logs.
-
 Make sure you are using the latest version of stable rust by running `rustup update`.
 `cargo run --release`
 

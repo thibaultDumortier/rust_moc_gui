@@ -1,6 +1,6 @@
 use std::{borrow::Borrow, collections::HashMap};
 
-use crate::utils::namestore::{get_name, get_store, self, list_names};
+use crate::utils::namestore::{self, get_name, get_store, list_names};
 use egui::Ui;
 use egui_extras::{Column, TableBuilder};
 use moc::storage::u64idx::common::MocQType;
@@ -18,7 +18,7 @@ pub struct InfoWindow {
 impl InfoWindow {
     pub fn new(ctx: &egui::Context, id: usize) -> Result<Self, String> {
         let mut texture: Option<egui::TextureHandle> = None;
-        if let Ok(i) = U64MocStore.to_png(id, 300) {
+        if let Ok(i) = U64MocStore.to_png(id, 150) {
             texture =
                 // Load the texture only once.
                 Some(ctx.load_texture(

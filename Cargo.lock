@@ -1521,7 +1521,7 @@ dependencies = [
 [[package]]
 name = "moc"
 version = "0.9.0"
-source = "git+https://github.com/cds-astro/cds-moc-rust?branch=main#bf2e27969caf1453c7b90defaa9982e341e2acc4"
+source = "git+https://github.com/cds-astro/cds-moc-rust?branch=main#bec398e5840493d7515e6caee2910bd92c244792"
 dependencies = [
  "byteorder",
  "cdshealpix",

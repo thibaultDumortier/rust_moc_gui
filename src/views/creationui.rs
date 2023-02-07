@@ -146,7 +146,7 @@ impl CreationUis {
                 )
                 .map_err(|e| err = Some(e))
             {
-                if let Err(e) = add(self.name.clone(), id){
+                if let Err(e) = add(&self.name, id){
                     err = Some(e);
                 }
             }
@@ -184,7 +184,7 @@ impl CreationUis {
                 )
                 .map_err(|e| err = Some(e))
             {
-                if let Err(e) = add(self.name.clone(), id) {
+                if let Err(e) = add(&self.name, id) {
                     err = Some(e);
                 }
             }
@@ -216,7 +216,7 @@ impl CreationUis {
                 )
                 .map_err(|e| err = Some(e))
             {
-                if let Err(e) = add(self.name.clone(), id){
+                if let Err(e) = add(&self.name, id){
                     err = Some(e);
                 }
             }
@@ -251,7 +251,7 @@ impl CreationUis {
                 )
                 .map_err(|e| err = Some(e))
             {
-                if let Err(e) = add(self.name.clone(), id){
+                if let Err(e) = add(&self.name, id){
                     err=Some(e);
                 }
             }
@@ -283,7 +283,7 @@ impl CreationUis {
                 )
                 .map_err(|e| err = Some(e))
             {
-                if let Err(e) = add(self.name.clone(), id){
+                if let Err(e) = add(&self.name, id){
                     err = Some(e)
                 }
             }
@@ -381,7 +381,7 @@ impl CreationUis {
                 let handle = task.await;
                 if let Some(file) = handle {
                     let file_content = unsafe { String::from_utf8_unchecked(file.read().await) };
-                    if let Ok(id) = from_valued_cells(
+                    let id = from_valued_cells(
                         depth,
                         density,
                         from_threshold,
@@ -391,11 +391,8 @@ impl CreationUis {
                         split,
                         revese_recursive_descent,
                         file_content,
-                    )
-                    .map_err(|e| err = Some(e))
-                    {
-                        add(self.name, id);
-                    }
+                    ).unwrap();
+                    add(&name, id);
                 }
             });
         }
@@ -466,7 +463,7 @@ impl CreationUis {
                 )
                 .map_err(|e| err = Some(e))
                 {
-                    if let Err(e) = add(name, id) {
+                    if let Err(e) = add(&name, id) {
                         err = Some(e)
                     }
                 }
@@ -638,7 +635,7 @@ impl CreationUis {
                     CreationType::ValuedCells => todo!(),
                     CreationType::Zone => todo!(),
                 } {
-                    add(self.name, id)?;
+                    let _ = add(&name, id);
                 }
             }
         });
@@ -675,7 +672,7 @@ impl CreationUis {
                 CreationType::ValuedCells => todo!(),
                 CreationType::Zone => todo!(),
             } {
-                add(name, id)?
+                add(&name, id)?
             }
         }
         Ok(())

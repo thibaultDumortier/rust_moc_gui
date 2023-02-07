@@ -44,11 +44,11 @@ pub(crate) fn drop(id: usize) -> Result<(), String> {
 
     Ok(())
 }
-pub(crate) fn add(name: String, id: usize) -> Result<(), String> {
+pub(crate) fn add(name: &str, id: usize) -> Result<(), String> {
     let mut store = get_store()
         .write()
         .map_err(|_| "Write lock poisoned".to_string())?;
-    (*store).insert(id, name);
+    (*store).insert(id, String::from(name));
 
     Ok(())
 }
