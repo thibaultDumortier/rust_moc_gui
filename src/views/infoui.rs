@@ -1,7 +1,7 @@
 use std::{borrow::Borrow, collections::HashMap};
 
 use crate::utils::namestore::{self, get_name, get_store, list_names};
-use egui::Ui;
+use egui::{Color32, Ui};
 use egui_extras::{Column, TableBuilder};
 use moc::storage::u64idx::common::MocQType;
 use moc::storage::u64idx::U64MocStore;
@@ -18,7 +18,7 @@ pub struct InfoWindow {
 impl InfoWindow {
     pub fn new(ctx: &egui::Context, id: usize) -> Result<Self, String> {
         let mut texture: Option<egui::TextureHandle> = None;
-        if let Ok(i) = U64MocStore.to_png(id, 150) {
+        if let Ok(i) = U64MocStore.to_image(id, 150) {
             texture =
                 // Load the texture only once.
                 Some(ctx.load_texture(
@@ -34,7 +34,7 @@ impl InfoWindow {
                 MocQType::Space => {
                     if let Ok(s) = U64MocStore.get_smoc_depth(id) {
                         info = format!(
-                            "Depth: {}, Coverage:{}",
+                            "Depth: {}, Coverage: {}",
                             s.to_string(),
                             U64MocStore.get_coverage_percentage(id).unwrap().to_string()
                         )
@@ -50,7 +50,11 @@ impl InfoWindow {
                 } //TODO ADD FREQUENCY ERROR
                 MocQType::TimeSpace => {
                     if let Ok(st) = U64MocStore.get_stmoc_depths(id) {
-                        info = format!("Depth S:{}\nDepth T:{}", st.0.to_string(), st.1.to_string())
+                        info = format!(
+                            "Depth S: {}\nDepth T: {}",
+                            st.0.to_string(),
+                            st.1.to_string()
+                        )
                     }
                 }
             },
@@ -79,6 +83,24 @@ impl InfoWindow {
             ui.label("MOC type:");
             ui.label(fmt_qty(qty));
         });
+
+        match qty {
+            MocQType::Space => {
+                ui.label("Possible operations include:\n-All solo operations.\n-All same type duo operations.\n-SFold with a SpaceTime MOC.");
+                ui.label(&self.info);
+                let texture = &self.texture.clone().unwrap();
+                ui.add(egui::Image::new(texture, texture.size_vec2()).bg_fill(Color32::WHITE));
+            }
+            MocQType::Time => {
+                ui.label("Possible operations include:\n-Complement and degrade.\n-All same type duo operations\n-TFold with a SpaceTime MOC.");
+                ui.label(&self.info);
+            }
+            MocQType::TimeSpace => {
+                ui.label("Possible operations include:\n-No solo operations.\n-All same type duo operations.\n-SFold or TFold depending on the other MOC's type.");
+                ui.label(&self.info);
+            }
+            MocQType::Frequency => todo!(),
+        };
     }
 }
 
