@@ -1,13 +1,13 @@
 use std::{borrow::Borrow, collections::HashMap};
 
-use crate::namestore::list_names;
+use crate::namestore::{self, list_names};
 use crate::namestore::{get_name, get_store};
 use egui::Ui;
 use egui_extras::{Column, TableBuilder};
 use moc::storage::u64idx::common::MocQType;
 use moc::storage::u64idx::U64MocStore;
 
-use crate::commons::{fmtQty, to_file};
+use crate::commons::{fmt_qty, to_file};
 
 #[derive(Clone, PartialEq, Default, Eq)]
 pub struct InfoWindow {
@@ -17,7 +17,7 @@ pub struct InfoWindow {
 }
 
 impl InfoWindow {
-    pub fn new(ctx: &egui::Context, id: usize) -> Self {
+    pub fn new(ctx: &egui::Context, id: usize) -> Result<Self, String> {
         let mut texture: Option<egui::TextureHandle> = None;
         if let Ok(i) = U64MocStore.to_png(id, 300) {
             texture =
@@ -46,17 +46,19 @@ impl InfoWindow {
                         info = format!("Depth: {}", t.to_string())
                     }
                 }
-                MocQType::Frequency => todo!(), //TODO ADD FREQUENCY ERROR
+                MocQType::Frequency => {
+                    return Err(String::from("Frequency MOCs are not supported"))
+                } //TODO ADD FREQUENCY ERROR
                 MocQType::TimeSpace => {
                     if let Ok(st) = U64MocStore.get_stmoc_depths(id) {
                         info = format!("Depth S:{}\nDepth T:{}", st.0.to_string(), st.1.to_string())
                     }
                 }
             },
-            Err(_) => todo!(),
+            Err(e) => return Err(e),
         }
 
-        Self { id, texture, info }
+        Ok(Self { id, texture, info })
     }
 
     pub fn show(&mut self, ctx: &egui::Context, open: &mut bool) {
@@ -76,7 +78,7 @@ impl InfoWindow {
 
         ui.horizontal(|ui| {
             ui.label("MOC type:");
-            ui.label(fmtQty(qty));
+            ui.label(fmt_qty(qty));
         });
     }
 }
@@ -136,7 +138,8 @@ impl ListUi {
                                 if !self.open_windows.contains_key(name) {
                                     self.open_windows.insert(
                                         name.clone(),
-                                        InfoWindow::new(ctx, *filenames.get(row_index).unwrap().0),
+                                        InfoWindow::new(ctx, *filenames.get(row_index).unwrap().0)
+                                            .unwrap(), //NO ERRORS SHOULD HAPPEN HERE
                                     );
                                 } else if self.open_windows.contains_key(name) {
                                     self.open_windows.remove(name);
@@ -189,7 +192,11 @@ impl ListUi {
                         });
                         row.col(|ui| {
                             if ui.button("❌").clicked() {
-                                let _ = U64MocStore.drop(*filenames.get(row_index).unwrap().0);
+                                if let Ok(_) =
+                                    U64MocStore.drop(*filenames.get(row_index).unwrap().0)
+                                {
+                                    let _ = namestore::drop(row_index); //NO ERROR ARE SUPPOSED TO HAPPEN HERE
+                                }
                             }
                         });
                     })

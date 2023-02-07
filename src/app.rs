@@ -6,8 +6,8 @@ use crate::views::infoui::ListUi;
 use crate::views::{creationui::*, opui::*};
 
 use eframe::egui;
+use egui::menu;
 use egui::Ui;
-use egui::{menu};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 //Import javascript log function
@@ -64,7 +64,7 @@ impl eframe::App for FileApp {
             egui::trace!(ui);
             ui.horizontal_wrapped(|ui| {
                 ui.visuals_mut().button_frame = false;
-                self.bar_contents(ui, ctx);
+                self.bar_contents(ui);
             });
         });
 
@@ -95,7 +95,7 @@ impl FileApp {
     //      A function handling the contents of the top bar
     // #Args
     //  *   ui: Ui, the ui from the app
-    fn bar_contents(&mut self, ui: &mut Ui, ctx: &egui::Context) {
+    fn bar_contents(&mut self, ui: &mut Ui) {
         egui::widgets::global_dark_light_mode_switch(ui);
 
         ui.separator();
@@ -106,8 +106,7 @@ impl FileApp {
                     ui.menu_button("Load", |ui| {
                         if ui.button("FITS").clicked() {
                             //Qty::Space here is a default it is not actually used
-                            load(&["fits"], Qty::Space)
-                                .map_err(|e| err(ctx, &format!("Error when loading file: {}", e)));
+                            assert!(load(&["fits"], Qty::Space).is_ok());
                         }
                         ui.menu_button("JSON", |ui| {
                             if ui.button("Space").clicked() {

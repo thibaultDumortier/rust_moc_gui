@@ -146,7 +146,9 @@ impl CreationUis {
                 )
                 .map_err(|e| err = Some(e))
             {
-                add(self.name.clone(), id);
+                if let Err(e) = add(self.name.clone(), id){
+                    err = Some(e);
+                }
             }
             self.name = String::default();
         }
@@ -182,7 +184,9 @@ impl CreationUis {
                 )
                 .map_err(|e| err = Some(e))
             {
-                add(self.name.clone(), id);
+                if let Err(e) = add(self.name.clone(), id) {
+                    err = Some(e);
+                }
             }
             self.name = String::default();
         }
@@ -212,7 +216,9 @@ impl CreationUis {
                 )
                 .map_err(|e| err = Some(e))
             {
-                add(self.name.clone(), id);
+                if let Err(e) = add(self.name.clone(), id){
+                    err = Some(e);
+                }
             }
             self.name = String::default();
         }
@@ -245,7 +251,9 @@ impl CreationUis {
                 )
                 .map_err(|e| err = Some(e))
             {
-                add(self.name.clone(), id);
+                if let Err(e) = add(self.name.clone(), id){
+                    err=Some(e);
+                }
             }
             self.name = String::default();
         }
@@ -275,7 +283,9 @@ impl CreationUis {
                 )
                 .map_err(|e| err = Some(e))
             {
-                add(self.name.clone(), id);
+                if let Err(e) = add(self.name.clone(), id){
+                    err = Some(e)
+                }
             }
             self.name = String::default();
         }
@@ -456,7 +466,9 @@ impl CreationUis {
                 )
                 .map_err(|e| err = Some(e))
                 {
-                    add(self.name.clone(), id);
+                    if let Err(e) = add(name, id) {
+                        err = Some(e)
+                    }
                 }
             }
         }
@@ -626,7 +638,7 @@ impl CreationUis {
                     CreationType::ValuedCells => todo!(),
                     CreationType::Zone => todo!(),
                 } {
-                    add(self.name, id);
+                    add(self.name, id)?;
                 }
             }
         });
@@ -663,7 +675,7 @@ impl CreationUis {
                 CreationType::ValuedCells => todo!(),
                 CreationType::Zone => todo!(),
             } {
-                add(self.name.clone(), id);
+                add(name, id)?
             }
         }
         Ok(())
