@@ -2,7 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
 use crate::controllers::creation::*;
-use crate::namestore::add;
+use crate::utils::namestore::add;
 
 use super::creationui::CreationType;
 use eframe::egui;

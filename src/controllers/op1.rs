@@ -1,6 +1,6 @@
 use core::fmt;
 
-use crate::namestore::add;
+use crate::utils::namestore::add;
 use moc::storage::u64idx::{common::MocQType, U64MocStore};
 
 #[derive(Copy, Clone)]

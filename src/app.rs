@@ -1,7 +1,7 @@
 #![warn(clippy::all)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
-use crate::commons::*;
+use crate::utils::commons::*;
 use crate::views::infoui::ListUi;
 use crate::views::{creationui::*, opui::*};
 

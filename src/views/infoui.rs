@@ -1,13 +1,12 @@
 use std::{borrow::Borrow, collections::HashMap};
 
-use crate::namestore::{self, list_names};
-use crate::namestore::{get_name, get_store};
+use crate::utils::namestore::{get_name, get_store, self, list_names};
 use egui::Ui;
 use egui_extras::{Column, TableBuilder};
 use moc::storage::u64idx::common::MocQType;
 use moc::storage::u64idx::U64MocStore;
 
-use crate::commons::{fmt_qty, to_file};
+use crate::utils::commons::{fmt_qty, to_file};
 
 #[derive(Clone, PartialEq, Default, Eq)]
 pub struct InfoWindow {

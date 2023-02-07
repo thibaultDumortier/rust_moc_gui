@@ -4,7 +4,7 @@
 use core::fmt;
 
 use crate::controllers::{op1::*, op2::*};
-use crate::namestore::{get_name, get_store, list_names};
+use crate::utils::namestore::{get_name, get_store, list_names};
 
 use eframe::egui;
 use egui::Ui;

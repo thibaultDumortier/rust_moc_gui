@@ -139,7 +139,7 @@ pub fn to_file(name: &str, ext: &str, mime: &str, data: Box<[u8]>) -> Result<(),
 
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn load(rtype: &[&str], moct: Qty) -> Result<(), String> {
-    use crate::namestore::add;
+    use crate::utils::namestore::add;
 
     let reading = if rtype.contains(&"fits") {
         "fits"
