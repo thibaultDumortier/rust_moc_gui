@@ -18,7 +18,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - uses: jetli/trunk-action@v0.4.0
+    - uses: jetli/trunk-action@v0.4.0 # For trunk build (to check for wasm building)
       with:
         version: 'latest'
 
@@ -27,7 +27,6 @@ jobs:
         rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
         sudo apt-get install librust-atk-dev
         sudo apt-get install libgtk-3-dev
-        rustup target add wasm32-unknown-unknown
 
     - name: Toolchain info
       run: |
@@ -39,7 +38,11 @@ jobs:
     - name: Build
       run: |
         cargo build --verbose
-        trunk build
+
+    - name: Server
+    run: |
+      rustup target add wasm32-unknown-unknown
+      trunk build
 
     - name: Run tests
       run: cargo test --verbose
