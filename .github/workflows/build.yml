@@ -35,14 +35,14 @@ jobs:
         cargo clippy --version
         trunk --version
 
-    - name: Build
+    - name: Native build
       run: |
         cargo build --verbose
 
-    - name: Server
-    run: |
-      rustup target add wasm32-unknown-unknown
-      trunk build
+    - name: Server build
+      run: |
+        rustup target add wasm32-unknown-unknown
+        trunk build
 
     - name: Run tests
       run: cargo test --verbose

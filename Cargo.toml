@@ -71,5 +71,14 @@ wasm-bindgen-futures = "0.4"
 [profile.release]
 opt-level = 2 # fast and small wasm
 
-
 [patch.crates-io]
+
+[package.metadata.deb]
+maintainer = "Thibault Dumortier <thib.dumortier@gmail.com>"
+depends = "$auto"
+section = "utility"
+priority = "optional"
+assets = [
+    ["target/release/cargo-deb", "usr/bin/rust_moc_gui", "755"],
+    ["README.md", "usr/share/doc/rust_moc_gui/README", "644"],
+]
