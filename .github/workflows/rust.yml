@@ -1,9 +1,7 @@
-name: Rust
+name: Cargo Build
 
 on:
   push:
-    branches: [ "master" ]
-  pull_request:
     branches: [ "master" ]
 
 env:
@@ -11,14 +9,25 @@ env:
 
 jobs:
   build:
-
+    name: Rust MOC gui - latest
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v3
+
+    - name: Toolchain update
+      run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
+
+    - name: Toolchain info
+        run: |
+          cargo --version --verbose
+          rustc --version
+          cargo clippy --version
+
     - name: Build
-      run: cargo build --verbose
-    - name: Trunk
-      run: trunk build
+      run: |
+        cargo build --verbose
+        trunk build      
+
     - name: Run tests
       run: cargo test --verbose
