@@ -19,15 +19,13 @@ jobs:
       run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
 
     - name: Toolchain info
-        run: |
-          cargo --version --verbose
-          rustc --version
-          cargo clippy --version
+        run: cargo --version --verbose
+        run: rustc --version
+        run: cargo clippy --version
 
     - name: Build
-      run: |
-        cargo build --verbose
-        trunk build      
+      run: cargo build --verbose
+      run: trunk build
 
     - name: Run tests
       run: cargo test --verbose
