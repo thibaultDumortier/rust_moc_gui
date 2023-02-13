@@ -51,13 +51,6 @@ impl PartialEq for Op1 {
 }
 
 impl Op1 {
-    fn is_split_4neigh(&self) -> bool {
-        matches!(self, Op1::Split)
-    }
-    fn is_split_8neigh(&self) -> bool {
-        matches!(self, Op1::SplitIndirect)
-    }
-
     fn perform_op_on_smoc(self, id: usize, n: &str) -> Result<(), String> {
         let name = n.to_string();
         match self {
@@ -97,8 +90,17 @@ impl Op1 {
                 }
                 Ok(())
             }
-            Op1::Split | Op1::SplitIndirect => {
-                Err(String::from("Split must be catch before this :o/."))
+            Op1::Split => {
+                for i in U64MocStore.split(id)? {
+                    add(&format!("{}_{}", i, name), i)?;
+                }
+                Ok(())
+            }
+            Op1::SplitIndirect => {
+                for i in U64MocStore.split(id)? {
+                    add(&format!("{}_{}", i, name), i)?;
+                }
+                Ok(())
             }
         }
     }
@@ -138,33 +140,11 @@ impl Op1 {
 
 /// Performs the given operation on the given MOC and store the resulting MOC in the store.
 pub(crate) fn op1(id: usize, op: Op1, res_name: &str) -> Result<(), String> {
-    if let Ok(moc) = U64MocStore.get_qty_type(id) {
-        if op.is_split_4neigh() || op.is_split_8neigh() {
-            match moc {
-                MocQType::Space => {
-                    U64MocStore.split_count(id)?;
-                    if let Ok(indexes) = U64MocStore.split(id) {
-                        for i in indexes {
-                            add(&format!("{}({})", res_name, i), id)?;
-                        }
-                    }
-                    Ok(())
-                }
-                MocQType::Time => Err(String::from("Split not implemented for T-MOCs.")),
-                MocQType::TimeSpace => Err(String::from("Split not implemented for ST-MOCs.")),
-                MocQType::Frequency => Err(String::from("Frequency MOCs not supported.")),
-            }
-        } else {
-            match moc {
-                MocQType::Space => op.perform_op_on_smoc(id, res_name),
-                MocQType::Time => op.perform_op_on_tmoc(id, res_name),
-                MocQType::TimeSpace => {
-                    Err(String::from("Operations are not implemented for ST-MOCs."))
-                }
-                MocQType::Frequency => Err(String::from("Frequency MOCs not supported.")),
-            }
-        }
-    } else {
-        Err(String::from("Could not get moc QTY type"))
+    let moc = U64MocStore.get_qty_type(id)?;
+    match moc {
+        MocQType::Space => op.perform_op_on_smoc(id, res_name),
+        MocQType::Time => op.perform_op_on_tmoc(id, res_name),
+        MocQType::TimeSpace => Err(String::from("Operations are not implemented for ST-MOCs.")),
+        MocQType::Frequency => Err(String::from("Frequency MOCs not supported.")),
     }
 }
