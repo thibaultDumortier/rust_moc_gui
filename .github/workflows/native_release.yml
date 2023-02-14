@@ -52,10 +52,11 @@ jobs:
           default: true
 
       - name: Toolchain update
+      if: matrix.config.os != 'windows-latest'  && matrix.config.os != 'macos-latest'
         run: |
           sudo apt-get install librust-atk-dev
           sudo apt-get install libgtk-3-dev
-          sudo apt-get install libfontconfig libfontconfig1-dev
+          sudo apt-get install libfontconfig-dev
 
       - name: Checkout code
         uses: actions/checkout@v2
