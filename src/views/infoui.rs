@@ -127,7 +127,7 @@ impl ListUi {
         }
 
         let mut filenames: Vec<(&usize, &String)> = Vec::default();
-        let binding = get_store().read().unwrap();
+        let binding = get_store().read().unwrap().clone();
         for file in binding.iter() {
             filenames.push(file);
         }
@@ -213,11 +213,8 @@ impl ListUi {
                         });
                         row.col(|ui| {
                             if ui.button("❌").clicked() {
-                                if let Ok(_) =
-                                    U64MocStore.drop(*filenames.get(row_index).unwrap().0)
-                                {
-                                    let _ = namestore::drop(row_index); //NO ERROR ARE SUPPOSED TO HAPPEN HERE
-                                }
+                                let _ = namestore::drop(*filenames.get(row_index).unwrap().0);
+                                let _ = U64MocStore.drop(*filenames.get(row_index).unwrap().0);
                             }
                         });
                     })
