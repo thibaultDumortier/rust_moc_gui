@@ -60,7 +60,7 @@ jobs:
         with:
           use-cross: ${{ matrix.config.cross }}
           command: build
-          args: --release --target ${{ matrix.config.target }} -p moc-gui
+          args: --release --target ${{ matrix.config.target }} -p rust_moc_gui
 
       - name: Create tar (Not Windows)
         if: matrix.config.os != 'windows-latest'     
