@@ -38,11 +38,11 @@ jobs:
           # Linux
           - { os: ubuntu-latest, cross: true,  toolchain: stable, target: x86_64-unknown-linux-musl }
           # Macos
-          - { os: macos-latest, cross: false, toolchain: stable, target: x86_64-apple-darwin }
-          - { os: macos-latest, cross: false, toolchain: stable, target: aarch64-apple-darwin }
+          #- { os: macos-latest, cross: false, toolchain: stable, target: x86_64-apple-darwin }
+          #- { os: macos-latest, cross: false, toolchain: stable, target: aarch64-apple-darwin }
           # Windows
-          - { os: windows-latest, cross: false, toolchain: stable-x86_64-pc-windows-gnu, target: x86_64-pc-windows-gnu }
-          - { os: windows-latest, cross: false, toolchain: stable-x86_64-pc-windows-msvc, target: x86_64-pc-windows-msvc }      
+          #- { os: windows-latest, cross: false, toolchain: stable-x86_64-pc-windows-gnu, target: x86_64-pc-windows-gnu }
+          #- { os: windows-latest, cross: false, toolchain: stable-x86_64-pc-windows-msvc, target: x86_64-pc-windows-msvc }      
     steps:
       - uses: actions-rs/toolchain@v1
         with:
@@ -52,7 +52,6 @@ jobs:
           default: true
 
       - name: Toolchain update
-      if: matrix.config.os != 'windows-latest' && matrix.config.os != 'macos-latest'
         run: |
           sudo apt-get install librust-atk-dev
           sudo apt-get install libgtk-3-dev
