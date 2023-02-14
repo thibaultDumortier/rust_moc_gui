@@ -5,7 +5,7 @@ use core::fmt;
 
 use crate::controllers::{op1::*, op2::*};
 use crate::utils::commons::fmt_qty;
-use crate::utils::namestore::{self, get_last, get_name, get_store, list_names};
+use crate::utils::namestore::{get_last, get_name, get_store, list_names};
 
 use eframe::egui;
 use egui::Ui;
@@ -209,7 +209,7 @@ impl OpUis {
                         //Button launching the operation
                         if !matches!(
                             U64MocStore.get_qty_type(self.picked_file.unwrap()),
-                            Ok(MocQType::Time)
+                            Ok(MocQType::TimeSpace)
                         ) {
                             if ui.button("Launch").clicked() {
                                 if deg {
