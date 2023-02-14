@@ -5,7 +5,7 @@ use core::fmt;
 
 use crate::controllers::{op1::*, op2::*};
 use crate::utils::commons::fmt_qty;
-use crate::utils::namestore::{get_name, get_store, list_names};
+use crate::utils::namestore::{self, get_last, get_name, get_store, list_names};
 
 use eframe::egui;
 use egui::Ui;
@@ -170,9 +170,12 @@ impl OpUis {
             ui.label("Pick a file!");
         //If files have been imported and can be chosen from
         } else {
-            //Defaults to "pick one" before leaving the user choose which moc he wants to operate on
-            let mut sel_text = "pick one".to_string();
+            //Defaults to last loaded MOC before leaving the user choose which moc he wants to operate on
+            let sel_text: String;
             if self.picked_file.is_some() {
+                sel_text = get_name(self.picked_file.unwrap()).map_err(|e| return e)?;
+            } else {
+                self.picked_file = Some(get_last(0).unwrap().0);
                 sel_text = get_name(self.picked_file.unwrap()).map_err(|e| return e)?;
             }
 
@@ -193,6 +196,7 @@ impl OpUis {
                     //In case of degrade option ask for new depth
                     let deg = matches!(self.operation, Op::One(Op1::Degrade { new_depth: _ }));
                     if deg {
+                        ui.label("Depth : ");
                         ui.add(egui::Slider::new(&mut self.deg, 0..=25));
                         ui.end_row();
                     }
@@ -250,12 +254,18 @@ impl OpUis {
             ui.label("Pick at least 2 files!");
         // If files have been imported and can be chosen from.
         } else {
-            let mut sel_text = "pick one".to_string();
-            let mut sel_text_2 = "pick one".to_string();
+            let sel_text: String;
+            let sel_text_2: String;
             if self.picked_file.is_some() {
+                sel_text = get_name(self.picked_file.unwrap()).map_err(|e| return e)?;
+            } else {
+                self.picked_file = Some(get_last(0).unwrap().0);
                 sel_text = get_name(self.picked_file.unwrap()).map_err(|e| return e)?;
             }
             if self.picked_second_file.is_some() {
+                sel_text_2 = get_name(self.picked_second_file.unwrap()).map_err(|e| return e)?;
+            } else {
+                self.picked_second_file = Some(get_last(1).unwrap().0);
                 sel_text_2 = get_name(self.picked_second_file.unwrap()).map_err(|e| return e)?;
             }
 

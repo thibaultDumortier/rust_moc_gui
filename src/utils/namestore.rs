@@ -60,3 +60,18 @@ pub(crate) fn list_names() -> Result<Vec<String>, String> {
         .map(|(_, name)| name.clone())
         .collect())
 }
+pub fn get_len() -> Result<usize, String> {
+    Ok(get_store()
+        .read()
+        .map_err(|_| "Read lock poisoned".to_string())?
+        .len())
+}
+pub(crate) fn get_last(index: usize) -> Result<(usize, String), String> {
+    let len = get_len().unwrap() - (index+1);
+    let binding = get_store()
+        .read()
+        .map_err(|_| "Read lock poisoned".to_string())?;
+    let last = binding.get(&len).unwrap();
+
+    Ok((len, last.to_owned()))
+}
