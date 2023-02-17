@@ -63,7 +63,10 @@ jobs:
           execute_install_scripts: true
 
       - name: Env check
-        run: export PKG_CONFIG_PATH=/usr/lib/pkgconfig
+        run: |
+          export PKG_CONFIG_PATH=/usr/lib/pkgconfig
+          pkg-config --libs --cflags glib-2.0
+          pkg-config --list-all
 
       - name: Checkout code
         uses: actions/checkout@v3
