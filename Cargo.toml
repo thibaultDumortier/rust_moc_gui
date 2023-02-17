@@ -9,8 +9,8 @@ rust-version = "1.60"
 
 
 [dependencies]
-egui = "0.20"
-eframe = { version = "0.20", default-features = false, features = [
+egui = "0.21"
+eframe = { version = "0.21", default-features = false, features = [
     "accesskit",     # Make egui comptaible with screen readers. NOTE: adds a lot of dependencies.
     "default_fonts", # Embed the default egui fonts.
     "wgpu",          # Use the glow rendering backend. Alternative: "wgpu".
@@ -25,7 +25,7 @@ unreachable = "1.0"
 serde = { version = "1", features = ["derive"] }
 healpix = { package = "cdshealpix", version = "0.6.3" }
 console_error_panic_hook = "0.1.7"
-egui_extras = "0.20"
+egui_extras = "0.21"
 csv = "1.1.6"
 structopt = "0.3"
 time = { version = "0.3.3", features = ["parsing"] }
