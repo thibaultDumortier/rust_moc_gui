@@ -55,18 +55,16 @@ jobs:
           target: ${{ matrix.config.target }}
           override: true
           default: true
+
+      - name: Toolchain update
+        run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
+
       - name: Install packages (Linux)
         uses: rerun-io/cache-apt-pkgs-action@59534850182063abf1b2c11bb3686722a12a8397
         with:
           packages: libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev librust-atk-dev libgtk-3-dev fontconfig libfontconfig1-dev libglib2.0-dev
           version: 1.0
           execute_install_scripts: true
-
-      - name: Env check
-        run: |
-          export PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig
-          pkg-config --libs --cflags glib-2.0
-          pkg-config --list-all
 
       - name: Checkout code
         uses: actions/checkout@v3
@@ -76,7 +74,7 @@ jobs:
       - name: Build library
         uses: actions-rs/cargo@v1
         with:
-          use-cross: ${{ matrix.config.cross }}
+          use-cross: cargo
           command: build
           args: --release --target ${{ matrix.config.target }} -p rust_moc_gui
 
