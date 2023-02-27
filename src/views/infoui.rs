@@ -47,7 +47,7 @@ impl InfoWindow {
                 }
                 MocQType::Frequency => {
                     return Err(String::from("Frequency MOCs are not supported"))
-                } //TODO ADD FREQUENCY ERROR
+                }
                 MocQType::TimeSpace => {
                     if let Ok(st) = U64MocStore.get_stmoc_depths(id) {
                         info = format!(
@@ -61,7 +61,11 @@ impl InfoWindow {
             Err(e) => return Err(e),
         }
 
-        Ok(Self { id, texture, info })
+        Ok(Self {
+            id,
+            texture,
+            info
+        })
     }
 
     pub fn show(&mut self, ctx: &egui::Context, open: &mut bool) {
@@ -86,17 +90,24 @@ impl InfoWindow {
 
         match qty {
             MocQType::Space => {
-                ui.label("Possible operations include:\n-All solo operations.\n-All same type duo operations.\n-SFold with a SpaceTime MOC.");
                 ui.label(&self.info);
                 let texture = &self.texture.clone().unwrap();
                 ui.add(egui::Image::new(texture, texture.size_vec2()).bg_fill(Color32::WHITE));
+                    if ui.button("Download image").clicked() {
+                        let _ = to_file(
+                            &get_name(self.id).unwrap(),
+                            ".png",
+                            "image/x-png",
+                            U64MocStore
+                                .to_png(self.id, 300)
+                                .unwrap(),
+                        );
+                    }
             }
             MocQType::Time => {
-                ui.label("Possible operations include:\n-Complement and degrade.\n-All same type duo operations\n-TFold with a SpaceTime MOC.");
                 ui.label(&self.info);
             }
             MocQType::TimeSpace => {
-                ui.label("Possible operations include:\n-No solo operations.\n-All same type duo operations.\n-SFold or TFold depending on the other MOC's type.");
                 ui.label(&self.info);
             }
             MocQType::Frequency => todo!(),

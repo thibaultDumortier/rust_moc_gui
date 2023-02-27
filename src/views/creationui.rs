@@ -6,7 +6,7 @@ use crate::utils::namestore::add;
 
 use super::creationui::CreationType;
 use eframe::egui;
-use egui::Ui;
+use egui::{TextEdit, Ui};
 
 use moc::storage::u64idx::U64MocStore;
 #[cfg(target_arch = "wasm32")]
@@ -128,7 +128,7 @@ impl CreationUis {
         self.radius_builder(ui);
 
         ui.label("New MOC name :");
-        ui.text_edit_singleline(&mut self.name);
+        ui.add(TextEdit::singleline(&mut self.name).hint_text("Name"));
         ui.end_row();
 
         if ui.button("Create").clicked() {
@@ -146,7 +146,7 @@ impl CreationUis {
                 )
                 .map_err(|e| err = Some(e))
             {
-                if let Err(e) = add(&self.name, id){
+                if let Err(e) = add(&self.name, id) {
                     err = Some(e);
                 }
             }
@@ -161,7 +161,7 @@ impl CreationUis {
         self.radii_builder(ui);
 
         ui.label("New MOC name :");
-        ui.text_edit_singleline(&mut self.name);
+        ui.add(TextEdit::singleline(&mut self.name).hint_text("Name"));
         ui.end_row();
 
         if ui.button("Create").clicked() {
@@ -216,7 +216,7 @@ impl CreationUis {
                 )
                 .map_err(|e| err = Some(e))
             {
-                if let Err(e) = add(&self.name, id){
+                if let Err(e) = add(&self.name, id) {
                     err = Some(e);
                 }
             }
@@ -230,7 +230,7 @@ impl CreationUis {
         self.lons_lats_builder(ui);
 
         ui.label("New MOC name :");
-        ui.text_edit_singleline(&mut self.name);
+        ui.add(TextEdit::singleline(&mut self.name).hint_text("Name"));
         ui.end_row();
 
         if ui.button("Create").clicked() {
@@ -251,8 +251,8 @@ impl CreationUis {
                 )
                 .map_err(|e| err = Some(e))
             {
-                if let Err(e) = add(&self.name, id){
-                    err=Some(e);
+                if let Err(e) = add(&self.name, id) {
+                    err = Some(e);
                 }
             }
             self.name = String::default();
@@ -283,7 +283,7 @@ impl CreationUis {
                 )
                 .map_err(|e| err = Some(e))
             {
-                if let Err(e) = add(&self.name, id){
+                if let Err(e) = add(&self.name, id) {
                     err = Some(e)
                 }
             }
@@ -300,7 +300,7 @@ impl CreationUis {
         ui.end_row();
 
         ui.label("New MOC name :");
-        ui.text_edit_singleline(&mut self.name);
+        ui.add(TextEdit::singleline(&mut self.name).hint_text("Name"));
         ui.end_row();
 
         ui.label("Creating a MOC like this will ask you for a .csv file.");
@@ -354,7 +354,7 @@ impl CreationUis {
         );
         ui.end_row();
         ui.label("New MOC name :");
-        ui.text_edit_singleline(&mut self.name);
+        ui.add(TextEdit::singleline(&mut self.name).hint_text("Name"));
         ui.end_row();
 
         if ui.button("Open file & create").clicked() {
@@ -391,7 +391,8 @@ impl CreationUis {
                         split,
                         revese_recursive_descent,
                         file_content,
-                    ).unwrap();
+                    )
+                    .unwrap();
                     add(&name, id);
                 }
             });
@@ -420,7 +421,7 @@ impl CreationUis {
         );
         ui.end_row();
         ui.label("New MOC name :");
-        ui.text_edit_singleline(&mut self.name);
+        ui.add(TextEdit::singleline(&mut self.name).hint_text("Name"));
         ui.end_row();
 
         if ui.button("Open file & create").clicked() {
@@ -486,7 +487,7 @@ impl CreationUis {
         self.degs_builder(ui);
 
         ui.label("New MOC name :");
-        ui.text_edit_singleline(&mut self.name);
+        ui.add(TextEdit::singleline(&mut self.name).hint_text("Name"));
         ui.end_row();
     }
 
@@ -511,13 +512,16 @@ impl CreationUis {
         self.depth_builder(ui);
 
         ui.label("New MOC name :");
-        ui.text_edit_singleline(&mut self.name);
+        ui.add(TextEdit::singleline(&mut self.name).hint_text("Name"));
         ui.end_row();
 
-        ui.label("Creating a MOC like this will ask you for a .csv file.");
-        ui.end_row();
-
-        if ui.button("Open file & create").clicked() {
+        if ui
+            .button("Open coo file")
+            .on_hover_text_at_pointer(
+                "CSV file containing one coordinate per row:RA,DEC in decimal degrees",
+            )
+            .clicked()
+        {
             err = None;
             let _ = self.load_csv(typ).map_err(|e| err = Some(e));
             self.name = String::default();
@@ -536,67 +540,117 @@ impl CreationUis {
 
     fn lon_lat_deg_builder(&mut self, ui: &mut Ui) {
         ui.label("Longitude degradation:");
-        ui.add(egui::Slider::new(&mut self.lon_deg_polf1, 0.0..=360.0).suffix("°"));
+        ui.add(
+            egui::Slider::new(&mut self.lon_deg_polf1, 0.0..=360.0)
+                .suffix("°")
+                .fixed_decimals(11),
+        );
         ui.end_row();
         ui.label("Latitude degradation:");
-        ui.add(egui::Slider::new(&mut self.lat_deg_polf2, -90.0..=90.0).suffix("°"));
+        ui.add(
+            egui::Slider::new(&mut self.lat_deg_polf2, -90.0..=90.0)
+                .suffix("°")
+                .fixed_decimals(11),
+        );
         ui.end_row();
     }
 
     fn lons_lats_builder(&mut self, ui: &mut Ui) {
         ui.label("Minimal longitude degradation:");
         ui.add(
-            egui::Slider::new(&mut self.lon_deg_min_b_int, 0.0..=self.lon_deg_polf1).suffix("°"),
+            egui::Slider::new(&mut self.lon_deg_min_b_int, 0.0..=self.lon_deg_polf1)
+                .suffix("°")
+                .fixed_decimals(11),
         );
         ui.end_row();
         ui.label("Minimal latitude degradation:");
-        ui.add(egui::Slider::new(&mut self.lat_deg_min_pa, -90.0..=self.lat_deg_polf2).suffix("°"));
+        ui.add(
+            egui::Slider::new(&mut self.lat_deg_min_pa, -90.0..=self.lat_deg_polf2)
+                .suffix("°")
+                .fixed_decimals(11),
+        );
         ui.end_row();
         ui.label("Maximal longitude degradation:");
         ui.add(
-            egui::Slider::new(&mut self.lon_deg_polf1, self.lon_deg_min_b_int..=360.0).suffix("°"),
+            egui::Slider::new(&mut self.lon_deg_polf1, self.lon_deg_min_b_int..=360.0)
+                .suffix("°")
+                .fixed_decimals(11),
         );
         ui.end_row();
         ui.label("Maximal latitude degradation:");
-        ui.add(egui::Slider::new(&mut self.lat_deg_polf2, self.lat_deg_min_pa..=90.0).suffix("°"));
+        ui.add(
+            egui::Slider::new(&mut self.lat_deg_polf2, self.lat_deg_min_pa..=90.0)
+                .suffix("°")
+                .fixed_decimals(11),
+        );
         ui.end_row();
     }
 
     fn radius_builder(&mut self, ui: &mut Ui) {
         ui.label("Radius:");
-        ui.add(egui::Slider::new(&mut self.radius_a, 0.0..=180.0).suffix("°"));
+        ui.add(
+            egui::Slider::new(&mut self.radius_a, 0.0..=180.0)
+                .suffix("°")
+                .fixed_decimals(11),
+        );
         ui.end_row();
     }
 
     fn radii_builder(&mut self, ui: &mut Ui) {
         ui.label("Internal radius:");
-        ui.add(egui::Slider::new(&mut self.lon_deg_min_b_int, 0.0..=self.radius_a).suffix("°"));
+        ui.add(
+            egui::Slider::new(&mut self.lon_deg_min_b_int, 0.0..=self.radius_a)
+                .suffix("°")
+                .fixed_decimals(11),
+        );
         ui.end_row();
         ui.label("External radius:");
-        ui.add(egui::Slider::new(&mut self.radius_a, self.lon_deg_min_b_int..=180.0).suffix("°"));
+        ui.add(
+            egui::Slider::new(&mut self.radius_a, self.lon_deg_min_b_int..=180.0)
+                .suffix("°")
+                .fixed_decimals(11),
+        );
         ui.end_row();
     }
 
     fn degs_builder(&mut self, ui: &mut Ui) {
         ui.label("A degradation:");
-        ui.add(egui::Slider::new(&mut self.radius_a, 0.0..=90.0).suffix("°"));
+        ui.add(
+            egui::Slider::new(&mut self.radius_a, 0.0..=90.0)
+                .suffix("°")
+                .fixed_decimals(11),
+        );
         ui.end_row();
         ui.label("B degradation:");
-        ui.add(egui::Slider::new(&mut self.lon_deg_min_b_int, 0.0..=self.radius_a).suffix("°"));
+        ui.add(
+            egui::Slider::new(&mut self.lon_deg_min_b_int, 0.0..=self.radius_a)
+                .suffix("°")
+                .fixed_decimals(11),
+        );
         ui.end_row();
         ui.label("PA degradation:");
-        ui.add(egui::Slider::new(&mut self.lat_deg_min_pa, 0.0..=90.0).suffix("°"));
+        ui.add(
+            egui::Slider::new(&mut self.lat_deg_min_pa, 0.0..=90.0)
+                .suffix("°")
+                .fixed_decimals(11),
+        );
         ui.end_row();
     }
 
     fn threshold_builder(&mut self, ui: &mut Ui) {
         ui.label("From Threshold :");
         ui.add(
-            egui::Slider::new(&mut self.from_threshold, 0.0..=self.to_threshold).logarithmic(true),
+            egui::Slider::new(&mut self.from_threshold, 0.0..=self.to_threshold)
+                .logarithmic(true)
+                .fixed_decimals(11),
         );
         ui.end_row();
         ui.label("To Threshold:");
-        ui.add(egui::Slider::new(&mut self.to_threshold, 0.0..=1.0).logarithmic(true));
+        ui.add(
+            egui::Slider::new(&mut self.to_threshold, 0.0..=1.0)
+                .logarithmic(true)
+                .fixed_decimals(11),
+        );
         ui.end_row();
     }
 
@@ -622,18 +676,13 @@ impl CreationUis {
                 let file_content = unsafe { String::from_utf8_unchecked(file.read().await) };
 
                 if let Ok(id) = match typ {
-                    CreationType::Box => todo!(),
-                    CreationType::Cone => todo!(),
                     CreationType::Coo => from_coo(depth, file_content),
                     CreationType::DecimalJd => from_decimal_jd(depth, file_content),
                     CreationType::DecimalJdRange => from_decimal_jd_range(depth, file_content),
-                    CreationType::EllipticalCone => todo!(),
                     CreationType::LargeCone => from_large_cones(depth, file_content),
                     CreationType::Polygon => from_polygon(depth, file_content, complement),
-                    CreationType::Ring => todo!(),
                     CreationType::SmallCone => from_small_cones(depth, file_content),
-                    CreationType::ValuedCells => todo!(),
-                    CreationType::Zone => todo!(),
+                    _ => todo!(),
                 } {
                     let _ = add(&name, id);
                 }
@@ -659,18 +708,13 @@ impl CreationUis {
             let file_content = unsafe { String::from_utf8_unchecked(file_content) };
 
             if let Ok(id) = match typ {
-                CreationType::Box => todo!(),
-                CreationType::Cone => todo!(),
                 CreationType::Coo => from_coo(depth, file_content),
                 CreationType::DecimalJd => from_decimal_jd(depth, file_content),
                 CreationType::DecimalJdRange => from_decimal_jd_range(depth, file_content),
-                CreationType::EllipticalCone => todo!(),
                 CreationType::LargeCone => from_large_cones(depth, file_content),
                 CreationType::Polygon => from_polygon(depth, file_content, complement),
-                CreationType::Ring => todo!(),
                 CreationType::SmallCone => from_small_cones(depth, file_content),
-                CreationType::ValuedCells => todo!(),
-                CreationType::Zone => todo!(),
+                _ => todo!(),
             } {
                 add(&name, id)?
             }
