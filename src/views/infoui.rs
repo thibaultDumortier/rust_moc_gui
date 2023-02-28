@@ -1,6 +1,9 @@
 use std::{borrow::Borrow, collections::HashMap};
 
-use crate::utils::namestore::{self, get_name, get_store, list_names};
+use crate::{
+    app::log,
+    utils::namestore::{self, get_name, get_store, list_names},
+};
 use egui::{Color32, Ui};
 use egui_extras::{Column, TableBuilder};
 use moc::storage::u64idx::common::MocQType;
@@ -131,12 +134,14 @@ impl ListUi {
             self.set_open(&moc.clone(), is_open);
         }
 
-        let mut filenames: Vec<(&usize, &String)> = Vec::default();
+        let mut filenames: Vec<(&usize, &(String, usize))> = Vec::default();
         let binding = get_store().read().unwrap().clone();
         for file in binding.iter() {
             filenames.push(file);
         }
-        filenames.sort();
+        filenames.sort_by(|a, b| a.1 .1.cmp(&b.1 .1));
+        log(&format!("{:?}", filenames));
+
         let txt_h = 30.0;
         ui.vertical(|ui| {
             TableBuilder::new(ui)
@@ -159,8 +164,8 @@ impl ListUi {
                 .body(|body| {
                     body.rows(txt_h, filenames.len(), |row_index, mut row| {
                         row.col(|ui| {
-                            if ui.button(filenames.get(row_index).unwrap().1).clicked() {
-                                let name = filenames.get(row_index).unwrap().1;
+                            if ui.button(&filenames.get(row_index).unwrap().1 .0).clicked() {
+                                let name = &filenames.get(row_index).unwrap().1 .0;
                                 // If an information window doesn't exist, create one.
                                 if !self.open_windows.contains_key(name) {
                                     self.open_windows.insert(
@@ -177,7 +182,7 @@ impl ListUi {
                             ui.menu_button("📥", |ui| {
                                 if ui.button("FITS").clicked() {
                                     let _ = to_file(
-                                        filenames.get(row_index).unwrap().1,
+                                        &filenames.get(row_index).unwrap().1 .0,
                                         ".fits",
                                         "application/fits",
                                         U64MocStore
@@ -190,7 +195,7 @@ impl ListUi {
                                 }
                                 if ui.button("ASCII").clicked() {
                                     let _ = to_file(
-                                        filenames.get(row_index).unwrap().1,
+                                        &filenames.get(row_index).unwrap().1 .0,
                                         ".txt",
                                         "text/plain",
                                         U64MocStore
@@ -205,7 +210,7 @@ impl ListUi {
                                 }
                                 if ui.button("JSON").clicked() {
                                     let _ = to_file(
-                                        filenames.get(row_index).unwrap().1,
+                                        &filenames.get(row_index).unwrap().1 .0,
                                         ".json",
                                         "application/json",
                                         U64MocStore

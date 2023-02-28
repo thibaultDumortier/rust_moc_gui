@@ -1,10 +1,8 @@
 use core::fmt;
 use std::str::from_utf8_unchecked;
 
-use moc::{
-    storage::u64idx::{common::MocQType, U64MocStore},
-};
 use crate::utils::namestore::add;
+use moc::storage::u64idx::{common::MocQType, U64MocStore};
 
 #[cfg(target_arch = "wasm32")]
 use js_sys::{Array, Uint8Array};
@@ -147,7 +145,7 @@ pub(crate) fn load(rtype: &[&str], moct: Qty) -> Result<(), String> {
     } else if rtype.contains(&"ascii") {
         "ascii"
     } else {
-        "l.301 commons.rs [NOT SUPPOSED TO HAPPEN]"
+        unreachable!()
     };
 
     if let Some(handle) = FileDialog::new().add_filter("MOCs", rtype).pick_files() {
@@ -185,7 +183,7 @@ pub(crate) fn load(rtype: &[&str], moct: Qty) -> Result<(), String> {
     } else if rtype.contains(&"ascii") {
         "ascii"
     } else {
-        "l.339 commons.rs [NOT SUPPOSED TO HAPPEN]"
+        unreachable!()
     };
 
     execute(async move {
@@ -216,6 +214,6 @@ pub fn fmt_qty(typ: MocQType) -> String {
         MocQType::Space => "Space".to_string(),
         MocQType::Time => "Time".to_string(),
         MocQType::TimeSpace => "Timespace".to_string(),
-        MocQType::Frequency => todo!(), //TODO ADD FREQUENCY ERROR
+        MocQType::Frequency => unreachable!()
     }
 }

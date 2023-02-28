@@ -328,9 +328,13 @@ impl OpUis {
             .show_ui(ui, |ui| {
                 for file in get_store().read().unwrap().iter() {
                     if op.is_none() {
-                        ui.selectable_value(&mut self.picked_file, Some(*file.0), file.1);
+                        ui.selectable_value(&mut self.picked_file, Some(*file.0), &file.1 .0);
                     } else {
-                        ui.selectable_value(&mut self.picked_second_file, Some(*file.0), file.1);
+                        ui.selectable_value(
+                            &mut self.picked_second_file,
+                            Some(*file.0),
+                            &file.1 .0,
+                        );
                     }
                 }
             });

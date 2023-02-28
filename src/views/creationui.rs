@@ -340,18 +340,20 @@ impl CreationUis {
         self.depth_builder(ui);
         self.threshold_builder(ui);
 
-        ui.checkbox(&mut self.density, "Density");
+        ui.label("Density: ");
+        ui.checkbox(&mut self.density, "");
         ui.end_row();
-        ui.checkbox(&mut self.asc, "Asc");
+        ui.label("Asc: ");
+        ui.checkbox(&mut self.asc, "");
         ui.end_row();
-        ui.checkbox(&mut self.not_strict, "Strict");
+        ui.label("Strict: ");
+        ui.checkbox(&mut self.not_strict, "");
         ui.end_row();
-        ui.checkbox(&mut self.split, "Split");
+        ui.label("Split: ");
+        ui.checkbox(&mut self.split, "");
         ui.end_row();
-        ui.checkbox(
-            &mut self.revese_recursive_descent,
-            "Revese recursive descent",
-        );
+        ui.label("Revese recursive descent: ");
+        ui.checkbox(&mut self.revese_recursive_descent, "");
         ui.end_row();
         ui.label("New MOC name :");
         ui.add(TextEdit::singleline(&mut self.name).hint_text("Name"));

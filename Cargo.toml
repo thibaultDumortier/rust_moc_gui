@@ -18,7 +18,8 @@ eframe = { version = "0.21", default-features = false, features = [
 ] }
 log = { version = "0.4", features = ["max_level_trace", "release_max_level_warn"] }
 rfd = "0.11"
-moc = { git = 'https://github.com/cds-astro/cds-moc-rust', branch = 'main', features = ["storage"] }
+moc = { version = "0.11", features = ["storage"] }
+# moc = { git = 'https://github.com/cds-astro/cds-moc-rust', branch = 'main', features = ["storage"] }
 wasm-bindgen = { version = "0.2.78", features = ["serde-serialize"]  }
 js-sys = "0.3.52"
 unreachable = "1.0" 
