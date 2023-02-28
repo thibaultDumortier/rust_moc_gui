@@ -357,7 +357,13 @@ impl CreationUis {
         ui.add(TextEdit::singleline(&mut self.name).hint_text("Name"));
         ui.end_row();
 
-        if ui.button("Open file & create").clicked() {
+        if ui
+            .button("Open coo file")
+            .on_hover_text_at_pointer(
+                "CSV file containing one coordinate per row:RA,DEC in decimal degrees",
+            )
+            .clicked()
+        {
             err = None;
 
             let task = AsyncFileDialog::new()
@@ -407,24 +413,32 @@ impl CreationUis {
         self.depth_builder(ui);
         self.threshold_builder(ui);
 
-        ui.checkbox(&mut self.density, "Density");
+        ui.label("Density: ");
+        ui.checkbox(&mut self.density, "");
         ui.end_row();
-        ui.checkbox(&mut self.asc, "Asc");
+        ui.label("Asc: ");
+        ui.checkbox(&mut self.asc, "");
         ui.end_row();
-        ui.checkbox(&mut self.not_strict, "Strict");
+        ui.label("Strict: ");
+        ui.checkbox(&mut self.not_strict, "");
         ui.end_row();
-        ui.checkbox(&mut self.split, "Split");
+        ui.label("Split: ");
+        ui.checkbox(&mut self.split, "");
         ui.end_row();
-        ui.checkbox(
-            &mut self.revese_recursive_descent,
-            "Revese recursive descent",
-        );
+        ui.label("Revese recursive descent: ");
+        ui.checkbox(&mut self.revese_recursive_descent, "");
         ui.end_row();
         ui.label("New MOC name :");
         ui.add(TextEdit::singleline(&mut self.name).hint_text("Name"));
         ui.end_row();
 
-        if ui.button("Open file & create").clicked() {
+        if ui
+            .button("Open coo file")
+            .on_hover_text_at_pointer(
+                "CSV file containing one coordinate per row:RA,DEC in decimal degrees",
+            )
+            .clicked()
+        {
             err = None;
 
             if let Some(path) = FileDialog::new().add_filter("MOCs", &["csv"]).pick_file() {

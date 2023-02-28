@@ -61,11 +61,7 @@ impl InfoWindow {
             Err(e) => return Err(e),
         }
 
-        Ok(Self {
-            id,
-            texture,
-            info
-        })
+        Ok(Self { id, texture, info })
     }
 
     pub fn show(&mut self, ctx: &egui::Context, open: &mut bool) {
@@ -93,16 +89,14 @@ impl InfoWindow {
                 ui.label(&self.info);
                 let texture = &self.texture.clone().unwrap();
                 ui.add(egui::Image::new(texture, texture.size_vec2()).bg_fill(Color32::WHITE));
-                    if ui.button("Download image").clicked() {
-                        let _ = to_file(
-                            &get_name(self.id).unwrap(),
-                            ".png",
-                            "image/x-png",
-                            U64MocStore
-                                .to_png(self.id, 300)
-                                .unwrap(),
-                        );
-                    }
+                if ui.button("Download image").clicked() {
+                    let _ = to_file(
+                        &get_name(self.id).unwrap(),
+                        ".png",
+                        "image/x-png",
+                        U64MocStore.to_png(self.id, 300).unwrap(),
+                    );
+                }
             }
             MocQType::Time => {
                 ui.label(&self.info);
@@ -142,6 +136,7 @@ impl ListUi {
         for file in binding.iter() {
             filenames.push(file);
         }
+        filenames.sort();
         let txt_h = 30.0;
         ui.vertical(|ui| {
             TableBuilder::new(ui)
