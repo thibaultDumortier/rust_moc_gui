@@ -1,7 +1,6 @@
 use std::{borrow::Borrow, collections::HashMap};
 
 use crate::{
-    app::log,
     utils::namestore::{self, get_name, get_store, list_names},
 };
 use egui::{Color32, Ui};
@@ -140,7 +139,6 @@ impl ListUi {
             filenames.push(file);
         }
         filenames.sort_by(|a, b| a.1 .1.cmp(&b.1 .1));
-        log(&format!("{:?}", filenames));
 
         let txt_h = 30.0;
         ui.vertical(|ui| {
