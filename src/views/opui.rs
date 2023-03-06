@@ -200,7 +200,7 @@ impl OpUis {
             // The small paragraph before the match sets a grid layout to have every element aligned
             egui::Grid::new("my_grid")
                 .num_columns(2)
-                .spacing([40.0, 4.0])
+                .spacing([5.0, 4.0])
                 .striped(false)
                 .show(ui, |ui| {
                     //Combo box containing the different files that can be picked from
@@ -301,7 +301,7 @@ impl OpUis {
             // The small paragraph before the match sets a grid layout to have every element aligned.
             egui::Grid::new("my_grid")
                 .num_columns(2)
-                .spacing([40.0, 4.0])
+                .spacing([5.0, 4.0])
                 .striped(false)
                 .show(ui, |ui| {
                     //Combo boxes containing the different files that can be picked from
