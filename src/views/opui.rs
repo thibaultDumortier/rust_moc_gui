@@ -1,6 +1,3 @@
-#![warn(clippy::all)]
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
-
 use core::fmt;
 
 use crate::controllers::{op1::*, op2::*};
@@ -38,6 +35,15 @@ impl fmt::Display for Op {
         }
     }
 }
+impl Op {
+    fn eq_type(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Op::One(_), Op::One(_)) => true,
+            (Op::Two(_), Op::Two(_)) => true,
+            _ => false,
+        }
+    }
+}
 
 #[derive(Default)]
 pub struct OpUis {
@@ -55,6 +61,9 @@ impl OpUis {
     fn op_one_ui(&mut self, ui: &mut Ui) {
         // An operation combo box including Intersection and Union.
         let sel_text = format!("{}", self.operation);
+        if !self.operation.eq_type(&Op::One(Op1::Complement)) {
+            self.operation = Op::One(Op1::Complement);
+        }
 
         ui.label("Operation :");
         egui::ComboBox::from_id_source("Operation_cbox")
@@ -91,6 +100,10 @@ impl OpUis {
     // #Args
     //  *   `ui`: The ui from the app.
     fn op_two_ui(&mut self, ui: &mut Ui) {
+        if !self.operation.eq_type(&Op::Two(Op2::Intersection)) {
+            self.operation = Op::Two(Op2::Intersection);
+        }
+
         // An operation combo box including Intersection and Union
         if self.picked_file.is_some() && self.picked_second_file.is_some() {
             if self.files_have_same_type() {
