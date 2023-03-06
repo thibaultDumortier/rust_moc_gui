@@ -10,11 +10,11 @@ fn main() {
         default_theme: eframe::Theme::Light,
         ..Default::default()
     };
-    eframe::run_native(
+    let _ = eframe::run_native(
         "fileapp",
         options,
         Box::new(|_| Box::new(rust_moc_gui::FileApp::default())),
-    );
+    ); // This is supposed to work, if it does not, then there is a greater error, please open an issue.
 }
 
 // when compiling to web using trunk.

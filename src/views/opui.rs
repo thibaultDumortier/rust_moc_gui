@@ -8,7 +8,7 @@ use crate::utils::commons::fmt_qty;
 use crate::utils::namestore::{get_last, get_name, get_store, list_names};
 
 use eframe::egui;
-use egui::Ui;
+use egui::{TextEdit, Ui};
 use moc::storage::u64idx::common::MocQType;
 use moc::storage::u64idx::U64MocStore;
 
@@ -173,7 +173,12 @@ impl OpUis {
             //Defaults to last loaded MOC before leaving the user choose which moc he wants to operate on
             let sel_text: String;
             if self.picked_file.is_some() {
-                sel_text = get_name(self.picked_file.unwrap()).map_err(|e| return e)?;
+                if let Ok(txt) = get_name(self.picked_file.unwrap()).map_err(|e| return e) {
+                    sel_text = txt
+                } else {
+                    self.picked_file = Some(get_last(0).unwrap().0);
+                    sel_text = get_name(self.picked_file.unwrap()).map_err(|e| return e)?;
+                }
             } else {
                 self.picked_file = Some(get_last(0).unwrap().0);
                 sel_text = get_name(self.picked_file.unwrap()).map_err(|e| return e)?;
@@ -183,7 +188,7 @@ impl OpUis {
             egui::Grid::new("my_grid")
                 .num_columns(2)
                 .spacing([40.0, 4.0])
-                .striped(true)
+                .striped(false)
                 .show(ui, |ui| {
                     //Combo box containing the different files that can be picked from
                     ui.label("MOC : ");
@@ -203,7 +208,7 @@ impl OpUis {
 
                     if self.picked_file.is_some() {
                         ui.label("New MOC name :");
-                        ui.text_edit_singleline(&mut self.name);
+                        ui.add(TextEdit::singleline(&mut self.name).hint_text("Name"));
                         ui.end_row();
 
                         //Button launching the operation
@@ -257,13 +262,24 @@ impl OpUis {
             let sel_text: String;
             let sel_text_2: String;
             if self.picked_file.is_some() {
-                sel_text = get_name(self.picked_file.unwrap()).map_err(|e| return e)?;
+                if let Ok(txt) = get_name(self.picked_file.unwrap()).map_err(|e| return e) {
+                    sel_text = txt
+                } else {
+                    self.picked_file = Some(get_last(0).unwrap().0);
+                    sel_text = get_name(self.picked_file.unwrap()).map_err(|e| return e)?;
+                }
             } else {
                 self.picked_file = Some(get_last(0).unwrap().0);
                 sel_text = get_name(self.picked_file.unwrap()).map_err(|e| return e)?;
             }
             if self.picked_second_file.is_some() {
-                sel_text_2 = get_name(self.picked_second_file.unwrap()).map_err(|e| return e)?;
+                if let Ok(txt) = get_name(self.picked_second_file.unwrap()).map_err(|e| return e) {
+                    sel_text_2 = txt
+                } else {
+                    self.picked_second_file = Some(get_last(1).unwrap().0);
+                    sel_text_2 =
+                        get_name(self.picked_second_file.unwrap()).map_err(|e| return e)?;
+                }
             } else {
                 self.picked_second_file = Some(get_last(1).unwrap().0);
                 sel_text_2 = get_name(self.picked_second_file.unwrap()).map_err(|e| return e)?;
@@ -273,7 +289,7 @@ impl OpUis {
             egui::Grid::new("my_grid")
                 .num_columns(2)
                 .spacing([40.0, 4.0])
-                .striped(true)
+                .striped(false)
                 .show(ui, |ui| {
                     //Combo boxes containing the different files that can be picked from
                     ui.label("First MOC :");
@@ -290,7 +306,7 @@ impl OpUis {
                         && (self.files_have_same_type() || self.files_have_stmoc())
                     {
                         ui.label("New MOC name :");
-                        ui.text_edit_singleline(&mut self.name);
+                        ui.add(TextEdit::singleline(&mut self.name).hint_text("Name"));
                         ui.end_row();
 
                         //Button launching the operation

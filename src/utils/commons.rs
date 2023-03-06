@@ -1,6 +1,4 @@
-use core::fmt;
 use std::str::from_utf8_unchecked;
-
 use crate::utils::namestore::add;
 use moc::storage::u64idx::{common::MocQType, U64MocStore};
 
@@ -21,51 +19,70 @@ use std::{
     io::{Read, Write},
 };
 
+// #Definition
+//      desc
+// #Args
+//  *   `arg`: desc
+// #Errors
+//      error
+
 pub(crate) const HALF_PI: f64 = 0.5 * std::f64::consts::PI;
 pub(crate) const TWICE_PI: f64 = 2.0 * std::f64::consts::PI;
 
-#[derive(PartialEq, Clone)]
-pub(crate) enum Qty {
-    Space,
-    Time,
-    Timespace,
-}
-impl Default for Qty {
-    fn default() -> Self {
-        Qty::Space
-    }
-}
-impl fmt::Display for Qty {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Qty::Space => write!(f, "Space"),
-            Qty::Time => write!(f, "Time"),
-            Qty::Timespace => write!(f, "Timespace"),
-        }
-    }
-}
+//////////////////
+// COMMON FUNCs //
 
-pub(crate) fn type_reading(rtype: &str, moct: &Qty, data: &[u8]) -> Result<usize, String> {
+// #Definition
+//      type_reading reads a file and loads a MOC from it.
+//      3 file types can be opened : fits, json and txt (or ASCII).
+// #Args
+//  *   `rtype`: the string sent that matches the extension of a given file
+//  *   `moct`: the type of moc that was sent, unused with fits
+//  *   `data`: the data contained in the file in a &[u8] form
+// #Errors
+//      Errors from this function are unreachable, except for the unsafe calls which can return an error message.
+//      Errors are not supposed to happen.
+pub(crate) fn type_reading(rtype: &str, moct: &MocQType, data: &[u8]) -> Result<usize, String> {
     match rtype {
         "fits" => U64MocStore.load_from_fits(data),
         "json" => match moct {
-            Qty::Space => U64MocStore.load_smoc_from_json(unsafe { from_utf8_unchecked(data) }),
-            Qty::Time => U64MocStore.load_tmoc_from_json(unsafe { from_utf8_unchecked(data) }),
-            Qty::Timespace => {
+            MocQType::Space => {
+                U64MocStore.load_smoc_from_json(unsafe { from_utf8_unchecked(data) })
+            }
+            MocQType::Time => U64MocStore.load_tmoc_from_json(unsafe { from_utf8_unchecked(data) }),
+            MocQType::TimeSpace => {
                 U64MocStore.load_stmoc_from_json(unsafe { from_utf8_unchecked(data) })
             }
+            MocQType::Frequency => unreachable!(),
         },
         "txt" | "ascii" => match moct {
-            Qty::Space => U64MocStore.load_smoc_from_ascii(unsafe { from_utf8_unchecked(data) }),
-            Qty::Time => U64MocStore.load_tmoc_from_ascii(unsafe { from_utf8_unchecked(data) }),
-            Qty::Timespace => {
+            MocQType::Space => {
+                U64MocStore.load_smoc_from_ascii(unsafe { from_utf8_unchecked(data) })
+            }
+            MocQType::Time => {
+                U64MocStore.load_tmoc_from_ascii(unsafe { from_utf8_unchecked(data) })
+            }
+            MocQType::TimeSpace => {
                 U64MocStore.load_stmoc_from_ascii(unsafe { from_utf8_unchecked(data) })
             }
+            MocQType::Frequency => unreachable!(),
         },
         _ => unreachable!(), // since file_input.set_attribute("accept", ".fits, .json, .ascii, .txt");
     }
 }
 
+// #Definition
+//      to_file transforms any data to a file type, provided it is
+//      given an extension type and a mime type for the wasm target
+// #Args
+//  *   `name`: the file name
+//  *   `ext`: the file extension type
+//  *   `mime`: the mime code of that extension
+//  *   `data`: the data to be converted into a file
+// #Errors
+//      If the file is unable to be written we return an error.
+//      If the file can't be created we return an error.
+//      Path = none is an error coming from the use of rfd.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn to_file(name: &str, ext: &str, _mime: &str, data: Box<[u8]>) -> Result<(), String> {
     let path = rfd::FileDialog::new()
@@ -77,19 +94,19 @@ pub fn to_file(name: &str, ext: &str, _mime: &str, data: Box<[u8]>) -> Result<()
         match file {
             Ok(_) => {
                 if file.unwrap().write_all(&data).is_err() {
-                    return Err("Erreur dans l'ecriture du fichier".to_string());
+                    return Err("Error while reading file".to_string());
                 }
             }
-            Err(_) => return Err("Erreur dans la creation du fichier".to_string()),
+            Err(_) => return Err("Error during file creation".to_string()),
         };
     } else {
         // path is equal to none
-        return Err("Annulé".to_string());
+        return Err("Canceled".to_string());
     }
 
     Ok(())
 }
-
+// Same as above but for WASM32 target
 #[cfg(target_arch = "wasm32")]
 pub fn to_file(name: &str, ext: &str, mime: &str, data: Box<[u8]>) -> Result<(), String> {
     // Set filename
@@ -136,8 +153,18 @@ pub fn to_file(name: &str, ext: &str, mime: &str, data: Box<[u8]>) -> Result<(),
     Ok(())
 }
 
+// #Definition
+//      load loads a file and uses type_reading to make that data into a usable MOC object.
+//      It then adds it to the MOC store.
+// #Args
+//  *   `rtype`: the type of the diffrent files that are being imported
+//  *   `moct`: the moc qty type
+// #Errors
+//      Error if file can't be opened
+//      Error if file name can't be read correctly
+//      Error if file can't be read correctly
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) fn load(rtype: &[&str], moct: Qty) -> Result<(), String> {
+pub(crate) fn load(rtype: &[&str], moct: MocQType) -> Result<(), String> {
     let reading = if rtype.contains(&"fits") {
         "fits"
     } else if rtype.contains(&"json") {
@@ -169,9 +196,9 @@ pub(crate) fn load(rtype: &[&str], moct: Qty) -> Result<(), String> {
     }
     Ok(())
 }
-
+// Same as above but for WASM32 target
 #[cfg(target_arch = "wasm32")]
-pub(crate) fn load(rtype: &[&str], moct: Qty) -> Result<(), String> {
+pub(crate) fn load(rtype: &[&str], moct: MocQType) -> Result<(), String> {
     let task = AsyncFileDialog::new()
         .add_filter("MOCs", rtype)
         .pick_files();
@@ -209,11 +236,15 @@ fn execute<F: std::future::Future<Output = ()> + 'static>(f: F) {
     wasm_bindgen_futures::spawn_local(f);
 }
 
+// #Definition
+//      fmt_qty simply sends back a string corresponding to a MocQType
+// #Args
+//  *   `typ`: the MocQType we want to stringify
 pub fn fmt_qty(typ: MocQType) -> String {
     match typ {
         MocQType::Space => "Space".to_string(),
         MocQType::Time => "Time".to_string(),
         MocQType::TimeSpace => "Timespace".to_string(),
-        MocQType::Frequency => unreachable!()
+        MocQType::Frequency => unreachable!(),
     }
 }

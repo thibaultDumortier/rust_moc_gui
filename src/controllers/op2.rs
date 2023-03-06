@@ -3,6 +3,7 @@ use core::fmt;
 use crate::utils::namestore::add;
 use moc::storage::u64idx::U64MocStore;
 
+// The OP2 type
 #[derive(Copy, Clone)]
 pub(crate) enum Op2 {
     Intersection,
@@ -18,6 +19,8 @@ impl Default for Op2 {
     }
 }
 impl fmt::Display for Op2 {
+    // #Definition
+    //      fmt formats an OP2 to a string
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Intersection => write!(f, "Intersection"),
@@ -31,6 +34,10 @@ impl fmt::Display for Op2 {
 }
 
 impl PartialEq for Op2 {
+    // #Definition
+    //      Checks if 2 OP2s are equal or not
+    // #Args
+    //  *   `other`: the other OP2 to that needs to be compared with self
     fn eq(&self, other: &Self) -> bool {
         matches!(
             (self, other),
@@ -45,6 +52,14 @@ impl PartialEq for Op2 {
 }
 
 impl Op2 {
+    // #Definition
+    //      perform_op_on_smoc, it does exactly as it says, it performs an operation on a given SMOC
+    // #Args
+    //  *   `left`: the first selected MOC
+    //  *   `right`: the second MOC on which the op will be performed, using both MOCs
+    //  *   `n`: the name given to the new MOC once added to the store
+    // #Errors
+    //      Errors can come if "add" does not work, in which case the MOC is not added to the store.
     fn perform_op_on_smoc(self, left: usize, right: usize, n: &str) -> Result<(), String> {
         let name = n.to_string();
         match self {
@@ -80,7 +95,8 @@ impl Op2 {
             )),
         }
     }
-
+    // #Definition
+    //      Same as perform_op_on_smoc, but for TMOCs
     fn perform_op_on_tmoc(self, left: usize, right: usize, n: &str) -> Result<(), String> {
         let name = n.to_string();
         match self {
@@ -116,7 +132,9 @@ impl Op2 {
             )),
         }
     }
-
+    // #Definition
+    //      Same as perform_op_on_smoc, but for STMOCs
+    //      The difference is that difference does not work for STMOCs
     fn perform_op_on_stmoc(self, left: usize, right: usize, n: &str) -> Result<(), String> {
         let name = n.to_string();
         match self {
@@ -134,7 +152,7 @@ impl Op2 {
             }
             Op2::Difference => {
                 return Err(String::from(
-                    "Difference (or xor) not implemented yet for ST-MOCs.",
+                    "Difference (or xor) not implemented for ST-MOCs.",
                 ))
             }
             Op2::Minus => {
@@ -155,7 +173,8 @@ impl Op2 {
             }
         }
     }
-
+    // #Definition
+    //      Same as perform_op_on_smoc, but it only works for space_fold
     fn perform_space_fold(self, left: usize, right: usize, n: &str) -> Result<(), String> {
         let name = n.to_string();
         if !matches!(self, Op2::SFold) {
@@ -169,7 +188,8 @@ impl Op2 {
             Ok(())
         }
     }
-
+    // #Definition
+    //      Same as perform_op_on_smoc, but it only works for time_fold
     fn perform_time_fold(self, left: usize, right: usize, n: &str) -> Result<(), String> {
         let name = n.to_string();
         if !matches!(self, Op2::TFold) {
@@ -185,7 +205,15 @@ impl Op2 {
     }
 }
 
-/// Performs the given operation on the given MOCs and store the resulting MOC in the store.
+// #Definition
+//      op1 performs the given operation on the given MOC and store the resulting MOC in the store.
+// #Args
+//  *   `id`: the MOC's id in the store
+//  *   `op`: the operation that needs to be applied to the MOC
+//  *   `res_name`: The name given to the result
+// #Errors
+//      Error if MOCs are not the same OR a TimeSpace and a Space/Time MOC.
+//      Error if the MOC type is not found.
 pub(crate) fn op2(left_id: usize, right_id: usize, op: Op2, res_name: &str) -> Result<(), String> {
     if let (Ok(left), Ok(right)) = (
         U64MocStore.get_qty_type(left_id),

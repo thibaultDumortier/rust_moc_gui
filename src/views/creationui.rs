@@ -73,11 +73,13 @@ impl CreationUis {
                 });
         });
 
+        ui.add_space(20.0);
+
         // The small paragraph before the match sets a grid layout to have every element aligned
         egui::Grid::new("my_grid")
             .num_columns(2)
             .spacing([40.0, 4.0])
-            .striped(true)
+            .striped(false)
             .show(ui, |ui| {
                 match self.typ {
                     CreationType::Cone => self.error = self.cone_ui(ui, &self.error.clone()),
@@ -325,7 +327,7 @@ impl CreationUis {
         self.coo_cones_jd_builder(ui, CreationType::LargeCone, e)
     }
 
-    // Jd_ui and Jdr_ui are different, they permit Time MOCs creation.
+    // Jd_ui and Jdr_ui are different to the rest, they allow Time MOCs creation.
     pub(crate) fn jd_ui(&mut self, ui: &mut Ui, e: &Option<String>) -> Option<String> {
         self.coo_cones_jd_builder(ui, CreationType::DecimalJd, e)
     }

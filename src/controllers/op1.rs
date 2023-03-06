@@ -3,6 +3,7 @@ use core::fmt;
 use crate::utils::namestore::add;
 use moc::storage::u64idx::{common::MocQType, U64MocStore};
 
+// The OP1 type
 #[derive(Copy, Clone)]
 pub(crate) enum Op1 {
     Complement,
@@ -20,6 +21,8 @@ impl Default for Op1 {
     }
 }
 impl fmt::Display for Op1 {
+    // #Definition
+    //      fmt formats an OP1 to a string
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Complement => write!(f, "Complement"),
@@ -33,8 +36,11 @@ impl fmt::Display for Op1 {
         }
     }
 }
-
 impl PartialEq for Op1 {
+    // #Definition
+    //      Checks if 2 OP1s are equal or not
+    // #Args
+    //  *   `other`: the other OP1 to that needs to be compared with self
     fn eq(&self, other: &Self) -> bool {
         matches!(
             (self, other),
@@ -51,6 +57,13 @@ impl PartialEq for Op1 {
 }
 
 impl Op1 {
+    // #Definition
+    //      perform_op_on_smoc, it does exactly as it says, it performs an operation on a given SMOC
+    // #Args
+    //  *   `id`: the MOC on which to perform the op
+    //  *   `n`: the name given to the new MOC once added to the store
+    // #Errors
+    //      Errors can come if "add" does not work, in which case the MOC is not added to the store.
     fn perform_op_on_smoc(self, id: usize, n: &str) -> Result<(), String> {
         let name = n.to_string();
         match self {
@@ -104,6 +117,9 @@ impl Op1 {
             }
         }
     }
+    // #Definition
+    //      Same as perform_op_on_smoc, but for TMOCs
+    //      The only difference is that only complement and degrade work for this type of MOC
     fn perform_op_on_tmoc(self, id: usize, n: &str) -> Result<(), String> {
         let name = n.to_string();
         match self {
@@ -138,13 +154,20 @@ impl Op1 {
     }
 }
 
-/// Performs the given operation on the given MOC and store the resulting MOC in the store.
+// #Definition
+//      op1 performs the given operation on the given MOC and store the resulting MOC in the store.
+// #Args
+//  *   `id`: the MOC's id in the store
+//  *   `op`: the operation that needs to be applied to the MOC
+//  *   `res_name`: The name given to the result
+// #Errors
+//      Error if a timespace string is used as TimeSpace MOCs cannot be operated on alone.
 pub(crate) fn op1(id: usize, op: Op1, res_name: &str) -> Result<(), String> {
     let moc = U64MocStore.get_qty_type(id)?;
     match moc {
         MocQType::Space => op.perform_op_on_smoc(id, res_name),
         MocQType::Time => op.perform_op_on_tmoc(id, res_name),
         MocQType::TimeSpace => Err(String::from("Operations are not implemented for ST-MOCs.")),
-        MocQType::Frequency => Err(String::from("Frequency MOCs not supported.")),
+        MocQType::Frequency => unreachable!(),
     }
 }

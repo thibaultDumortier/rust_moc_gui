@@ -8,6 +8,7 @@ use crate::views::{creationui::*, opui::*};
 use eframe::egui;
 use egui::menu;
 use egui::Ui;
+use moc::storage::u64idx::common::MocQType;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 //Import javascript log function
@@ -106,28 +107,28 @@ impl FileApp {
                     ui.menu_button("Load", |ui| {
                         if ui.button("FITS").clicked() {
                             //Qty::Space here is a default it is not actually used
-                            assert!(load(&["fits"], Qty::Space).is_ok());
+                            assert!(load(&["fits"], MocQType::Space).is_ok());
                         }
                         ui.menu_button("JSON", |ui| {
                             if ui.button("Space").clicked() {
-                                assert!(load(&["json"], Qty::Space).is_ok());
+                                assert!(load(&["json"], MocQType::Space).is_ok());
                             }
                             if ui.button("Time").clicked() {
-                                assert!(load(&["json"], Qty::Time).is_ok());
+                                assert!(load(&["json"], MocQType::Time).is_ok());
                             }
                             if ui.button("Spacetime").clicked() {
-                                assert!(load(&["json"], Qty::Timespace).is_ok());
+                                assert!(load(&["json"], MocQType::TimeSpace).is_ok());
                             }
                         });
                         ui.menu_button("ASCII", |ui| {
                             if ui.button("Space").clicked() {
-                                assert!(load(&["ascii", "txt"], Qty::Space).is_ok());
+                                assert!(load(&["ascii", "txt"], MocQType::Space).is_ok());
                             }
                             if ui.button("Time").clicked() {
-                                assert!(load(&["ascii", "txt"], Qty::Time).is_ok());
+                                assert!(load(&["ascii", "txt"], MocQType::Time).is_ok());
                             }
                             if ui.button("Spacetime").clicked() {
-                                assert!(load(&["ascii", "txt"], Qty::Timespace).is_ok());
+                                assert!(load(&["ascii", "txt"], MocQType::TimeSpace).is_ok());
                             }
                         });
                     })
