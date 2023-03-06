@@ -27,16 +27,6 @@ pub(crate) fn get_store() -> &'static RwLock<HashMap<usize, (String, usize)>> {
         }
     }
 }
-pub(crate) fn get_name(id: usize) -> Result<String, String> {
-    let store = get_store()
-        .read()
-        .map_err(|_| "Read lock poisoned".to_string())?;
-    let name = store
-        .get(&id)
-        .ok_or_else(|| format!("MOC '{}' not found", id))?;
-
-    Ok(name.0.to_owned())
-}
 pub(crate) fn drop(id: usize) -> Result<(), String> {
     let mut store = get_store()
         .write()
@@ -47,10 +37,21 @@ pub(crate) fn drop(id: usize) -> Result<(), String> {
 }
 pub(crate) fn add(name: &str, id: usize) -> Result<(), String> {
     let new_idx: usize = get_latest_idx();
+    let idx = list_names()
+        .unwrap()
+        .iter()
+        .filter(|s| s.contains(name))
+        .count();
+
     let mut store = get_store()
         .write()
         .map_err(|_| "Write lock poisoned".to_string())?;
-    (*store).insert(id, (String::from(name), new_idx));
+
+    if idx != 0 {
+        (*store).insert(id, (format!("{}({})", name, idx), new_idx));
+    } else {
+        (*store).insert(id, (String::from(name), new_idx));
+    }
 
     Ok(())
 }
@@ -61,6 +62,20 @@ pub(crate) fn list_names() -> Result<Vec<String>, String> {
         .iter()
         .map(|(_, name)| name.0.clone())
         .collect())
+}
+
+/////////////
+// GETTERS //
+
+pub(crate) fn get_name(id: usize) -> Result<String, String> {
+    let store = get_store()
+        .read()
+        .map_err(|_| "Read lock poisoned".to_string())?;
+    let name = store
+        .get(&id)
+        .ok_or_else(|| format!("MOC '{}' not found", id))?;
+
+    Ok(name.0.to_owned())
 }
 pub fn get_len() -> Result<usize, String> {
     Ok(get_store()
