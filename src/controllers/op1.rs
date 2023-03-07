@@ -4,7 +4,7 @@ use crate::utils::namestore::add;
 use moc::storage::u64idx::{common::MocQType, U64MocStore};
 
 // The OP1 type
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Eq)]
 pub(crate) enum Op1 {
     Complement,
     Degrade { new_depth: u8 },

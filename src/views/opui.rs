@@ -9,6 +9,7 @@ use egui::{TextEdit, Ui};
 use moc::storage::u64idx::common::MocQType;
 use moc::storage::u64idx::U64MocStore;
 
+#[derive(Clone, Eq)]
 enum Op {
     One(Op1),
     Two(Op2),
@@ -45,7 +46,7 @@ impl Op {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Clone, Eq, PartialEq)]
 pub struct OpUis {
     name: String,
     operation: Op,

@@ -4,7 +4,7 @@ use crate::utils::namestore::add;
 use moc::storage::u64idx::U64MocStore;
 
 // The OP2 type
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Eq)]
 pub(crate) enum Op2 {
     Intersection,
     Union,

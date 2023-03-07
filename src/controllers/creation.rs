@@ -6,7 +6,7 @@ use crate::utils::commons::*;
 
 const JD_TO_USEC: f64 = (24_u64 * 60 * 60 * 1_000_000) as f64;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialOrd, Eq)]
 pub(crate) enum CreationType {
     Box,
     Cone,

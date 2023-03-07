@@ -4,6 +4,7 @@ use crate::utils::namestore::add;
 use super::creationui::CreationType;
 use eframe::egui;
 use egui::{TextEdit, Ui};
+use eq_float::F64;
 
 use moc::storage::u64idx::U64MocStore;
 #[cfg(target_arch = "wasm32")]
@@ -14,15 +15,15 @@ use rfd::FileDialog;
 use std::fs::File;
 use std::io::Read;
 
-#[derive(Default)]
+#[derive(Default, Clone, Eq, PartialEq)]
 pub struct CreationUis {
     name: String,
     depth: u8,
-    lon_deg_polf1: f64,
-    lat_deg_polf2: f64,
-    radius_a: f64,
-    lon_deg_min_b_int: f64,
-    lat_deg_min_pa: f64,
+    lon_deg_polf1: F64,
+    lat_deg_polf2: F64,
+    radius_a: F64,
+    lon_deg_min_b_int: F64,
+    lat_deg_min_pa: F64,
     comp: bool,
     typ: CreationType,
     error: Option<String>,
@@ -32,8 +33,8 @@ pub struct CreationUis {
     not_strict: bool,
     split: bool,
     revese_recursive_descent: bool,
-    from_threshold: f64,
-    to_threshold: f64,
+    from_threshold: F64,
+    to_threshold: F64,
 }
 impl CreationUis {
     ////////////////////////////////////////////////
@@ -137,9 +138,9 @@ impl CreationUis {
             }
             if let Ok(id) = U64MocStore
                 .from_cone(
-                    self.lon_deg_polf1,
-                    self.lat_deg_polf2,
-                    self.radius_a,
+                    self.lon_deg_polf1.0,
+                    self.lat_deg_polf2.0,
+                    self.radius_a.0,
                     self.depth,
                     2,
                 )
@@ -174,10 +175,10 @@ impl CreationUis {
             }
             if let Ok(id) = U64MocStore
                 .from_ring(
-                    self.lon_deg_polf1,
-                    self.lat_deg_polf2,
-                    self.lon_deg_min_b_int,
-                    self.radius_a,
+                    self.lon_deg_polf1.0,
+                    self.lat_deg_polf2.0,
+                    self.lon_deg_min_b_int.0,
+                    self.radius_a.0,
                     self.depth,
                     2,
                 )
@@ -205,11 +206,11 @@ impl CreationUis {
             }
             if let Ok(id) = U64MocStore
                 .from_elliptical_cone(
-                    self.lon_deg_polf1,
-                    self.lat_deg_polf2,
-                    self.radius_a,
-                    self.lon_deg_min_b_int,
-                    self.lat_deg_min_pa,
+                    self.lon_deg_polf1.0,
+                    self.lat_deg_polf2.0,
+                    self.radius_a.0,
+                    self.lon_deg_min_b_int.0,
+                    self.lat_deg_min_pa.0,
                     self.depth,
                     2,
                 )
@@ -242,10 +243,10 @@ impl CreationUis {
             }
             if let Ok(id) = U64MocStore
                 .from_zone(
-                    self.lon_deg_min_b_int,
-                    self.lat_deg_min_pa,
-                    self.lon_deg_polf1,
-                    self.lat_deg_polf2,
+                    self.lon_deg_min_b_int.0,
+                    self.lat_deg_min_pa.0,
+                    self.lon_deg_polf1.0,
+                    self.lat_deg_polf2.0,
                     self.depth,
                 )
                 .map_err(|e| err = Some(e))
@@ -273,11 +274,11 @@ impl CreationUis {
             }
             if let Ok(id) = U64MocStore
                 .from_box(
-                    self.lon_deg_polf1,
-                    self.lat_deg_polf2,
-                    self.radius_a,
-                    self.lon_deg_min_b_int,
-                    self.lat_deg_min_pa,
+                    self.lon_deg_polf1.0,
+                    self.lat_deg_polf2.0,
+                    self.radius_a.0,
+                    self.lon_deg_min_b_int.0,
+                    self.lat_deg_min_pa.0,
                     self.depth,
                 )
                 .map_err(|e| err = Some(e))
@@ -391,8 +392,8 @@ impl CreationUis {
                     let id = from_valued_cells(
                         depth,
                         density,
-                        from_threshold,
-                        to_threshold,
+                        from_threshold.0,
+                        to_threshold.0,
                         asc,
                         not_strict,
                         split,
@@ -469,8 +470,8 @@ impl CreationUis {
                 if let Ok(id) = from_valued_cells(
                     depth,
                     density,
-                    from_threshold,
-                    to_threshold,
+                    from_threshold.0,
+                    to_threshold.0,
                     asc,
                     not_strict,
                     split,
@@ -556,14 +557,14 @@ impl CreationUis {
     fn lon_lat_deg_builder(&mut self, ui: &mut Ui) {
         ui.label("Longitude degradation:");
         ui.add(
-            egui::Slider::new(&mut self.lon_deg_polf1, 0.0..=360.0)
+            egui::Slider::new(&mut self.lon_deg_polf1.0, 0.0..=360.0)
                 .suffix("°")
                 .fixed_decimals(11),
         );
         ui.end_row();
         ui.label("Latitude degradation:");
         ui.add(
-            egui::Slider::new(&mut self.lat_deg_polf2, -90.0..=90.0)
+            egui::Slider::new(&mut self.lat_deg_polf2.0, -90.0..=90.0)
                 .suffix("°")
                 .fixed_decimals(11),
         );
@@ -573,28 +574,28 @@ impl CreationUis {
     fn lons_lats_builder(&mut self, ui: &mut Ui) {
         ui.label("Minimal longitude degradation:");
         ui.add(
-            egui::Slider::new(&mut self.lon_deg_min_b_int, 0.0..=self.lon_deg_polf1)
+            egui::Slider::new(&mut self.lon_deg_min_b_int.0, 0.0..=self.lon_deg_polf1.0)
                 .suffix("°")
                 .fixed_decimals(11),
         );
         ui.end_row();
         ui.label("Minimal latitude degradation:");
         ui.add(
-            egui::Slider::new(&mut self.lat_deg_min_pa, -90.0..=self.lat_deg_polf2)
+            egui::Slider::new(&mut self.lat_deg_min_pa.0, -90.0..=self.lat_deg_polf2.0)
                 .suffix("°")
                 .fixed_decimals(11),
         );
         ui.end_row();
         ui.label("Maximal longitude degradation:");
         ui.add(
-            egui::Slider::new(&mut self.lon_deg_polf1, self.lon_deg_min_b_int..=360.0)
+            egui::Slider::new(&mut self.lon_deg_polf1.0, self.lon_deg_min_b_int.0..=360.0)
                 .suffix("°")
                 .fixed_decimals(11),
         );
         ui.end_row();
         ui.label("Maximal latitude degradation:");
         ui.add(
-            egui::Slider::new(&mut self.lat_deg_polf2, self.lat_deg_min_pa..=90.0)
+            egui::Slider::new(&mut self.lat_deg_polf2.0, self.lat_deg_min_pa.0..=90.0)
                 .suffix("°")
                 .fixed_decimals(11),
         );
@@ -604,7 +605,7 @@ impl CreationUis {
     fn radius_builder(&mut self, ui: &mut Ui) {
         ui.label("Radius:");
         ui.add(
-            egui::Slider::new(&mut self.radius_a, 0.0..=180.0)
+            egui::Slider::new(&mut self.radius_a.0, 0.0..=180.0)
                 .suffix("°")
                 .fixed_decimals(11),
         );
@@ -614,14 +615,14 @@ impl CreationUis {
     fn radii_builder(&mut self, ui: &mut Ui) {
         ui.label("Internal radius:");
         ui.add(
-            egui::Slider::new(&mut self.lon_deg_min_b_int, 0.0..=self.radius_a)
+            egui::Slider::new(&mut self.lon_deg_min_b_int.0, 0.0..=self.radius_a.0)
                 .suffix("°")
                 .fixed_decimals(11),
         );
         ui.end_row();
         ui.label("External radius:");
         ui.add(
-            egui::Slider::new(&mut self.radius_a, self.lon_deg_min_b_int..=180.0)
+            egui::Slider::new(&mut self.radius_a.0, self.lon_deg_min_b_int.0..=180.0)
                 .suffix("°")
                 .fixed_decimals(11),
         );
@@ -631,21 +632,21 @@ impl CreationUis {
     fn degs_builder(&mut self, ui: &mut Ui) {
         ui.label("A degradation:");
         ui.add(
-            egui::Slider::new(&mut self.radius_a, 0.0..=90.0)
+            egui::Slider::new(&mut self.radius_a.0, 0.0..=90.0)
                 .suffix("°")
                 .fixed_decimals(11),
         );
         ui.end_row();
         ui.label("B degradation:");
         ui.add(
-            egui::Slider::new(&mut self.lon_deg_min_b_int, 0.0..=self.radius_a)
+            egui::Slider::new(&mut self.lon_deg_min_b_int.0, 0.0..=self.radius_a.0)
                 .suffix("°")
                 .fixed_decimals(11),
         );
         ui.end_row();
         ui.label("PA degradation:");
         ui.add(
-            egui::Slider::new(&mut self.lat_deg_min_pa, 0.0..=90.0)
+            egui::Slider::new(&mut self.lat_deg_min_pa.0, 0.0..=90.0)
                 .suffix("°")
                 .fixed_decimals(11),
         );
@@ -655,14 +656,14 @@ impl CreationUis {
     fn threshold_builder(&mut self, ui: &mut Ui) {
         ui.label("From Threshold :");
         ui.add(
-            egui::Slider::new(&mut self.from_threshold, 0.0..=self.to_threshold)
+            egui::Slider::new(&mut self.from_threshold.0, 0.0..=self.to_threshold.0)
                 .logarithmic(true)
                 .fixed_decimals(11),
         );
         ui.end_row();
         ui.label("To Threshold:");
         ui.add(
-            egui::Slider::new(&mut self.to_threshold, 0.0..=1.0)
+            egui::Slider::new(&mut self.to_threshold.0, 0.0..=1.0)
                 .logarithmic(true)
                 .fixed_decimals(11),
         );

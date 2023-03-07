@@ -1,6 +1,8 @@
+use std::collections::HashMap;
+
 use crate::utils::commons::*;
 use crate::views::infoui::ListUi;
-use crate::views::{creationui::*, opui::*};
+use crate::views::windowed::{SubUiWindow, UiMenu};
 
 use eframe::egui;
 use egui::menu;
@@ -15,38 +17,11 @@ extern "C" {
     pub fn log(s: &str);
 }
 
-//An operation enumerator
-enum UiMenu {
-    One,
-    Two,
-    List,
-    Crea,
-}
-impl Default for UiMenu {
-    fn default() -> Self {
-        UiMenu::List
-    }
-}
-impl PartialEq for UiMenu {
-    fn eq(&self, other: &Self) -> bool {
-        matches!(
-            (self, other),
-            (UiMenu::One, UiMenu::One)
-                | (UiMenu::Two, UiMenu::Two)
-                | (UiMenu::List, UiMenu::List)
-                | (UiMenu::Crea, UiMenu::Crea)
-        )
-    }
-}
-
 //FileApp struct
-
 #[derive(Default)]
 pub struct FileApp {
-    operation: UiMenu,
-    creation: CreationUis,
-    opui: OpUis,
     list: ListUi,
+    open_windows: HashMap<UiMenu, SubUiWindow>,
 }
 impl eframe::App for FileApp {
     //////////////////////
@@ -67,21 +42,59 @@ impl eframe::App for FileApp {
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
+            let uis = [UiMenu::Crea, UiMenu::One, UiMenu::Two];
+            for ui in uis {
+                if self.open_windows.is_empty() {
+                    self.open_windows = HashMap::new();
+                    break;
+                }
+                let mut is_open = self.open_windows.contains_key(&ui);
+                if is_open {
+                    self.open_windows
+                        .get(&ui)
+                        .unwrap()
+                        .to_owned()
+                        .show(ctx, &mut is_open);
+                }
+                self.set_open(&ui.clone(), is_open);
+            }
+
             ui.horizontal(|ui| {
-                ui.selectable_value(&mut self.operation, UiMenu::List, "MOC list");
-                ui.selectable_value(&mut self.operation, UiMenu::Crea, "MOC creation");
-                ui.selectable_value(&mut self.operation, UiMenu::One, "1 MOC operation");
-                ui.selectable_value(&mut self.operation, UiMenu::Two, "2 MOCs operation");
+                if ui.button("MOC creation").clicked() {
+                    if !self.open_windows.contains_key(&UiMenu::Crea) {
+                        self.open_windows.insert(
+                            UiMenu::Crea,
+                            SubUiWindow::new(UiMenu::Crea).unwrap(), //NO ERRORS SHOULD HAPPEN HERE
+                        );
+                    } else if self.open_windows.contains_key(&UiMenu::Crea) {
+                        self.open_windows.remove(&UiMenu::Crea);
+                    }
+                }
+                if ui.button("1 MOC operation").clicked() {
+                    if !self.open_windows.contains_key(&UiMenu::One) {
+                        self.open_windows.insert(
+                            UiMenu::One,
+                            SubUiWindow::new(UiMenu::One).unwrap(), //NO ERRORS SHOULD HAPPEN HERE
+                        );
+                    } else if self.open_windows.contains_key(&UiMenu::One) {
+                        self.open_windows.remove(&UiMenu::One);
+                    }
+                }   
+                if ui.button("2 MOCs operation").clicked() {
+                    if !self.open_windows.contains_key(&UiMenu::Two) {
+                        self.open_windows.insert(
+                            UiMenu::Two,
+                            SubUiWindow::new(UiMenu::Two).unwrap(), //NO ERRORS SHOULD HAPPEN HERE
+                        );
+                    } else if self.open_windows.contains_key(&UiMenu::Two) {
+                        self.open_windows.remove(&UiMenu::Two);
+                    }
+                }
             });
             ui.end_row();
 
             ui.separator();
-            match &self.operation {
-                UiMenu::One => self.opui.moc_op1(ui).map_err(|e| self.err(&e)),
-                UiMenu::Two => self.opui.moc_op2(ui).map_err(|e| self.err(&e)),
-                UiMenu::List => self.list.list_ui(ctx, ui).map_err(|e| self.err(&e)),
-                UiMenu::Crea => self.creation.creation_ui(ui).map_err(|e| self.err(&e)),
-            }
+            let _ = self.list.list_ui(ctx, ui).map_err(|e| self.err(&e));
         });
     }
 }
@@ -138,7 +151,6 @@ impl FileApp {
     fn err(&mut self, msg: &str) {
         use rfd::MessageDialog;
 
-        self.operation = UiMenu::List;
         let m = MessageDialog::new()
             .set_buttons(rfd::MessageButtons::Ok)
             .set_title("Error !")
@@ -150,11 +162,16 @@ impl FileApp {
     fn err(&mut self, msg: &str) {
         use rfd::AsyncMessageDialog;
 
-        self.operation = UiMenu::List;
         let m = AsyncMessageDialog::new()
             .set_buttons(rfd::MessageButtons::Ok)
             .set_title("Error !")
             .set_description(msg);
         m.show();
+    }
+
+    fn set_open(&mut self, key: &UiMenu, is_open: bool) {
+        if !is_open {
+            self.open_windows.remove(key);
+        }
     }
 }
