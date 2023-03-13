@@ -45,6 +45,8 @@ impl CreationUis {
     // #Args
     //  *   `ui`: the egui UI that needs to show the given components
     pub(crate) fn creation_ui(&mut self, ui: &mut Ui) -> Result<(), String> {
+        let mut selfclone = self.clone();
+
         let sel_text = format!("{}", self.typ);
 
         ui.horizontal(|ui| {
@@ -80,24 +82,20 @@ impl CreationUis {
             .striped(false)
             .show(ui, |ui| {
                 match self.typ {
-                    CreationType::Cone => self.error = self.cone_ui(ui, &self.error.clone()),
-                    CreationType::Ring => self.error = self.ring_ui(ui, &self.error.clone()),
+                    CreationType::Cone => self.error = selfclone.cone_ui(ui, &self.error),
+                    CreationType::Ring => self.error = selfclone.ring_ui(ui, &self.error),
                     CreationType::EllipticalCone => {
-                        self.error = self.eliptical_ui(ui, &self.error.clone())
+                        self.error = selfclone.eliptical_ui(ui, &self.error)
                     }
-                    CreationType::Zone => self.error = self.zone_ui(ui, &self.error.clone()),
-                    CreationType::Box => self.error = self.box_ui(ui, &self.error.clone()),
-                    CreationType::Polygon => self.error = self.polygon_ui(ui, &self.error.clone()),
-                    CreationType::Coo => self.error = self.coo_ui(ui, &self.error.clone()),
-                    CreationType::SmallCone => self.error = self.smallc_ui(ui, &self.error.clone()),
-                    CreationType::LargeCone => self.error = self.largec_ui(ui, &self.error.clone()),
-                    CreationType::DecimalJd => self.error = self.jd_ui(ui, &self.error.clone()),
-                    CreationType::DecimalJdRange => {
-                        self.error = self.jdr_ui(ui, &self.error.clone())
-                    }
-                    CreationType::ValuedCells => {
-                        self.error = self.valued_c(ui, &self.error.clone())
-                    }
+                    CreationType::Zone => self.error = selfclone.zone_ui(ui, &self.error),
+                    CreationType::Box => self.error = selfclone.box_ui(ui, &self.error),
+                    CreationType::Polygon => self.error = selfclone.polygon_ui(ui, &self.error),
+                    CreationType::Coo => self.error = selfclone.coo_ui(ui, &self.error),
+                    CreationType::SmallCone => self.error = selfclone.smallc_ui(ui, &self.error),
+                    CreationType::LargeCone => self.error = selfclone.largec_ui(ui, &self.error),
+                    CreationType::DecimalJd => self.error = selfclone.jd_ui(ui, &self.error),
+                    CreationType::DecimalJdRange => self.error = selfclone.jdr_ui(ui, &self.error),
+                    CreationType::ValuedCells => self.error = selfclone.valued_c(ui, &self.error),
                 };
             });
         if self.error.is_some() {
