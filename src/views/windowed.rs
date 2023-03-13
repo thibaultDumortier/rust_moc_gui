@@ -1,91 +1,110 @@
-use super::{creationui::CreationUis, opui::OpUis};
+use std::collections::BTreeSet;
 
-#[derive(Clone, Eq, Hash, Debug)]
-pub enum UiMenu {
-    One,
-    Two,
-    Crea,
+use egui::{Context, ScrollArea, Ui};
+
+use super::{
+    creationui::{CreationUis},
+    SubUi,
+};
+
+pub struct SubUis {
+    subuis: Vec<Box<dyn SubUi>>,
+    open: BTreeSet<String>,
 }
-impl Default for UiMenu {
+impl Default for SubUis {
     fn default() -> Self {
-        UiMenu::Crea
+        SubUis::from_sub_uis(vec![Box::new(CreationUis::default())])
     }
 }
-impl PartialEq for UiMenu {
-    fn eq(&self, other: &Self) -> bool {
-        matches!(
-            (self, other),
-            (UiMenu::One, UiMenu::One) | (UiMenu::Two, UiMenu::Two) | (UiMenu::Crea, UiMenu::Crea)
-        )
+impl SubUis {
+    pub fn from_sub_uis(subuis: Vec<Box<dyn SubUi>>) -> Self {
+        let open = BTreeSet::new();
+        Self { subuis, open }
     }
-}
 
-#[derive(Clone, Default, Eq)]
-pub struct SubUiWindow {
-    uitype: UiMenu,
-    creation: CreationUis,
-    opui: OpUis,
-}
-impl PartialEq for SubUiWindow {
-    fn eq(&self, other: &Self) -> bool {
-        match (self.clone(), other.clone()) {
-            (a, b) => a.uitype == b.uitype,
+    pub fn checkboxes(&mut self, ui: &mut Ui) {
+        let Self { subuis, open } = self;
+        for subui in subuis {
+            let mut is_open = open.contains(subui.name());
+            ui.toggle_value(&mut is_open, subui.name());
+            set_open(open, subui.name(), is_open);
+        }
+    }
+
+    pub fn windows(&mut self, ctx: &Context) {
+        let Self { subuis, open } = self;
+        for subui in subuis {
+            let mut is_open = open.contains(subui.name());
+            subui.show(ctx, &mut is_open);
+            set_open(open, subui.name(), is_open);
         }
     }
 }
 
-impl SubUiWindow {
-    pub fn new(uitype: UiMenu) -> Result<Self, String> {
-        Ok(Self {
-            uitype,
-            creation: CreationUis::default(),
-            opui: OpUis::default(),
-        })
+// -----------------------------------------------------------
+
+fn set_open(open: &mut BTreeSet<String>, key: &'static str, is_open: bool) {
+    if is_open {
+        if !open.contains(key) {
+            open.insert(key.to_owned());
+        }
+    } else {
+        open.remove(key);
+    }
+}
+
+// -----------------------------------------------------------
+
+pub struct SubUiWindows {
+    subuis: SubUis,
+}
+
+impl Default for SubUiWindows {
+    fn default() -> Self {
+        Self {
+            subuis: Default::default(),
+        }
+    }
+}
+
+impl SubUiWindows {
+    /// Show the app ui (menu bar and windows).
+    pub fn ui(&mut self, ctx: &Context) {
+        self.desktop_ui(ctx);
     }
 
-    pub fn show(&mut self, ctx: &egui::Context, open: &mut bool) {
-        let n = match &self.uitype {
-            UiMenu::One => 0,
-            UiMenu::Two => 1,
-            UiMenu::Crea => 2,
-        };
-
-        let mut window = egui::Window::new(format!("{:?}", self.uitype).clone())
-            .id(egui::Id::new(n)) // required since we change the title
+    fn desktop_ui(&mut self, ctx: &Context) {
+        egui::SidePanel::right("egui_demo_panel")
             .resizable(false)
-            .title_bar(true)
-            .enabled(true);
-        window = window.open(open);
-        window.show(ctx, |ui| self.ui(ui));
+            .default_width(150.0)
+            .show(ctx, |ui| {
+                egui::trace!(ui);
+                ui.vertical_centered(|ui| {
+                    ui.heading("Tools");
+                });
+
+                ui.separator();
+
+                self.subui_list_ui(ui);
+            });
+
+        self.show_windows(ctx);
     }
 
-    fn ui(&mut self, ui: &mut egui::Ui) {
-        let _ = match &self.uitype {
-            UiMenu::One => self.opui.moc_op1(ui).map_err(|e| self.err(&e)),
-            UiMenu::Two => self.opui.moc_op2(ui).map_err(|e| self.err(&e)),
-            UiMenu::Crea => self.creation.creation_ui(ui).map_err(|e| self.err(&e)),
-        };
+    /// Show the open windows.
+    fn show_windows(&mut self, ctx: &Context) {
+        self.subuis.windows(ctx);
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
-    fn err(&mut self, msg: &str) {
-        use rfd::MessageDialog;
+    fn subui_list_ui(&mut self, ui: &mut egui::Ui) {
+        ScrollArea::vertical().show(ui, |ui| {
+            ui.with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
+                self.subuis.checkboxes(ui);
 
-        let m = MessageDialog::new()
-            .set_buttons(rfd::MessageButtons::Ok)
-            .set_title("Error !")
-            .set_description(msg);
-        m.show();
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    fn err(&mut self, msg: &str) {
-        use rfd::AsyncMessageDialog;
-
-        let m = AsyncMessageDialog::new()
-            .set_buttons(rfd::MessageButtons::Ok)
-            .set_title("Error !")
-            .set_description(msg);
-        m.show();
+                if ui.button("Organize windows").clicked() {
+                    ui.ctx().memory_mut(|mem| mem.reset_areas());
+                }
+            });
+        });
     }
 }

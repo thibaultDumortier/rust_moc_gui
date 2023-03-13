@@ -1,8 +1,6 @@
-use std::collections::HashMap;
-
 use crate::utils::commons::*;
 use crate::views::infoui::ListUi;
-use crate::views::windowed::{SubUiWindow, UiMenu};
+use crate::views::windowed::SubUiWindows;
 
 use eframe::egui;
 use egui::menu;
@@ -17,11 +15,30 @@ extern "C" {
     pub fn log(s: &str);
 }
 
+#[derive(Default)]
+pub struct SubUiApp {
+    subui_windows: SubUiWindows,
+}
+
+impl eframe::App for SubUiApp {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.subui_windows.ui(ctx);
+    }
+}
+
+// -------------------------------------------------------------------
+#[derive(Default)]
+pub struct State {
+    subui: SubUiApp,
+
+    selected_anchor: String,
+}
+
 //FileApp struct
 #[derive(Default)]
 pub struct FileApp {
     list: ListUi,
-    open_windows: HashMap<UiMenu, SubUiWindow>,
+    state: State,
 }
 impl eframe::App for FileApp {
     //////////////////////
@@ -32,8 +49,13 @@ impl eframe::App for FileApp {
     // #Args:
     //  *    ctx: &equi::Context, the app's context
     //  *    frame is unused but mandatory
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        egui::TopBottomPanel::top("top_bar").show(ctx, |ui| {
+    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        #[cfg(not(target_arch = "wasm32"))]
+        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::F11)) {
+            frame.set_fullscreen(!frame.info().window_info.fullscreen);
+        }
+
+        egui::TopBottomPanel::top("wrap_app_top_bar").show(ctx, |ui| {
             egui::trace!(ui);
             ui.horizontal_wrapped(|ui| {
                 ui.visuals_mut().button_frame = false;
@@ -42,65 +64,30 @@ impl eframe::App for FileApp {
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            let uis = [UiMenu::Crea, UiMenu::One, UiMenu::Two];
-            for ui in uis {
-                if self.open_windows.is_empty() {
-                    self.open_windows = HashMap::new();
-                    break;
-                }
-                let mut is_open = self.open_windows.contains_key(&ui);
-                if is_open {
-                    self.open_windows
-                        .get(&ui)
-                        .unwrap()
-                        .to_owned()
-                        .show(ctx, &mut is_open);
-                }
-                self.set_open(&ui.clone(), is_open);
-            }
-
-            ui.horizontal(|ui| {
-                if ui.button("MOC creation").clicked() {
-                    if !self.open_windows.contains_key(&UiMenu::Crea) {
-                        self.open_windows.insert(
-                            UiMenu::Crea,
-                            SubUiWindow::new(UiMenu::Crea).unwrap(), //NO ERRORS SHOULD HAPPEN HERE
-                        );
-                    } else if self.open_windows.contains_key(&UiMenu::Crea) {
-                        self.open_windows.remove(&UiMenu::Crea);
-                    }
-                }
-                if ui.button("1 MOC operation").clicked() {
-                    if !self.open_windows.contains_key(&UiMenu::One) {
-                        self.open_windows.insert(
-                            UiMenu::One,
-                            SubUiWindow::new(UiMenu::One).unwrap(), //NO ERRORS SHOULD HAPPEN HERE
-                        );
-                    } else if self.open_windows.contains_key(&UiMenu::One) {
-                        self.open_windows.remove(&UiMenu::One);
-                    }
-                }   
-                if ui.button("2 MOCs operation").clicked() {
-                    if !self.open_windows.contains_key(&UiMenu::Two) {
-                        self.open_windows.insert(
-                            UiMenu::Two,
-                            SubUiWindow::new(UiMenu::Two).unwrap(), //NO ERRORS SHOULD HAPPEN HERE
-                        );
-                    } else if self.open_windows.contains_key(&UiMenu::Two) {
-                        self.open_windows.remove(&UiMenu::Two);
-                    }
-                }
-            });
-            ui.end_row();
-
-            ui.separator();
             let _ = self.list.list_ui(ctx, ui).map_err(|e| self.err(&e));
         });
+
+        self.show_selected_app(ctx, frame);
+
+        // On web, the browser controls `pixels_per_point`.
+        if !frame.is_web() {
+            egui::gui_zoom::zoom_with_keyboard_shortcuts(ctx, frame.info().native_pixels_per_point);
+        }
     }
 }
 impl FileApp {
     /////////////////////
     // Basic functions //
+
+    fn apps_iter_mut(&mut self) -> impl Iterator<Item = (&str, &str, &mut dyn eframe::App)> {
+        let vec = vec![(
+            "",
+            "subui",
+            &mut self.state.subui as &mut dyn eframe::App,
+        )];
+
+        vec.into_iter()
+    }
 
     // #Definition
     //      A function handling the contents of the top bar
@@ -147,6 +134,20 @@ impl FileApp {
         });
     }
 
+    fn show_selected_app(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        let mut found_anchor = false;
+        let selected_anchor = self.state.selected_anchor.clone();
+        for (_name, anchor, app) in self.apps_iter_mut() {
+            if anchor == selected_anchor || ctx.memory(|mem| mem.everything_is_visible()) {
+                app.update(ctx, frame);
+                found_anchor = true;
+            }
+        }
+        if !found_anchor {
+            self.state.selected_anchor = "subui".into();
+        }
+    }
+
     #[cfg(not(target_arch = "wasm32"))]
     fn err(&mut self, msg: &str) {
         use rfd::MessageDialog;
@@ -167,11 +168,5 @@ impl FileApp {
             .set_title("Error !")
             .set_description(msg);
         m.show();
-    }
-
-    fn set_open(&mut self, key: &UiMenu, is_open: bool) {
-        if !is_open {
-            self.open_windows.remove(key);
-        }
     }
 }

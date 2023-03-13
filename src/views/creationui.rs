@@ -2,6 +2,7 @@ use crate::controllers::creation::*;
 use crate::utils::namestore::add;
 
 use super::creationui::CreationType;
+use super::{SubUi, View};
 use eframe::egui;
 use egui::{TextEdit, Ui};
 use eq_float::F64;
@@ -36,7 +37,22 @@ pub struct CreationUis {
     from_threshold: F64,
     to_threshold: F64,
 }
-impl CreationUis {
+impl SubUi for CreationUis {
+    fn name(&self) -> &'static str {
+        "Moc creation"
+    }
+
+    fn show(&mut self, ctx: &egui::Context, open: &mut bool) {
+        egui::Window::new(self.name())
+            .open(open)
+            .resizable(false)
+            .show(ctx, |ui| {
+                use super::View as _;
+                self.ui(ui);
+            });
+    }
+}
+impl View for CreationUis {
     ////////////////////////////////////////////////
     // MAIN UI (this uses the sub UIs seen later) //
 
@@ -44,12 +60,17 @@ impl CreationUis {
     //      Creation_ui, the main UI component for MOC creation
     // #Args
     //  *   `ui`: the egui UI that needs to show the given components
-    pub(crate) fn creation_ui(&mut self, ui: &mut Ui) -> Result<(), String> {
+    fn ui(&mut self, ui: &mut Ui) {
         let mut selfclone = self.clone();
 
         let sel_text = format!("{}", self.typ);
 
         ui.horizontal(|ui| {
+            ui.add(egui::Slider::new(
+                &mut self.lon_deg_min_b_int.0,
+                0.0..=120.0,
+            ));
+
             ui.label("Creation type :");
             egui::ComboBox::from_id_source("Creation_cbox")
                 .selected_text(sel_text)
@@ -98,12 +119,13 @@ impl CreationUis {
                     CreationType::ValuedCells => self.error = selfclone.valued_c(ui, &self.error),
                 };
             });
-        if self.error.is_some() {
-            return Err(self.error.clone().unwrap());
-        }
-        Ok(())
+        // if self.error.is_some() {
+        //     return Err(self.error.clone().unwrap());
+        // }
+        // Ok(())
     }
-
+}
+impl CreationUis {
     /////////////
     // sub-UIs //
 
