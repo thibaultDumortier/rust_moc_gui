@@ -2,10 +2,7 @@ use std::collections::BTreeSet;
 
 use egui::{Context, ScrollArea, Ui};
 
-use super::{
-    creationui::{CreationUis},
-    SubUi,
-};
+use super::{creationui::CreationUis, multiple::MultipleUi, unitary::UnitaryUi, SubUi};
 
 pub struct SubUis {
     subuis: Vec<Box<dyn SubUi>>,
@@ -13,7 +10,11 @@ pub struct SubUis {
 }
 impl Default for SubUis {
     fn default() -> Self {
-        SubUis::from_sub_uis(vec![Box::new(CreationUis::default())])
+        SubUis::from_sub_uis(vec![
+            Box::new(CreationUis::default()),
+            Box::new(UnitaryUi::default()),
+            Box::new(MultipleUi::default()),
+        ])
     }
 }
 impl SubUis {
@@ -76,7 +77,7 @@ impl SubUiWindows {
     fn desktop_ui(&mut self, ctx: &Context) {
         egui::SidePanel::right("egui_demo_panel")
             .resizable(false)
-            .default_width(150.0)
+            .exact_width(200.0)
             .show(ctx, |ui| {
                 egui::trace!(ui);
                 ui.vertical_centered(|ui| {

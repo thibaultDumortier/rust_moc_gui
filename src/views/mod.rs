@@ -1,6 +1,7 @@
 pub(crate) mod creationui;
 pub(crate) mod infoui;
-pub(crate) mod opui;
+pub(crate) mod multiple;
+pub(crate) mod unitary;
 pub(crate) mod windowed;
 
 pub trait View {
