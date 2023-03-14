@@ -1,5 +1,5 @@
 use crate::controllers::op2::*;
-use crate::utils::commons::fmt_qty;
+use crate::utils::commons::{err, fmt_qty};
 use crate::utils::namestore::{get_last, get_name, get_store, list_names};
 
 use eframe::egui;
@@ -162,18 +162,18 @@ impl View for MultipleUi {
             let sel_text: String;
             let sel_text_2: String;
             if self.picked_file.is_some() {
-                if let Ok(txt) = get_name(self.picked_file.unwrap()).map_err(|e| return e) {
+                if let Ok(txt) = get_name(self.picked_file.unwrap()).map_err(|e| err(&e)) {
                     sel_text = txt
                 } else {
                     self.picked_file = Some(get_last(0).unwrap().0);
                     sel_text = get_name(self.picked_file.unwrap())
-                        .map_err(|e| return e)
+                        .map_err(|e| err(&e))
                         .unwrap();
                 }
             } else {
                 self.picked_file = Some(get_last(0).unwrap().0);
                 sel_text = get_name(self.picked_file.unwrap())
-                    .map_err(|e| return e)
+                    .map_err(|e| err(&e))
                     .unwrap();
             }
             if self.picked_second_file.is_some() {
@@ -182,13 +182,13 @@ impl View for MultipleUi {
                 } else {
                     self.picked_second_file = Some(get_last(1).unwrap().0);
                     sel_text_2 = get_name(self.picked_second_file.unwrap())
-                        .map_err(|e| return e)
+                        .map_err(|e| err(&e))
                         .unwrap();
                 }
             } else {
                 self.picked_second_file = Some(get_last(1).unwrap().0);
                 sel_text_2 = get_name(self.picked_second_file.unwrap())
-                    .map_err(|e| return e)
+                    .map_err(|e| err(&e))
                     .unwrap();
             }
 
@@ -229,7 +229,7 @@ impl View for MultipleUi {
                             if self.name.is_empty() {
                                 self.name = format!("{}_{}_{}", op, l, r);
                             }
-                            let _ = op2(*l, *r, op, &self.name).map_err(|e| return e);
+                            let _ = op2(*l, *r, op, &self.name).map_err(|e| err(&e));
                             self.name = String::default();
                         };
                     }

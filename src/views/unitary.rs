@@ -1,4 +1,5 @@
 use crate::controllers::op1::*;
+use crate::utils::commons::err;
 use crate::utils::namestore::{get_last, get_name, get_store, list_names};
 
 use eframe::egui;
@@ -49,18 +50,18 @@ impl View for UnitaryUi {
             //Defaults to last loaded MOC before leaving the user choose which moc he wants to operate on
             let sel_text: String;
             if self.picked_file.is_some() {
-                if let Ok(txt) = get_name(self.picked_file.unwrap()).map_err(|e| return e) {
+                if let Ok(txt) = get_name(self.picked_file.unwrap()).map_err(|e| err(&e)) {
                     sel_text = txt
                 } else {
                     self.picked_file = Some(get_last(0).unwrap().0);
                     sel_text = get_name(self.picked_file.unwrap())
-                        .map_err(|e| return e)
+                        .map_err(|e| err(&e))
                         .unwrap();
                 }
             } else {
                 self.picked_file = Some(get_last(0).unwrap().0);
                 sel_text = get_name(self.picked_file.unwrap())
-                    .map_err(|e| return e)
+                    .map_err(|e| err(&e))
                     .unwrap();
             }
 
@@ -111,7 +112,7 @@ impl View for UnitaryUi {
                                     );
                                 }
                                 let _ = op1(self.picked_file.unwrap(), op, &self.name)
-                                    .map_err(|e| return e);
+                                    .map_err(|e| err(&e));
                                 self.name = String::default();
                             };
                         } else {

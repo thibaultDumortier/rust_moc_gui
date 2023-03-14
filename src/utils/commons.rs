@@ -1,6 +1,6 @@
-use std::str::from_utf8_unchecked;
 use crate::utils::namestore::add;
 use moc::storage::u64idx::{common::MocQType, U64MocStore};
+use std::str::from_utf8_unchecked;
 
 #[cfg(target_arch = "wasm32")]
 use js_sys::{Array, Uint8Array};
@@ -247,4 +247,26 @@ pub fn fmt_qty(typ: MocQType) -> String {
         MocQType::TimeSpace => "Timespace".to_string(),
         MocQType::Frequency => unreachable!(),
     }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) fn err(msg: &str) {
+    use rfd::MessageDialog;
+
+    let m = MessageDialog::new()
+        .set_buttons(rfd::MessageButtons::Ok)
+        .set_title("Error !")
+        .set_description(msg);
+    m.show();
+}
+
+#[cfg(target_arch = "wasm32")]
+pub(crate) fn err(msg: &str) {
+    use rfd::AsyncMessageDialog;
+
+    let m = AsyncMessageDialog::new()
+        .set_buttons(rfd::MessageButtons::Ok)
+        .set_title("Error !")
+        .set_description(msg);
+    m.show();
 }
