@@ -1,4 +1,4 @@
-pub(crate) mod infoui;
+pub(crate) mod list_window;
 pub(crate) mod main_windows;
 
 pub trait View {

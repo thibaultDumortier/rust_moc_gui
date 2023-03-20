@@ -86,6 +86,14 @@ pub(crate) fn list_names() -> Result<Vec<String>, String> {
         .map(|(_, name)| name.0.clone())
         .collect())
 }
+pub(crate) fn list_ids() -> Result<Vec<usize>, String> {
+    Ok(get_store()
+        .read()
+        .map_err(|_| "Read lock poisoned".to_string())?
+        .iter()
+        .map(|(id, _)| id.clone())
+        .collect())
+}
 
 /////////////
 // GETTERS //
@@ -100,7 +108,7 @@ pub(crate) fn get_name(id: usize) -> Result<String, String> {
         .map_err(|_| "Read lock poisoned".to_string())?;
     let name = store
         .get(&id)
-        .ok_or_else(|| format!("MOC '{}' not found", id))?;
+        .ok_or_else(|| format!("MOC '{}' not found (coming from get_name)", id))?;
 
     Ok(name.0.to_owned())
 }

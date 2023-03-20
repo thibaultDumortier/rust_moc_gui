@@ -1,5 +1,5 @@
 use crate::utils::commons::*;
-use crate::windows::infoui::ListUi;
+use crate::windows::list_window::ListUi;
 use crate::windows::main_windows::MainUiWindows;
 
 use eframe::egui;
@@ -27,6 +27,7 @@ impl eframe::App for SubUiApp {
 }
 
 // -------------------------------------------------------------------
+
 #[derive(Default)]
 pub struct State {
     subui: SubUiApp,
@@ -63,9 +64,7 @@ impl eframe::App for FileApp {
             });
         });
 
-        egui::CentralPanel::default().show(ctx, |ui| {
-            let _ = self.list.list_ui(ctx, ui).map_err(|e| self.err(&e));
-        });
+        let _ = self.list.ui(ctx)/*.map_err(|e| self.err(&e))*/;
 
         self.show_selected_app(ctx, frame);
 

@@ -13,12 +13,12 @@ use multiple::MultipleUi;
 use unitary::UnitaryUi;
 
 pub struct MainUis {
-    subuis: Vec<Box<dyn Window>>,
+    mainuis: Vec<Box<dyn Window>>,
     open: BTreeSet<String>,
 }
 impl Default for MainUis {
     fn default() -> Self {
-        MainUis::from_sub_uis(vec![
+        MainUis::from_main_uis(vec![
             Box::new(CreationUis::default()),
             Box::new(UnitaryUi::default()),
             Box::new(MultipleUi::default()),
@@ -26,14 +26,14 @@ impl Default for MainUis {
     }
 }
 impl MainUis {
-    pub fn from_sub_uis(subuis: Vec<Box<dyn Window>>) -> Self {
+    pub fn from_main_uis(mainuis: Vec<Box<dyn Window>>) -> Self {
         let open = BTreeSet::new();
-        Self { subuis, open }
+        Self { mainuis, open }
     }
 
     pub fn checkboxes(&mut self, ui: &mut Ui) {
         let Self {
-            subuis: mainuis,
+            mainuis,
             open,
         } = self;
         for mainui in mainuis {
@@ -45,7 +45,7 @@ impl MainUis {
 
     pub fn windows(&mut self, ctx: &Context) {
         let Self {
-            subuis: mainuis,
+            mainuis,
             open,
         } = self;
         for mainui in mainuis {
