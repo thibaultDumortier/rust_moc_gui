@@ -16,22 +16,24 @@ use super::Window;
 pub struct InfoWindows {
     infouis: Vec<Box<InfoWindow>>,
     open: BTreeSet<String>,
+    filenames: Vec<(usize, (String, usize))>,
 }
 impl InfoWindows {
     pub fn from_mocs(infouis: Vec<Box<InfoWindow>>) -> Self {
         let open = BTreeSet::new();
-        Self { infouis, open }
+        let filenames = Vec::default();
+        Self { infouis, open, filenames }
     }
 
     pub fn checkboxes(&mut self, ui: &mut Ui) {
-        let Self { infouis: _, open } = self;
-
-        let mut filenames: Vec<(&usize, &(String, usize))> = Vec::default();
         let binding = get_store().read().unwrap().clone();
         for file in binding.iter() {
-            filenames.push(file);
+            let owned_file = (file.0.to_owned(), file.1.to_owned());
+            if !self.filenames.contains(&owned_file) {
+                self.filenames.push(owned_file);
+            }
         }
-        filenames.sort_by(|a, b| a.1 .1.cmp(&b.1 .1));
+        self.filenames.sort_by(|a, b| a.1 .1.cmp(&b.1 .1));
 
         let txt_h = 30.0;
         ui.vertical(|ui| {
@@ -54,20 +56,23 @@ impl InfoWindows {
                     });
                 })
                 .body(|body| {
-                    body.rows(txt_h, filenames.len(), |row_index, mut row| {
+                    body.rows(txt_h, self.filenames.len(), |row_index, mut row| {
                         row.col(|ui| {
                             let mut is_open =
-                                open.contains(&filenames.get(row_index).unwrap().1 .0);
+                                self.open.contains(&self.filenames.get(row_index).unwrap().1 .0);
                             ui.horizontal(|ui| {
                                 ui.toggle_value(
                                     &mut is_open,
-                                    &filenames.get(row_index).unwrap().1 .0,
-                                );
+                                    &self.filenames.get(row_index).unwrap().1 .0,
+                                )
+                                .context_menu(|ui| {
+                                    self.download(ui, row_index, "Download");
+                                });
                             });
                             set_open(
-                                open,
+                                &mut self.open,
                                 Box::leak(
-                                    filenames
+                                    self.filenames
                                         .get(row_index)
                                         .unwrap()
                                         .1
@@ -79,52 +84,11 @@ impl InfoWindows {
                             );
                         });
                         row.col(|ui| {
-                            ui.menu_button("📥", |ui| {
-                                if ui.button("FITS").clicked() {
-                                    let _ = to_file(
-                                        &filenames.get(row_index).unwrap().1 .0,
-                                        ".fits",
-                                        "application/fits",
-                                        U64MocStore
-                                            .to_fits_buff(
-                                                *filenames.get(row_index).unwrap().0,
-                                                None,
-                                            )
-                                            .unwrap(),
-                                    );
-                                }
-                                if ui.button("ASCII").clicked() {
-                                    let _ = to_file(
-                                        &filenames.get(row_index).unwrap().1 .0,
-                                        ".txt",
-                                        "text/plain",
-                                        U64MocStore
-                                            .to_ascii_str(
-                                                *filenames.get(row_index).unwrap().0,
-                                                None,
-                                            )
-                                            .unwrap()
-                                            .into_bytes()
-                                            .into_boxed_slice(),
-                                    );
-                                }
-                                if ui.button("JSON").clicked() {
-                                    let _ = to_file(
-                                        &filenames.get(row_index).unwrap().1 .0,
-                                        ".json",
-                                        "application/json",
-                                        U64MocStore
-                                            .to_json_str(*filenames.get(row_index).unwrap().0, None)
-                                            .unwrap()
-                                            .into_bytes()
-                                            .into_boxed_slice(),
-                                    );
-                                }
-                            });
+                            self.download(ui, row_index, "📥");
                         });
                         row.col(|ui| {
                             if ui.button("❌").clicked() {
-                                let id = *filenames.get(row_index).unwrap().0;
+                                let id = self.filenames.get(row_index).unwrap().0;
                                 let _ = namestore::drop(id);
                                 let _ = U64MocStore.drop(id);
                             }
@@ -135,12 +99,56 @@ impl InfoWindows {
     }
 
     pub fn windows(&mut self, ctx: &Context) {
-        let Self { infouis, open } = self;
+        let Self { infouis, open , filenames: _} = self;
         for infoui in infouis {
             let mut is_open = open.contains(infoui.name());
             infoui.show(ctx, &mut is_open);
             set_open(open, infoui.name(), is_open);
         }
+    }
+
+    fn download(
+        &mut self,
+        ui: &mut Ui,
+        row_index: usize,
+        title: &str,
+    ) {
+        ui.menu_button(title, |ui| {
+            if ui.button("FITS").clicked() {
+                let _ = to_file(
+                    &self.filenames.get(row_index).unwrap().1 .0,
+                    ".fits",
+                    "application/fits",
+                    U64MocStore
+                        .to_fits_buff(self.filenames.get(row_index).unwrap().0, None)
+                        .unwrap(),
+                );
+            }
+            if ui.button("ASCII").clicked() {
+                let _ = to_file(
+                    &self.filenames.get(row_index).unwrap().1 .0,
+                    ".txt",
+                    "text/plain",
+                    U64MocStore
+                        .to_ascii_str(self.filenames.get(row_index).unwrap().0, None)
+                        .unwrap()
+                        .into_bytes()
+                        .into_boxed_slice(),
+                );
+            }
+            if ui.button("JSON").clicked() {
+                let _ = to_file(
+                    &self.filenames.get(row_index).unwrap().1 .0,
+                    ".json",
+                    "application/json",
+                    U64MocStore
+                        .to_json_str(self.filenames.get(row_index).unwrap().0, None)
+                        .unwrap()
+                        .into_bytes()
+                        .into_boxed_slice(),
+                );
+            }
+        });
     }
 }
 
