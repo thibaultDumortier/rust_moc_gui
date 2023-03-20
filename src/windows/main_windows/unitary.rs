@@ -7,7 +7,7 @@ use egui::{TextEdit, Ui};
 use moc::storage::u64idx::common::MocQType;
 use moc::storage::u64idx::U64MocStore;
 
-use super::{SubUi, View};
+use crate::windows::{View, Window};
 
 #[derive(Default, Clone, Eq, PartialEq)]
 pub struct UnitaryUi {
@@ -17,7 +17,7 @@ pub struct UnitaryUi {
     picked_file: Option<usize>,
 }
 
-impl SubUi for UnitaryUi {
+impl Window for UnitaryUi {
     fn name(&self) -> &'static str {
         "MOC unitary logical operation"
     }
@@ -27,7 +27,7 @@ impl SubUi for UnitaryUi {
             .open(open)
             .resizable(false)
             .show(ctx, |ui| {
-                use super::View as _;
+                use crate::windows::View as _;
                 self.ui(ui);
             });
     }

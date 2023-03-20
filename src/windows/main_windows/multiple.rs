@@ -7,7 +7,7 @@ use egui::{TextEdit, Ui};
 use moc::storage::u64idx::common::MocQType;
 use moc::storage::u64idx::U64MocStore;
 
-use super::{SubUi, View};
+use crate::windows::{View, Window};
 
 #[derive(Default, Clone, Eq, PartialEq)]
 pub struct MultipleUi {
@@ -18,7 +18,7 @@ pub struct MultipleUi {
     picked_second_file: Option<usize>,
 }
 
-impl SubUi for MultipleUi {
+impl Window for MultipleUi {
     fn name(&self) -> &'static str {
         "MOC multiple logical operations"
     }
@@ -28,7 +28,7 @@ impl SubUi for MultipleUi {
             .open(open)
             .resizable(false)
             .show(ctx, |ui| {
-                use super::View as _;
+                use crate::windows::View as _;
                 self.ui(ui);
             });
     }

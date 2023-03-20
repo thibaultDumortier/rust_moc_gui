@@ -3,5 +3,5 @@
 pub mod app;
 pub mod utils;
 pub mod controllers;
-pub mod views;
+pub mod windows;
 pub use app::FileApp;

@@ -2,7 +2,7 @@ use crate::controllers::creation::*;
 use crate::utils::namestore::add;
 
 use super::creationui::CreationType;
-use super::{SubUi, View};
+use crate::windows::{View, Window};
 use eframe::egui;
 use egui::{TextEdit, Ui};
 use eq_float::F64;
@@ -37,7 +37,7 @@ pub struct CreationUis {
     from_threshold: F64,
     to_threshold: F64,
 }
-impl SubUi for CreationUis {
+impl Window for CreationUis {
     fn name(&self) -> &'static str {
         "Moc creation"
     }
@@ -47,7 +47,7 @@ impl SubUi for CreationUis {
             .open(open)
             .resizable(false)
             .show(ctx, |ui| {
-                use super::View as _;
+                use crate::windows::View as _;
                 self.ui(ui);
             });
     }

@@ -1,15 +1,12 @@
-pub(crate) mod creationui;
 pub(crate) mod infoui;
-pub(crate) mod multiple;
-pub(crate) mod unitary;
-pub(crate) mod windowed;
+pub(crate) mod main_windows;
 
 pub trait View {
     fn ui(&mut self, ui: &mut egui::Ui);
 }
 
 // Something to view
-pub trait SubUi {
+pub trait Window {
     // `&'static` so we can also use it as a key to store open/close state.
     fn name(&self) -> &'static str;
 

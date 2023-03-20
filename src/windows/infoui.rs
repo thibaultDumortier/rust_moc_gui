@@ -1,8 +1,6 @@
 use std::{borrow::Borrow, collections::HashMap};
 
-use crate::{
-    utils::namestore::{self, get_name, get_store, list_names},
-};
+use crate::utils::namestore::{self, get_name, get_store, list_names};
 use egui::{Color32, Ui};
 use egui_extras::{Column, TableBuilder};
 use moc::storage::u64idx::common::MocQType;
@@ -10,13 +8,65 @@ use moc::storage::u64idx::U64MocStore;
 
 use crate::utils::commons::{fmt_qty, to_file};
 
+use super::{View, Window};
+
 #[derive(Clone, PartialEq, Default, Eq)]
 pub struct InfoWindow {
     pub id: usize,
     texture: Option<egui::TextureHandle>,
     info: String,
+    name: String,
 }
+impl Window for InfoWindow {
+    fn name(&self) -> &'static str {
+        "MOC information"
+    }
 
+    fn show(&mut self, ctx: &egui::Context, open: &mut bool) {
+        if let Ok(n) = get_name(self.id) {
+            let mut window = egui::Window::new(n.clone())
+                .id(egui::Id::new(n)) // required since we change the title
+                .resizable(false)
+                .title_bar(true)
+                .enabled(true);
+            window = window.open(open);
+            window.show(ctx, |ui| self.ui(ui));
+        }
+    }
+}
+impl View for InfoWindow {
+    fn ui(&mut self, ui: &mut egui::Ui) {
+        let qty = U64MocStore.get_qty_type(self.id).unwrap();
+
+        ui.horizontal(|ui| {
+            ui.label("MOC type:");
+            ui.label(fmt_qty(qty));
+        });
+
+        match qty {
+            MocQType::Space => {
+                ui.label(&self.info);
+                let texture = &self.texture.clone().unwrap();
+                ui.add(egui::Image::new(texture, texture.size_vec2()).bg_fill(Color32::WHITE));
+                if ui.button("Download image").clicked() {
+                    let _ = to_file(
+                        &get_name(self.id).unwrap(),
+                        ".png",
+                        "image/x-png",
+                        U64MocStore.to_png(self.id, 300).unwrap(),
+                    );
+                }
+            }
+            MocQType::Time => {
+                ui.label(&self.info);
+            }
+            MocQType::TimeSpace => {
+                ui.label(&self.info);
+            }
+            MocQType::Frequency => unreachable!(),
+        };
+    }
+}
 impl InfoWindow {
     pub fn new(ctx: &egui::Context, id: usize) -> Result<Self, String> {
         let mut texture: Option<egui::TextureHandle> = None;
@@ -63,53 +113,18 @@ impl InfoWindow {
             Err(e) => return Err(e),
         }
 
-        Ok(Self { id, texture, info })
-    }
+        let name = get_name(id).unwrap();
 
-    pub fn show(&mut self, ctx: &egui::Context, open: &mut bool) {
-        if let Ok(n) = get_name(self.id) {
-            let mut window = egui::Window::new(n.clone())
-                .id(egui::Id::new(n)) // required since we change the title
-                .resizable(false)
-                .title_bar(true)
-                .enabled(true);
-            window = window.open(open);
-            window.show(ctx, |ui| self.ui(ui));
-        }
-    }
-
-    fn ui(&mut self, ui: &mut egui::Ui) {
-        let qty = U64MocStore.get_qty_type(self.id).unwrap();
-
-        ui.horizontal(|ui| {
-            ui.label("MOC type:");
-            ui.label(fmt_qty(qty));
-        });
-
-        match qty {
-            MocQType::Space => {
-                ui.label(&self.info);
-                let texture = &self.texture.clone().unwrap();
-                ui.add(egui::Image::new(texture, texture.size_vec2()).bg_fill(Color32::WHITE));
-                if ui.button("Download image").clicked() {
-                    let _ = to_file(
-                        &get_name(self.id).unwrap(),
-                        ".png",
-                        "image/x-png",
-                        U64MocStore.to_png(self.id, 300).unwrap(),
-                    );
-                }
-            }
-            MocQType::Time => {
-                ui.label(&self.info);
-            }
-            MocQType::TimeSpace => {
-                ui.label(&self.info);
-            }
-            MocQType::Frequency => todo!(),
-        };
+        Ok(Self {
+            id,
+            texture,
+            info,
+            name,
+        })
     }
 }
+
+// --------------------------------------------------------------
 
 #[derive(Default)]
 pub struct ListUi {

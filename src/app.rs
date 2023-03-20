@@ -1,6 +1,6 @@
 use crate::utils::commons::*;
-use crate::views::infoui::ListUi;
-use crate::views::windowed::SubUiWindows;
+use crate::windows::infoui::ListUi;
+use crate::windows::main_windows::MainUiWindows;
 
 use eframe::egui;
 use egui::menu;
@@ -17,7 +17,7 @@ extern "C" {
 
 #[derive(Default)]
 pub struct SubUiApp {
-    subui_windows: SubUiWindows,
+    subui_windows: MainUiWindows,
 }
 
 impl eframe::App for SubUiApp {
@@ -80,11 +80,7 @@ impl FileApp {
     // Basic functions //
 
     fn apps_iter_mut(&mut self) -> impl Iterator<Item = (&str, &str, &mut dyn eframe::App)> {
-        let vec = vec![(
-            "",
-            "subui",
-            &mut self.state.subui as &mut dyn eframe::App,
-        )];
+        let vec = vec![("", "subui", &mut self.state.subui as &mut dyn eframe::App)];
 
         vec.into_iter()
     }
