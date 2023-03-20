@@ -1,12 +1,12 @@
 pub(crate) mod info_window;
 
-use egui::{Context, ScrollArea, Ui};
+use egui::{Context, ScrollArea, TextEdit, Ui};
 use egui_extras::{Column, TableBuilder};
 use moc::storage::u64idx::U64MocStore;
 use std::collections::BTreeSet;
 
 use crate::utils::commons::to_file;
-use crate::utils::namestore::{self, get_store, list_ids};
+use crate::utils::namestore::{self, get_store, list_ids, rename};
 
 use self::info_window::InfoWindow;
 
@@ -18,6 +18,7 @@ pub struct InfoWindows {
     infouis: Vec<Box<InfoWindow>>,
     open: BTreeSet<String>,
     filenames: Vec<(usize, (String, usize))>,
+    name: String,
 }
 impl InfoWindows {
     pub fn from_mocs(infouis: Vec<Box<InfoWindow>>) -> Self {
@@ -27,6 +28,7 @@ impl InfoWindows {
             infouis,
             open,
             filenames,
+            name: String::from(""),
         }
     }
 
@@ -74,6 +76,12 @@ impl InfoWindows {
                                 .context_menu(|ui| {
                                     ui.menu_button("Unitary ops", |ui| lite_ui(ui, row_index));
                                     self.download(ui, row_index, "Download");
+                                    ui.horizontal(|ui| {
+                                        ui.add(TextEdit::singleline(&mut self.name).hint_text("Name"));
+                                        if ui.button("rename").clicked() {
+                                            let _ = rename(row_index, &self.name, self.filenames.get(row_index).unwrap().1.1);
+                                        }
+                                    });
                                 });
                             });
                             set_open(
@@ -110,6 +118,7 @@ impl InfoWindows {
             infouis,
             open,
             filenames: _,
+            name: _,
         } = self;
         for infoui in infouis {
             let mut is_open = open.contains(infoui.name());

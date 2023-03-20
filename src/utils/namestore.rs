@@ -95,6 +95,22 @@ pub(crate) fn list_ids() -> Result<Vec<usize>, String> {
         .collect())
 }
 
+pub(crate) fn rename(id: usize, name: &str, idx: usize) -> Result<(), String> {
+    let new_idx: usize = get_latest_idx();
+    
+    let mut store = get_store()
+        .write()
+        .map_err(|_| "Write lock poisoned".to_string())?;
+
+    if idx != 0 {
+        (*store).insert(id, (format!("{}({})", name, idx), new_idx));
+    } else {
+        (*store).insert(id, (String::from(name), new_idx));
+    }
+
+    Ok(())
+}
+
 /////////////
 // GETTERS //
 

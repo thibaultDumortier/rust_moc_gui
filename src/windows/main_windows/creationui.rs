@@ -39,7 +39,7 @@ pub struct CreationUis {
 }
 impl Window for CreationUis {
     fn name(&self) -> &'static str {
-        "Moc creation"
+        "MOC creation"
     }
 
     fn show(&mut self, ctx: &egui::Context, open: &mut bool) {
