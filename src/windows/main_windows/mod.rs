@@ -12,30 +12,27 @@ use creationui::CreationUis;
 use multiple::MultipleUi;
 use unitary::UnitaryUi;
 
-pub struct MainUis {
+pub struct MainWindows {
     mainuis: Vec<Box<dyn Window>>,
     open: BTreeSet<String>,
 }
-impl Default for MainUis {
+impl Default for MainWindows {
     fn default() -> Self {
-        MainUis::from_main_uis(vec![
+        MainWindows::from_main_uis(vec![
             Box::new(CreationUis::default()),
             Box::new(UnitaryUi::default()),
             Box::new(MultipleUi::default()),
         ])
     }
 }
-impl MainUis {
+impl MainWindows {
     pub fn from_main_uis(mainuis: Vec<Box<dyn Window>>) -> Self {
         let open = BTreeSet::new();
         Self { mainuis, open }
     }
 
     pub fn checkboxes(&mut self, ui: &mut Ui) {
-        let Self {
-            mainuis,
-            open,
-        } = self;
+        let Self { mainuis, open } = self;
         for mainui in mainuis {
             let mut is_open = open.contains(mainui.name());
             ui.toggle_value(&mut is_open, mainui.name());
@@ -44,10 +41,7 @@ impl MainUis {
     }
 
     pub fn windows(&mut self, ctx: &Context) {
-        let Self {
-            mainuis,
-            open,
-        } = self;
+        let Self { mainuis, open } = self;
         for mainui in mainuis {
             let mut is_open = open.contains(mainui.name());
             mainui.show(ctx, &mut is_open);
@@ -70,11 +64,11 @@ fn set_open(open: &mut BTreeSet<String>, key: &'static str, is_open: bool) {
 
 // -----------------------------------------------------------
 
-pub struct MainUiWindows {
-    mainuis: MainUis,
+pub struct ToolsUi {
+    mainuis: MainWindows,
 }
 
-impl Default for MainUiWindows {
+impl Default for ToolsUi {
     fn default() -> Self {
         Self {
             mainuis: Default::default(),
@@ -82,7 +76,7 @@ impl Default for MainUiWindows {
     }
 }
 
-impl MainUiWindows {
+impl ToolsUi {
     /// Show the app ui (menu bar and windows).
     pub fn ui(&mut self, ctx: &Context) {
         self.desktop_ui(ctx);

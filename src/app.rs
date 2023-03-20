@@ -1,6 +1,6 @@
 use crate::utils::commons::*;
 use crate::windows::list_window::ListUi;
-use crate::windows::main_windows::MainUiWindows;
+use crate::windows::main_windows::ToolsUi;
 
 use eframe::egui;
 use egui::menu;
@@ -17,7 +17,7 @@ extern "C" {
 
 #[derive(Default)]
 pub struct SubUiApp {
-    subui_windows: MainUiWindows,
+    subui_windows: ToolsUi,
 }
 
 impl eframe::App for SubUiApp {

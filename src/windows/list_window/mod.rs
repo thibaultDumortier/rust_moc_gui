@@ -13,11 +13,11 @@ use self::info_window::InfoWindow;
 use super::Window;
 
 #[derive(Default)]
-pub struct InfoUis {
+pub struct InfoWindows {
     infouis: Vec<Box<InfoWindow>>,
     open: BTreeSet<String>,
 }
-impl InfoUis {
+impl InfoWindows {
     pub fn from_mocs(infouis: Vec<Box<InfoWindow>>) -> Self {
         let open = BTreeSet::new();
         Self { infouis, open }
@@ -160,7 +160,7 @@ fn set_open(open: &mut BTreeSet<String>, key: &'static str, is_open: bool) {
 
 #[derive(Default)]
 pub struct ListUi {
-    infouis: InfoUis,
+    infouis: InfoWindows,
 }
 
 impl ListUi {
@@ -198,7 +198,7 @@ impl ListUi {
             for id in list_ids().unwrap() {
                 mocs.push(Box::new(InfoWindow::new(ctx, id).unwrap()));
             }
-            self.infouis = InfoUis::from_mocs(mocs)
+            self.infouis = InfoWindows::from_mocs(mocs)
         }
     }
 }
