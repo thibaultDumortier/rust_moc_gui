@@ -10,6 +10,7 @@ use crate::utils::namestore::{self, get_store, list_ids};
 
 use self::info_window::InfoWindow;
 
+use super::main_windows::unitary::lite_ui;
 use super::Window;
 
 #[derive(Default)]
@@ -22,7 +23,11 @@ impl InfoWindows {
     pub fn from_mocs(infouis: Vec<Box<InfoWindow>>) -> Self {
         let open = BTreeSet::new();
         let filenames = Vec::default();
-        Self { infouis, open, filenames }
+        Self {
+            infouis,
+            open,
+            filenames,
+        }
     }
 
     pub fn checkboxes(&mut self, ui: &mut Ui) {
@@ -58,14 +63,16 @@ impl InfoWindows {
                 .body(|body| {
                     body.rows(txt_h, self.filenames.len(), |row_index, mut row| {
                         row.col(|ui| {
-                            let mut is_open =
-                                self.open.contains(&self.filenames.get(row_index).unwrap().1 .0);
+                            let mut is_open = self
+                                .open
+                                .contains(&self.filenames.get(row_index).unwrap().1 .0);
                             ui.horizontal(|ui| {
                                 ui.toggle_value(
                                     &mut is_open,
                                     &self.filenames.get(row_index).unwrap().1 .0,
                                 )
                                 .context_menu(|ui| {
+                                    ui.menu_button("Unitary ops", |ui| lite_ui(ui, row_index));
                                     self.download(ui, row_index, "Download");
                                 });
                             });
@@ -99,7 +106,11 @@ impl InfoWindows {
     }
 
     pub fn windows(&mut self, ctx: &Context) {
-        let Self { infouis, open , filenames: _} = self;
+        let Self {
+            infouis,
+            open,
+            filenames: _,
+        } = self;
         for infoui in infouis {
             let mut is_open = open.contains(infoui.name());
             infoui.show(ctx, &mut is_open);
@@ -107,30 +118,28 @@ impl InfoWindows {
         }
     }
 
-    fn download(
-        &mut self,
-        ui: &mut Ui,
-        row_index: usize,
-        title: &str,
-    ) {
+    ///////////////
+    // UTILITIES //
+
+    fn download(&mut self, ui: &mut Ui, id: usize, title: &str) {
         ui.menu_button(title, |ui| {
             if ui.button("FITS").clicked() {
                 let _ = to_file(
-                    &self.filenames.get(row_index).unwrap().1 .0,
+                    &self.filenames.get(id).unwrap().1 .0,
                     ".fits",
                     "application/fits",
                     U64MocStore
-                        .to_fits_buff(self.filenames.get(row_index).unwrap().0, None)
+                        .to_fits_buff(self.filenames.get(id).unwrap().0, None)
                         .unwrap(),
                 );
             }
             if ui.button("ASCII").clicked() {
                 let _ = to_file(
-                    &self.filenames.get(row_index).unwrap().1 .0,
+                    &self.filenames.get(id).unwrap().1 .0,
                     ".txt",
                     "text/plain",
                     U64MocStore
-                        .to_ascii_str(self.filenames.get(row_index).unwrap().0, None)
+                        .to_ascii_str(self.filenames.get(id).unwrap().0, None)
                         .unwrap()
                         .into_bytes()
                         .into_boxed_slice(),
@@ -138,11 +147,11 @@ impl InfoWindows {
             }
             if ui.button("JSON").clicked() {
                 let _ = to_file(
-                    &self.filenames.get(row_index).unwrap().1 .0,
+                    &self.filenames.get(id).unwrap().1 .0,
                     ".json",
                     "application/json",
                     U64MocStore
-                        .to_json_str(self.filenames.get(row_index).unwrap().0, None)
+                        .to_json_str(self.filenames.get(id).unwrap().0, None)
                         .unwrap()
                         .into_bytes()
                         .into_boxed_slice(),

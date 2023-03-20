@@ -175,3 +175,38 @@ impl UnitaryUi {
             });
     }
 }
+
+pub(crate) fn lite_ui(ui: &mut Ui, id: usize) {
+    if !matches!(U64MocStore.get_qty_type(id), Ok(MocQType::TimeSpace)) {
+        if ui.button("Complement").clicked() {
+            lite_op(id, Op1::Complement);
+        };
+        if matches!(U64MocStore.get_qty_type(id), Ok(MocQType::Space)) {
+            if ui.button("Extend").clicked() {
+                lite_op(id, Op1::Extend);
+            };
+            if ui.button("Contract").clicked() {
+                lite_op(id, Op1::Contract);
+            };
+            if ui.button("ExtBorder").clicked() {
+                lite_op(id, Op1::ExtBorder);
+            };
+            if ui.button("IntBorder").clicked() {
+                lite_op(id, Op1::IntBorder);
+            };
+            if ui.button("Split").clicked() {
+                lite_op(id, Op1::Split);
+            };
+            if ui.button("SplitIndirect").clicked() {
+                lite_op(id, Op1::SplitIndirect);
+            };
+        }
+    } else {
+        ui.label("SpaceTime MOCs cannot be operated on alone.");
+    }
+}
+fn lite_op(id: usize, operation: Op1) {
+    //Button launching the operation
+    let name = format!("{}_{}", operation, get_name(id).unwrap());
+    let _ = op1(id, operation, &name).map_err(|e| err(&e));
+}
