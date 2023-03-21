@@ -13,7 +13,7 @@ use self::info_window::InfoWindow;
 use super::main_windows::unitary::lite_ui;
 use super::Window;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct InfoWindows {
     infouis: Vec<Box<InfoWindow>>,
     open: BTreeSet<String>,
@@ -73,13 +73,19 @@ impl InfoWindows {
                                     &mut is_open,
                                     &self.filenames.get(row_index).unwrap().1 .0,
                                 )
+                                // Right click menu
                                 .context_menu(|ui| {
                                     ui.menu_button("Unitary ops", |ui| lite_ui(ui, row_index));
                                     self.download(ui, row_index, "Download");
+                                    if ui.button("Preview").clicked() {
+                                        is_open = !is_open;
+                                    }
                                     ui.horizontal(|ui| {
-                                        ui.add(TextEdit::singleline(&mut self.name).hint_text("Name"));
-                                        if ui.button("rename").clicked() {
-                                            let _ = rename(row_index, &self.name, self.filenames.get(row_index).unwrap().1.1);
+                                        ui.add(
+                                            TextEdit::singleline(&mut self.name).hint_text("Name"),
+                                        );
+                                        if ui.button("Rename").clicked() {
+                                            let _ = rename(row_index, &self.name);
                                         }
                                     });
                                 });
@@ -129,7 +135,6 @@ impl InfoWindows {
 
     ///////////////
     // UTILITIES //
-
     fn download(&mut self, ui: &mut Ui, id: usize, title: &str) {
         ui.menu_button(title, |ui| {
             if ui.button("FITS").clicked() {
@@ -184,7 +189,7 @@ fn set_open(open: &mut BTreeSet<String>, key: &'static str, is_open: bool) {
 
 // -----------------------------------------------------------
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct ListUi {
     infouis: InfoWindows,
 }
@@ -219,7 +224,7 @@ impl ListUi {
     }
 
     fn updater(&mut self, ctx: &Context) {
-        if list_ids().unwrap().len() != self.infouis.infouis.len() {
+        if list_ids().unwrap().len() != self.infouis.filenames.len() {
             let mut mocs: Vec<Box<InfoWindow>> = Vec::default();
             for id in list_ids().unwrap() {
                 mocs.push(Box::new(InfoWindow::new(ctx, id).unwrap()));

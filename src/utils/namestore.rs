@@ -69,9 +69,11 @@ pub(crate) fn add(name: &str, id: usize) -> Result<(), String> {
         .map_err(|_| "Write lock poisoned".to_string())?;
 
     if idx != 0 {
-        (*store).insert(id, (format!("{}({})", name, idx), new_idx));
+        (*store)
+            .entry(id)
+            .or_insert((format!("{}({})", name, idx), new_idx));
     } else {
-        (*store).insert(id, (String::from(name), new_idx));
+        (*store).entry(id).or_insert((format!("{}", name), new_idx));
     }
 
     Ok(())
@@ -95,9 +97,14 @@ pub(crate) fn list_ids() -> Result<Vec<usize>, String> {
         .collect())
 }
 
-pub(crate) fn rename(id: usize, name: &str, idx: usize) -> Result<(), String> {
+pub(crate) fn rename(id: usize, name: &str) -> Result<(), String> {
     let new_idx: usize = get_latest_idx();
-    
+    let idx = list_names()
+        .unwrap()
+        .iter()
+        .filter(|s| s.contains(name))
+        .count();
+
     let mut store = get_store()
         .write()
         .map_err(|_| "Write lock poisoned".to_string())?;
@@ -105,7 +112,7 @@ pub(crate) fn rename(id: usize, name: &str, idx: usize) -> Result<(), String> {
     if idx != 0 {
         (*store).insert(id, (format!("{}({})", name, idx), new_idx));
     } else {
-        (*store).insert(id, (String::from(name), new_idx));
+        (*store).insert(id, (format!("{}", name), new_idx));
     }
 
     Ok(())
