@@ -135,6 +135,23 @@ impl InfoWindows {
 
     ///////////////
     // UTILITIES //
+
+    // pub fn multiple(&mut self, ui: &mut Ui) {
+    //     let Self {
+    //         infouis,
+    //         open,
+    //         filenames: _,
+    //         name: _,
+    //     } = self;
+
+    //     let mut selected: Vec<Box<InfoWindow>> = Vec::default();
+
+    //     for infoui in infouis {
+    //         let mut is_selected = open.contains(infoui.name());
+    //         selected.push(infoui.to_owned());
+    //     }
+    // }
+
     fn download(&mut self, ui: &mut Ui, id: usize, title: &str) {
         ui.menu_button(title, |ui| {
             if ui.button("FITS").clicked() {
