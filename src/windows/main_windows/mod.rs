@@ -1,5 +1,4 @@
 pub(crate) mod creationui;
-pub(crate) mod index;
 pub(crate) mod multiple;
 pub(crate) mod unitary;
 

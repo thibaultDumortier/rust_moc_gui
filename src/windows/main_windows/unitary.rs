@@ -176,6 +176,11 @@ impl UnitaryUi {
     }
 }
 
+// #Definition
+//      a view showing buttons of every possible unitary MOC operation when right clicking
+// #Args
+//  *   `id`: the index of the MOC to be operated on
+//  *   `ui`: the ui used by the app
 pub(crate) fn lite_unit_ui(ui: &mut Ui, id: usize) {
     if !matches!(U64MocStore.get_qty_type(id), Ok(MocQType::TimeSpace)) {
         if ui.button("Complement").clicked() {
@@ -205,6 +210,13 @@ pub(crate) fn lite_unit_ui(ui: &mut Ui, id: usize) {
         ui.label("SpaceTime MOCs cannot be operated on alone.");
     }
 }
+// #Definition
+//      the button launching the operation
+// #Args
+//  *   `id`: the index of the MOC to be operated on
+//  *   `operation`: the operation that needs to be applied on the MOCs
+// #Errors
+//      may show an error message coming from the op1 function
 fn lite_op(id: usize, operation: Op1) {
     //Button launching the operation
     let name = format!("{}_{}", operation, get_name(id).unwrap());

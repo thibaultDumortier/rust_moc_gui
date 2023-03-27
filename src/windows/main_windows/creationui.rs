@@ -715,9 +715,9 @@ impl CreationUis {
                     CreationType::LargeCone => from_large_cones(depth, file_content),
                     CreationType::Polygon => from_polygon(depth, file_content, complement),
                     CreationType::SmallCone => from_small_cones(depth, file_content),
-                    _ => todo!(),
+                    _ => unreachable!(),
                 } {
-                    let _ = add(&name, id);
+                    add(&name, id)?;
                 }
             }
         });
@@ -747,7 +747,7 @@ impl CreationUis {
                 CreationType::LargeCone => from_large_cones(depth, file_content),
                 CreationType::Polygon => from_polygon(depth, file_content, complement),
                 CreationType::SmallCone => from_small_cones(depth, file_content),
-                _ => todo!(),
+                _ => unreachable!(),
             } {
                 add(&name, id)?
             }

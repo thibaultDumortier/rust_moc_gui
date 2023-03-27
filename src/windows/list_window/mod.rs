@@ -5,7 +5,7 @@ use egui_extras::{Column, TableBuilder};
 use moc::storage::u64idx::U64MocStore;
 use std::collections::BTreeSet;
 
-use crate::utils::commons::to_file;
+use crate::utils::commons::{to_file, err};
 use crate::utils::namestore::{self, get_store, list_ids, rename};
 
 use self::info_window::InfoWindow;
@@ -92,7 +92,7 @@ impl InfoWindows {
                                             TextEdit::singleline(&mut self.name).hint_text("Name"),
                                         );
                                         if ui.button("Rename").clicked() {
-                                            let _ = rename(row_index, &self.name);
+                                            let _ = rename(row_index, &self.name).map_err(|e| err(&e));
                                         }
                                     });
                                 });
@@ -117,8 +117,8 @@ impl InfoWindows {
                         row.col(|ui| {
                             if ui.button("❌").clicked() {
                                 let id = self.filenames.get(row_index).unwrap().0;
-                                let _ = namestore::drop(id);
-                                let _ = U64MocStore.drop(id);
+                                let _ = namestore::drop(id).map_err(|e| err(&e));
+                                let _ = U64MocStore.drop(id).map_err(|e| err(&e));
                             }
                         });
                     })
@@ -197,7 +197,7 @@ impl InfoWindows {
                     U64MocStore
                         .to_fits_buff(self.filenames.get(id).unwrap().0, None)
                         .unwrap(),
-                );
+                ).map_err(|e| err(&e));
             }
             if ui.button("ASCII").clicked() {
                 let _ = to_file(
@@ -209,7 +209,7 @@ impl InfoWindows {
                         .unwrap()
                         .into_bytes()
                         .into_boxed_slice(),
-                );
+                ).map_err(|e| err(&e));
             }
             if ui.button("JSON").clicked() {
                 let _ = to_file(
@@ -221,7 +221,7 @@ impl InfoWindows {
                         .unwrap()
                         .into_bytes()
                         .into_boxed_slice(),
-                );
+                ).map_err(|e| err(&e));
             }
         });
     }

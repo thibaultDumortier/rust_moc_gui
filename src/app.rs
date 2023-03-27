@@ -142,26 +142,4 @@ impl FileApp {
             self.state.selected_anchor = "subui".into();
         }
     }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    fn err(&mut self, msg: &str) {
-        use rfd::MessageDialog;
-
-        let m = MessageDialog::new()
-            .set_buttons(rfd::MessageButtons::Ok)
-            .set_title("Error !")
-            .set_description(msg);
-        m.show();
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    fn err(&mut self, msg: &str) {
-        use rfd::AsyncMessageDialog;
-
-        let m = AsyncMessageDialog::new()
-            .set_buttons(rfd::MessageButtons::Ok)
-            .set_title("Error !")
-            .set_description(msg);
-        m.show();
-    }
 }
