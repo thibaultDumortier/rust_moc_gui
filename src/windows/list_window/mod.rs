@@ -10,7 +10,8 @@ use crate::utils::namestore::{self, get_store, list_ids, rename};
 
 use self::info_window::InfoWindow;
 
-use super::main_windows::unitary::lite_ui;
+use super::main_windows::multiple::lite_mult_ui;
+use super::main_windows::unitary::lite_unit_ui;
 use super::Window;
 
 #[derive(Default, Clone)]
@@ -75,7 +76,13 @@ impl InfoWindows {
                                 )
                                 // Right click menu
                                 .context_menu(|ui| {
-                                    ui.menu_button("Unitary ops", |ui| lite_ui(ui, row_index));
+                                    ui.menu_button("Unitary ops", |ui| lite_unit_ui(ui, row_index));
+                                    if self.is_multiple_selected() {
+                                        ui.menu_button("Multiple ops", |ui| {
+                                            let m = self.mutlitple();
+                                            lite_mult_ui(ui, m.0, m.1);
+                                        });
+                                    }
                                     self.download(ui, row_index, "Download");
                                     if ui.button("Preview").clicked() {
                                         is_open = !is_open;
@@ -136,21 +143,49 @@ impl InfoWindows {
     ///////////////
     // UTILITIES //
 
-    // pub fn multiple(&mut self, ui: &mut Ui) {
-    //     let Self {
-    //         infouis,
-    //         open,
-    //         filenames: _,
-    //         name: _,
-    //     } = self;
+    pub fn is_multiple_selected(&mut self) -> bool {
+        let Self {
+            infouis,
+            open,
+            filenames: _,
+            name: _,
+        } = self;
 
-    //     let mut selected: Vec<Box<InfoWindow>> = Vec::default();
+        let mut selected: Vec<Box<InfoWindow>> = Vec::default();
+        for infoui in infouis {
+            if open.contains(infoui.name()) {
+                selected.push(infoui.to_owned());
+            }
+        }
+        selected.len() == 2
+    }
+    pub fn mutlitple(&mut self) -> (usize, usize) {
+        let Self {
+            infouis,
+            open,
+            filenames: _,
+            name: _,
+        } = self;
 
-    //     for infoui in infouis {
-    //         let mut is_selected = open.contains(infoui.name());
-    //         selected.push(infoui.to_owned());
-    //     }
-    // }
+        let mut l: usize = 0;
+        let mut r: usize = 0;
+        let mut count = 0;
+        for infoui in infouis {
+            if open.contains(infoui.name()) {
+                if count < 1 {
+                    l = infoui.id;
+                    count += 1;
+                } else {
+                    r = infoui.id;
+                    count += 1;
+                }
+            }
+            if count == 2 {
+                break;
+            }
+        }
+        (l, r)
+    }
 
     fn download(&mut self, ui: &mut Ui, id: usize, title: &str) {
         ui.menu_button(title, |ui| {

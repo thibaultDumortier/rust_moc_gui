@@ -42,7 +42,10 @@ impl MultipleUi {
     fn op_two_ui(&mut self, ui: &mut Ui) {
         // An operation combo box including Intersection and Union
         if self.picked_file.is_some() && self.picked_second_file.is_some() {
-            if self.files_have_same_type() {
+            let l = self.picked_file.unwrap();  
+            let r = self.picked_second_file.unwrap();
+
+            if files_have_same_type(l,r) {
                 if self.operation.eq(&Op2::SFold) || self.operation.eq(&Op2::TFold) {
                     self.operation = Op2::Intersection;
                 }
@@ -52,7 +55,7 @@ impl MultipleUi {
                 egui::ComboBox::from_id_source("Operation_cbox")
                     .selected_text(sel_text)
                     .show_ui(ui, |ui| {
-                        if self.files_have_same_type() {
+                        if files_have_same_type(l,r) {
                             ui.selectable_value(
                                 &mut self.operation,
                                 Op2::Intersection,
@@ -63,26 +66,14 @@ impl MultipleUi {
                             ui.selectable_value(&mut self.operation, Op2::Difference, "Difference");
                         }
                     });
-            } else if self.files_have_stmoc() {
+            } else if files_have_stmoc(l,r) {
                 ui.horizontal(|ui| {
-                    if matches!(
-                        U64MocStore.get_qty_type(self.picked_file.unwrap()),
-                        Ok(MocQType::Space)
-                    ) || matches!(
-                        U64MocStore.get_qty_type(self.picked_second_file.unwrap()),
-                        Ok(MocQType::Space)
-                    ) {
+                    if have_space(l, r) {
                         ui.label("Operation:");
                         ui.add_enabled(false, egui::widgets::Button::new("SFold"));
                         ui.end_row();
                         self.operation = Op2::SFold;
-                    } else if matches!(
-                        U64MocStore.get_qty_type(self.picked_file.unwrap()),
-                        Ok(MocQType::Time)
-                    ) || matches!(
-                        U64MocStore.get_qty_type(self.picked_second_file.unwrap()),
-                        Ok(MocQType::Time)
-                    ) {
+                    } else if have_time(l, r) {
                         ui.label("Operation:");
                         ui.add_enabled(false, egui::widgets::Button::new("TFold"));
                         ui.end_row();
@@ -120,28 +111,6 @@ impl MultipleUi {
                     }
                 }
             });
-    }
-
-    // #Definitions
-    //  *   files_have_stmoc: a simple check to see if a space time MOC is present in the 2 selected MOCs.
-    //  *   files_have_same_type: a simple check to see if both selected MOCs are of the same type.
-    fn files_have_stmoc(&mut self) -> bool {
-        matches!(
-            U64MocStore.get_qty_type(self.picked_second_file.unwrap()),
-            Ok(MocQType::TimeSpace)
-        ) || matches!(
-            U64MocStore.get_qty_type(self.picked_file.unwrap()),
-            Ok(MocQType::TimeSpace)
-        )
-    }
-    fn files_have_same_type(&mut self) -> bool {
-        let a = fmt_qty(U64MocStore.get_qty_type(self.picked_file.unwrap()).unwrap());
-        let b = fmt_qty(
-            U64MocStore
-                .get_qty_type(self.picked_second_file.unwrap())
-                .unwrap(),
-        );
-        a == b
     }
 }
 
@@ -209,31 +178,114 @@ impl View for MultipleUi {
                     self.op_two_ui(ui);
                     ui.end_row();
 
-                    if (self.picked_file.is_some() && self.picked_second_file.is_some())
-                        && (self.files_have_same_type() || self.files_have_stmoc())
+                    if self.picked_file.is_some() && self.picked_second_file.is_some()
                     {
-                        ui.label("New MOC name :");
-                        ui.add(TextEdit::singleline(&mut self.name).hint_text("Name"));
-                        ui.end_row();
+                        let l = self.picked_file.unwrap();
+                        let r = self.picked_second_file.unwrap();
+                        if files_have_same_type(l,r) || files_have_stmoc(l,r) {
+                            ui.label("New MOC name :");
+                            ui.add(TextEdit::singleline(&mut self.name).hint_text("Name"));
+                            ui.end_row();
 
-                        //Button launching the operation
-                        if ui.button("Launch").clicked() {
-                            let mut l = self.picked_file.as_ref().unwrap();
-                            let mut r = self.picked_second_file.as_ref().unwrap();
-                            if matches!(
-                                U64MocStore.get_qty_type(self.picked_file.unwrap()),
-                                Ok(MocQType::TimeSpace)
-                            ) {
-                                std::mem::swap(&mut r, &mut l);
-                            }
-                            if self.name.is_empty() {
-                                self.name = format!("{}_{}_{}", op, l, r);
-                            }
-                            let _ = op2(*l, *r, op, &self.name).map_err(|e| err(&e));
-                            self.name = String::default();
-                        };
+                            //Button launching the operation
+                            if ui.button("Launch").clicked() {
+                                let mut l = self.picked_file.as_ref().unwrap();
+                                let mut r = self.picked_second_file.as_ref().unwrap();
+                                if matches!(
+                                    U64MocStore.get_qty_type(self.picked_file.unwrap()),
+                                    Ok(MocQType::TimeSpace)
+                                ) {
+                                    std::mem::swap(&mut r, &mut l);
+                                }
+                                if self.name.is_empty() {
+                                    self.name = format!("{}_{}_{}", op, l, r);
+                                }
+                                let _ = op2(*l, *r, op, &self.name).map_err(|e| err(&e));
+                                self.name = String::default();
+                            };
+                        }
                     }
                 });
         }
     }
+}
+
+pub(crate) fn lite_mult_ui(ui: &mut Ui, l: usize, r:usize) {
+    if files_have_same_type(l,r) {
+        if ui.button("Intersection").clicked() {
+            lite_op(l,r, Op2::Intersection);
+        };
+        if ui.button("Minus").clicked() {
+            lite_op(l,r, Op2::Minus);
+        };
+        if ui.button("Union").clicked() {
+            lite_op(l,r, Op2::Union);
+        };
+        if ui.button("Difference").clicked() {
+            lite_op(l,r, Op2::Difference);
+        };
+    } else if files_have_stmoc(l,r){
+        if have_space(l, r) {
+            if ui.button("SFold").clicked() {
+                lite_op(l,r, Op2::SFold);
+            };
+        } else if have_time(l, r) {
+            if ui.button("TFold").clicked() {
+                lite_op(l,r, Op2::TFold);
+            };
+        }
+    } else {
+        ui.label("Mocs need to be of same type or with 1 STMOC");
+    }
+}
+fn lite_op(mut l: usize, mut r:usize, operation: Op2) {
+    //Button launching the operation
+    if matches!(
+        U64MocStore.get_qty_type(l),
+        Ok(MocQType::TimeSpace)
+    ) {
+        std::mem::swap(&mut r, &mut l);
+    }
+    let name = format!("{}_{}_{}", operation, get_name(l).unwrap(), get_name(r).unwrap());
+    let _ = op2(l, r, operation, &name).map_err(|e| err(&e));
+}
+
+// #Definitions
+//  *   files_have_stmoc: a simple check to see if a space time MOC is present in the 2 selected MOCs.
+//  *   files_have_same_type: a simple check to see if both selected MOCs are of the same type.
+fn files_have_stmoc(l: usize, r:usize) -> bool {
+    matches!(
+        U64MocStore.get_qty_type(l),
+        Ok(MocQType::TimeSpace)
+    ) || matches!(
+        U64MocStore.get_qty_type(r),
+        Ok(MocQType::TimeSpace)
+    )
+}
+fn files_have_same_type(l: usize, r:usize) -> bool {
+    let a = fmt_qty(U64MocStore.get_qty_type(l).unwrap());
+    let b = fmt_qty(
+        U64MocStore
+            .get_qty_type(r)
+            .unwrap(),
+    );
+    a == b
+}
+fn have_space(l:usize, r:usize) -> bool {
+    matches!(
+        U64MocStore.get_qty_type(l),
+        Ok(MocQType::Space)
+    ) || matches!(
+        U64MocStore.get_qty_type(r),
+        Ok(MocQType::Space)
+    )
+}
+fn have_time(l:usize, r:usize) -> bool {
+    matches!(
+        U64MocStore.get_qty_type(l),
+        Ok(MocQType::Time)
+    ) || matches!(
+        U64MocStore.get_qty_type(r),
+        Ok(MocQType::Time)
+    )
 }

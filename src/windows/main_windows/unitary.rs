@@ -176,7 +176,7 @@ impl UnitaryUi {
     }
 }
 
-pub(crate) fn lite_ui(ui: &mut Ui, id: usize) {
+pub(crate) fn lite_unit_ui(ui: &mut Ui, id: usize) {
     if !matches!(U64MocStore.get_qty_type(id), Ok(MocQType::TimeSpace)) {
         if ui.button("Complement").clicked() {
             lite_op(id, Op1::Complement);
