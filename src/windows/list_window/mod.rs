@@ -5,7 +5,7 @@ use egui_extras::{Column, TableBuilder};
 use moc::storage::u64idx::U64MocStore;
 use std::collections::BTreeSet;
 
-use crate::utils::commons::{to_file, err};
+use crate::utils::commons::{err, to_file};
 use crate::utils::namestore::{self, get_store, list_ids, rename};
 
 use self::info_window::InfoWindow;
@@ -73,6 +73,8 @@ impl InfoWindows {
                                 ui.toggle_value(
                                     &mut is_open,
                                     &self.filenames.get(row_index).unwrap().1 .0,
+                                ).on_hover_text_at_pointer(
+                                    "Right click to see different operations available on this MOC."
                                 )
                                 // Right click menu
                                 .context_menu(|ui| {
@@ -92,10 +94,11 @@ impl InfoWindows {
                                             TextEdit::singleline(&mut self.name).hint_text("Name"),
                                         );
                                         if ui.button("Rename").clicked() {
-                                            let _ = rename(row_index, &self.name).map_err(|e| err(&e));
+                                            let _ =
+                                                rename(row_index, &self.name).map_err(|e| err(&e));
                                         }
                                     });
-                                });
+                                })
                             });
                             set_open(
                                 &mut self.open,
@@ -197,7 +200,8 @@ impl InfoWindows {
                     U64MocStore
                         .to_fits_buff(self.filenames.get(id).unwrap().0, None)
                         .unwrap(),
-                ).map_err(|e| err(&e));
+                )
+                .map_err(|e| err(&e));
             }
             if ui.button("ASCII").clicked() {
                 let _ = to_file(
@@ -209,7 +213,8 @@ impl InfoWindows {
                         .unwrap()
                         .into_bytes()
                         .into_boxed_slice(),
-                ).map_err(|e| err(&e));
+                )
+                .map_err(|e| err(&e));
             }
             if ui.button("JSON").clicked() {
                 let _ = to_file(
@@ -221,7 +226,8 @@ impl InfoWindows {
                         .unwrap()
                         .into_bytes()
                         .into_boxed_slice(),
-                ).map_err(|e| err(&e));
+                )
+                .map_err(|e| err(&e));
             }
         });
     }

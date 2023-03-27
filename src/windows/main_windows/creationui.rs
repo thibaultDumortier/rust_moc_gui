@@ -10,6 +10,8 @@ use eq_float::F64;
 use moc::storage::u64idx::U64MocStore;
 #[cfg(target_arch = "wasm32")]
 use rfd::AsyncFileDialog;
+#[cfg(target_arch = "wasm32")]
+use crate::utils::commons::err;
 
 #[cfg(not(target_arch = "wasm32"))]
 use rfd::FileDialog;
@@ -717,7 +719,7 @@ impl CreationUis {
                     CreationType::SmallCone => from_small_cones(depth, file_content),
                     _ => unreachable!(),
                 } {
-                    add(&name, id)?;
+                    let _ = add(&name, id).map_err(|e| err(&e));
                 }
             }
         });
