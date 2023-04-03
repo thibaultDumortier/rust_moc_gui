@@ -78,14 +78,15 @@ impl InfoWindows {
                                 )
                                 // Right click menu
                                 .context_menu(|ui| {
-                                    ui.menu_button("Unitary ops", |ui| lite_unit_ui(ui, row_index));
+                                    let id_moc = self.filenames.get(row_index).unwrap().0;
+                                    ui.menu_button("Unitary ops", |ui| lite_unit_ui(ui, id_moc));
                                     if self.is_multiple_selected() {
                                         ui.menu_button("Multiple ops", |ui| {
                                             let m = self.mutlitple();
                                             lite_mult_ui(ui, m.0, m.1);
                                         });
                                     }
-                                    self.download(ui, row_index, "Download");
+                                    self.download(ui, id_moc, "Download");
                                     if ui.button("Preview").clicked() {
                                         is_open = !is_open;
                                     }
@@ -95,33 +96,23 @@ impl InfoWindows {
                                         );
                                         if ui.button("Rename").clicked() {
                                             let _ =
-                                                rename(row_index, &self.name).map_err(|e| err(&e));
+                                                rename(id_moc, &self.name).map_err(|e| err(&e));
                                         }
                                     });
                                 })
                             });
-                            set_open(
-                                &mut self.open,
-                                Box::leak(
-                                    self.filenames
-                                        .get(row_index)
-                                        .unwrap()
-                                        .1
-                                         .0
-                                        .to_string()
-                                        .into_boxed_str(),
-                                ),
-                                is_open,
-                            );
+                            self.open(row_index, is_open);
                         });
                         row.col(|ui| {
-                            self.download(ui, row_index, "📥");
+                            self.download(ui, self.filenames.get(row_index).unwrap().0, "📥");
                         });
                         row.col(|ui| {
                             if ui.button("❌").clicked() {
-                                let id = self.filenames.get(row_index).unwrap().0;
-                                let _ = namestore::drop(id).map_err(|e| err(&e));
-                                let _ = U64MocStore.drop(id).map_err(|e| err(&e));
+                                self.open(row_index, false);
+                                if let Some(id) = self.filenames.get(row_index) {
+                                    let _ = namestore::drop(id.0).map_err(|e| err(&e));
+                                    let _ = U64MocStore.drop(id.0).map_err(|e| err(&e));
+                                }
                             }
                         });
                     })
@@ -230,6 +221,22 @@ impl InfoWindows {
                 .map_err(|e| err(&e));
             }
         });
+    }
+
+    fn open(&mut self, id: usize, is_open: bool) {
+        set_open(
+            &mut self.open,
+            Box::leak(
+                self.filenames
+                    .get(id)
+                    .unwrap()
+                    .1
+                     .0
+                    .to_string()
+                    .into_boxed_str(),
+            ),
+            is_open,
+        );
     }
 }
 
