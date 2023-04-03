@@ -1,9 +1,11 @@
 use crate::utils::commons::*;
 use crate::windows::list_window::ListUi;
-use crate::windows::main_windows::ToolsUi;
+use crate::windows::main_windows::MainWindows;
 
 use eframe::egui;
 use egui::menu;
+use egui::Context;
+use egui::ScrollArea;
 use egui::Ui;
 use moc::storage::u64idx::common::MocQType;
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -15,31 +17,13 @@ extern "C" {
     pub fn log(s: &str);
 }
 
-#[derive(Default)]
-pub struct SubUiApp {
-    subui_windows: ToolsUi,
-}
-
-impl eframe::App for SubUiApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        self.subui_windows.ui(ctx);
-    }
-}
-
 // -------------------------------------------------------------------
-
-#[derive(Default)]
-pub struct State {
-    subui: SubUiApp,
-
-    selected_anchor: String,
-}
 
 //FileApp struct
 #[derive(Default)]
 pub struct FileApp {
     list: ListUi,
-    state: State,
+    mainuis: MainWindows,
 }
 impl eframe::App for FileApp {
     //////////////////////
@@ -56,17 +40,7 @@ impl eframe::App for FileApp {
             frame.set_fullscreen(!frame.info().window_info.fullscreen);
         }
 
-        egui::TopBottomPanel::top("wrap_app_top_bar").show(ctx, |ui| {
-            egui::trace!(ui);
-            ui.horizontal_wrapped(|ui| {
-                ui.visuals_mut().button_frame = false;
-                self.bar_contents(ui);
-            });
-        });
-
-        let _ = self.list.ui(ctx)/*.map_err(|e| self.err(&e))*/;
-
-        self.show_selected_app(ctx, frame);
+        self.desktop_ui(ctx);
 
         // On web, the browser controls `pixels_per_point`.
         if !frame.is_web() {
@@ -77,12 +51,6 @@ impl eframe::App for FileApp {
 impl FileApp {
     /////////////////////
     // Basic functions //
-
-    fn apps_iter_mut(&mut self) -> impl Iterator<Item = (&str, &str, &mut dyn eframe::App)> {
-        let vec = vec![("", "subui", &mut self.state.subui as &mut dyn eframe::App)];
-
-        vec.into_iter()
-    }
 
     // #Definition
     //      A function handling the contents of the top bar
@@ -125,21 +93,37 @@ impl FileApp {
                         });
                     })
                 });
+                ui.separator();
+                ui.menu_button("Tools", |ui| {
+                    self.mainui_list_ui(ui);
+                });
             });
         });
     }
+    fn desktop_ui(&mut self, ctx: &Context) {
+        egui::TopBottomPanel::top("wrap_app_top_bar").show(ctx, |ui| {
+            egui::trace!(ui);
+            ui.horizontal_wrapped(|ui| {
+                ui.visuals_mut().button_frame = false;
+                self.bar_contents(ui);
+            });
+        });
 
-    fn show_selected_app(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        let mut found_anchor = false;
-        let selected_anchor = self.state.selected_anchor.clone();
-        for (_name, anchor, app) in self.apps_iter_mut() {
-            if anchor == selected_anchor || ctx.memory(|mem| mem.everything_is_visible()) {
-                app.update(ctx, frame);
-                found_anchor = true;
-            }
-        }
-        if !found_anchor {
-            self.state.selected_anchor = "subui".into();
-        }
+        let _ = self.list.ui(ctx);
+
+        self.show_windows(ctx);
+    }
+
+    /// Show the open windows.
+    fn show_windows(&mut self, ctx: &Context) {
+        self.mainuis.windows(ctx);
+    }
+
+    fn mainui_list_ui(&mut self, ui: &mut egui::Ui) {
+        ScrollArea::vertical().show(ui, |ui| {
+            ui.with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
+                self.mainuis.checkboxes(ui);
+            });
+        });
     }
 }
