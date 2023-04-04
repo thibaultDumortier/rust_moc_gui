@@ -1,6 +1,6 @@
 use crate::controllers::op2::*;
 use crate::utils::commons::{err, fmt_qty};
-use crate::utils::namestore::{get_last, get_name, get_store, list_names};
+use crate::utils::namestore::{get_last, get_name, get_store, list_names, get_before_last};
 
 use eframe::egui;
 use egui::{TextEdit, Ui};
@@ -134,13 +134,13 @@ impl View for MultipleUi {
                 if let Ok(txt) = get_name(self.picked_file.unwrap()) {
                     sel_text = txt
                 } else {
-                    self.picked_file = Some(get_last(0).unwrap().0);
+                    self.picked_file = Some(get_last().unwrap().0);
                     sel_text = get_name(self.picked_file.unwrap())
                         .map_err(|e| err(&e))
                         .unwrap();
                 }
             } else {
-                self.picked_file = Some(get_last(0).unwrap().0);
+                self.picked_file = Some(get_last().unwrap().0);
                 sel_text = get_name(self.picked_file.unwrap())
                     .map_err(|e| err(&e))
                     .unwrap();
@@ -149,13 +149,13 @@ impl View for MultipleUi {
                 if let Ok(txt) = get_name(self.picked_second_file.unwrap()) {
                     sel_text_2 = txt
                 } else {
-                    self.picked_second_file = Some(get_last(1).unwrap().0);
+                    self.picked_second_file = Some(get_before_last().unwrap().0);
                     sel_text_2 = get_name(self.picked_second_file.unwrap())
                         .map_err(|e| err(&e))
                         .unwrap();
                 }
             } else {
-                self.picked_second_file = Some(get_last(1).unwrap().0);
+                self.picked_second_file = Some(get_before_last().unwrap().0);
                 sel_text_2 = get_name(self.picked_second_file.unwrap())
                     .map_err(|e| err(&e))
                     .unwrap();

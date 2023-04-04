@@ -58,10 +58,9 @@ impl View for UnitaryUi {
                     if self.picked_file.is_some() && get_name(self.picked_file.unwrap()).is_ok() {
                         self.make_cbox(ui, get_name(self.picked_file.unwrap()).unwrap());
                     } else {
-                        self.picked_file = Some(get_last(0).unwrap().0);
+                        self.picked_file = Some(get_last().unwrap().0);
                         self.make_cbox(ui, "pick a file".to_owned());
                     }
-
                     ui.end_row();
 
                     self.op_one_ui(ui);

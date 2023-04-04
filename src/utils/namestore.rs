@@ -3,8 +3,6 @@ use std::{
     sync::{Once, RwLock},
 };
 
-use crate::app::log;
-
 /// Function used only once to init the store
 static NAME_STORE_INIT: Once = Once::new();
 /// The MOC store (a simple hasmap), protected from concurrent access by a RwLock.
@@ -138,28 +136,36 @@ pub(crate) fn get_name(id: usize) -> Result<String, String> {
     Ok(name.0.to_owned())
 }
 // #Definition
-//      get_len simply gets the lenght of the store.
-pub fn get_len() -> Result<usize, String> {
-    Ok(get_store()
-        .read()
-        .map_err(|_| "Read lock poisoned".to_string())?
-        .len())
-}
-// #Definition
 //      get_last gets the last name stored in the namestore.
 // #Args
 //  *   `index`: the specific index in case the function needs to search
 //               a MOC before the last one (for example the second to last)
-pub(crate) fn get_last(index: usize) -> Result<(usize, String), String> {
-    let len = get_len().unwrap() - (index + 1);
-    log(&format!("{:?}", list_names().unwrap()));
+pub(crate) fn get_last() -> Result<(usize, String), String> {
     let binding = get_store()
         .read()
         .map_err(|_| "Read lock poisoned".to_string())?;
-    log(&format!("{:?}", binding.get(&len)));
-    let last = binding.get(&len).unwrap();
+    let last_key = *binding.keys().last().unwrap();
+    let last = binding.get(&last_key).unwrap();
+    Ok((last_key, last.0.to_owned()))
+}
 
-    Ok((len, last.0.to_owned()))
+pub(crate) fn get_before_last() -> Result<(usize, String), String> {
+    let binding = get_store()
+        .read()
+        .map_err(|_| "Read lock poisoned".to_string())?;
+    let last_key = *binding.keys().last().unwrap();
+
+    let mut beforelast_key: usize = 0;
+    for key in binding.keys() {
+        if key != &last_key {
+            beforelast_key = *key;
+        } else {
+            break;
+        }
+    }
+    let beforelast = binding.get(&beforelast_key).unwrap();
+
+    Ok((beforelast_key, beforelast.0.to_owned()))
 }
 // #Definition
 //      get_latest_idx gets a new index to add to the newly added MOC.
