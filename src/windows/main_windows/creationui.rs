@@ -469,7 +469,7 @@ impl CreationUis {
                     name = self.name.clone();
                 }
 
-                let mut file = File::open(&path)
+                let mut file = File::open(path)
                     .map_err(|_| err = Some("Error while opening file".to_string()))
                     .unwrap();
                 let mut file_content = Vec::default();
@@ -736,10 +736,10 @@ impl CreationUis {
             }
             let complement = self.comp;
 
-            let mut file = File::open(&path).map_err(|_| "Error while opening file".to_string())?;
+            let mut file = File::open(path).map_err(|_| "Error while opening file".to_string())?;
             let mut file_content = Vec::default();
             file.read_to_end(&mut file_content)
-                .map_err(|e| format!("Error while reading file: {}", e))?;
+                .map_err(|e| format!("Error while reading file: {e}"))?;
             let file_content = unsafe { String::from_utf8_unchecked(file_content) };
 
             if let Ok(id) = match typ {

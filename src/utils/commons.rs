@@ -187,7 +187,7 @@ pub(crate) fn load(rtype: &[&str], moct: MocQType) -> Result<(), String> {
             //Reads file contents and adds it to the data
             let mut file_content = Vec::default();
             file.read_to_end(&mut file_content)
-                .map_err(|e| format!("Error while reading file: {}", e))?;
+                .map_err(|e| format!("Error while reading file: {e}"))?;
 
             if let Ok(id) = type_reading(reading, &moct, file_content.as_slice()) {
                 add(file_name, id)?;

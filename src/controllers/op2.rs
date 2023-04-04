@@ -151,7 +151,7 @@ impl Op2 {
                 Ok(())
             }
             Op2::Difference => {
-                return Err(String::from(
+                Err(String::from(
                     "Difference (or xor) not implemented for ST-MOCs.",
                 ))
             }
@@ -162,12 +162,12 @@ impl Op2 {
                 Ok(())
             }
             Op2::TFold => {
-                return Err(String::from(
+                Err(String::from(
                     "TimeFold operation not available on 2 ST-MOCs.",
                 ))
             }
             Op2::SFold => {
-                return Err(String::from(
+                Err(String::from(
                     "SpaceFold operation not available on 2 ST-MOCs.",
                 ))
             }

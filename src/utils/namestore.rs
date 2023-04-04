@@ -73,9 +73,9 @@ pub(crate) fn add(name: &str, id: usize) -> Result<(), String> {
     if idx != 0 {
         (*store)
             .entry(id)
-            .or_insert((format!("{}({})", name, idx), new_idx));
+            .or_insert((format!("{name}({idx})"), new_idx));
     } else {
-        (*store).entry(id).or_insert((format!("{}", name), new_idx));
+        (*store).entry(id).or_insert((name.to_string(), new_idx));
     }
 
     Ok(())
@@ -95,7 +95,7 @@ pub(crate) fn list_ids() -> Result<Vec<usize>, String> {
         .read()
         .map_err(|_| "Read lock poisoned".to_string())?
         .iter()
-        .map(|(id, _)| id.clone())
+        .map(|(id, _)| *id)
         .collect())
 }
 
@@ -112,9 +112,9 @@ pub(crate) fn rename(id: usize, name: &str) -> Result<(), String> {
         .map_err(|_| "Write lock poisoned".to_string())?;
 
     if idx != 0 {
-        (*store).insert(id, (format!("{}({})", name, idx), new_idx));
+        (*store).insert(id, (format!("{name}({idx})"), new_idx));
     } else {
-        (*store).insert(id, (format!("{}", name), new_idx));
+        (*store).insert(id, (name.to_string(), new_idx));
     }
 
     Ok(())
@@ -133,7 +133,7 @@ pub(crate) fn get_name(id: usize) -> Result<String, String> {
         .map_err(|_| "Read lock poisoned".to_string())?;
     let name = store
         .get(&id)
-        .ok_or_else(|| format!("MOC '{}' not found in get_name", id))?;
+        .ok_or_else(|| format!("MOC '{id}' not found in get_name"))?;
 
     Ok(name.0.to_owned())
 }
@@ -156,7 +156,7 @@ pub(crate) fn get_last(index: usize) -> Result<(usize, String), String> {
     let binding = get_store()
         .read()
         .map_err(|_| "Read lock poisoned".to_string())?;
-    log(&format!("{:?}",binding.get(&len)));
+    log(&format!("{:?}", binding.get(&len)));
     let last = binding.get(&len).unwrap();
 
     Ok((len, last.0.to_owned()))

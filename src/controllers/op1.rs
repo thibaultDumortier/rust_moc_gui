@@ -105,13 +105,13 @@ impl Op1 {
             }
             Op1::Split => {
                 for i in U64MocStore.split(id)? {
-                    add(&format!("{}_{}", i, name), i)?;
+                    add(&format!("{i}_{name}"), i)?;
                 }
                 Ok(())
             }
             Op1::SplitIndirect => {
                 for i in U64MocStore.split(id)? {
-                    add(&format!("{}_{}", i, name), i)?;
+                    add(&format!("{i}_{name}"), i)?;
                 }
                 Ok(())
             }

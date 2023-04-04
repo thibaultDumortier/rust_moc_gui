@@ -146,7 +146,7 @@ impl View for MultipleUi {
                     .unwrap();
             }
             if self.picked_second_file.is_some() {
-                if let Ok(txt) = get_name(self.picked_second_file.unwrap()).map_err(|e| return e) {
+                if let Ok(txt) = get_name(self.picked_second_file.unwrap()) {
                     sel_text_2 = txt
                 } else {
                     self.picked_second_file = Some(get_last(1).unwrap().0);
@@ -197,7 +197,7 @@ impl View for MultipleUi {
                                     std::mem::swap(&mut r, &mut l);
                                 }
                                 if self.name.is_empty() {
-                                    self.name = format!("{}_{}_{}", op, l, r);
+                                    self.name = format!("{op}_{l}_{r}");
                                 }
                                 let _ = op2(*l, *r, op, &self.name).map_err(|e| err(&e));
                                 self.name = String::default();
@@ -234,11 +234,9 @@ pub(crate) fn lite_mult_ui(ui: &mut Ui, l: usize, r: usize) {
             if ui.button("SFold").clicked() {
                 lite_op(l, r, Op2::SFold);
             };
-        } else if have_time(l, r) {
-            if ui.button("TFold").clicked() {
-                lite_op(l, r, Op2::TFold);
-            };
-        }
+        } else if have_time(l, r) && ui.button("TFold").clicked() {
+            lite_op(l, r, Op2::TFold);
+        };
     } else {
         ui.label("Mocs need to be of same type or with 1 STMOC");
     }

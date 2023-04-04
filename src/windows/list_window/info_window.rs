@@ -91,15 +91,14 @@ impl InfoWindow {
                 MocQType::Space => {
                     if let Ok(s) = U64MocStore.get_smoc_depth(id) {
                         info = format!(
-                            "Depth: {}, Coverage: {}",
-                            s.to_string(),
-                            U64MocStore.get_coverage_percentage(id).unwrap().to_string()
+                            "Depth: {s}, Coverage: {}",
+                            U64MocStore.get_coverage_percentage(id).unwrap()
                         )
                     }
                 }
                 MocQType::Time => {
                     if let Ok(t) = U64MocStore.get_tmoc_depth(id) {
-                        info = format!("Depth: {}", t.to_string())
+                        info = format!("Depth: {t}")
                     }
                 }
                 MocQType::Frequency => {
@@ -109,8 +108,8 @@ impl InfoWindow {
                     if let Ok(st) = U64MocStore.get_stmoc_depths(id) {
                         info = format!(
                             "Depth S: {}\nDepth T: {}",
-                            st.0.to_string(),
-                            st.1.to_string()
+                            st.0,
+                            st.1
                         )
                     }
                 }

@@ -18,9 +18,9 @@ pub struct MainWindows {
 impl Default for MainWindows {
     fn default() -> Self {
         MainWindows::from_main_uis(vec![
-            Box::new(CreationUis::default()),
-            Box::new(UnitaryUi::default()),
-            Box::new(MultipleUi::default()),
+            Box::<CreationUis>::default(),
+            Box::<UnitaryUi>::default(),
+            Box::<MultipleUi>::default(),
         ])
     }
 }

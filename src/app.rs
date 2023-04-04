@@ -109,7 +109,7 @@ impl FileApp {
             });
         });
 
-        let _ = self.list.ui(ctx);
+        self.list.ui(ctx);
 
         self.show_windows(ctx);
     }
