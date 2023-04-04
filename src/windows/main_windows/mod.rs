@@ -4,9 +4,9 @@ pub(crate) mod unitary;
 
 use std::collections::BTreeSet;
 
-use egui::{Context, ScrollArea, Ui};
+use egui::{Context, Ui};
 
-use crate::windows::Window;
+use crate::{windows::Window, utils::commons::set_open};
 use creationui::CreationUis;
 use multiple::MultipleUi;
 use unitary::UnitaryUi;
@@ -46,17 +46,5 @@ impl MainWindows {
             mainui.show(ctx, &mut is_open);
             set_open(open, mainui.name(), is_open);
         }
-    }
-}
-
-// -----------------------------------------------------------
-
-fn set_open(open: &mut BTreeSet<String>, key: &'static str, is_open: bool) {
-    if is_open {
-        if !open.contains(key) {
-            open.insert(key.to_owned());
-        }
-    } else {
-        open.remove(key);
     }
 }

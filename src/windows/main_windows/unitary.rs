@@ -47,24 +47,6 @@ impl View for UnitaryUi {
             ui.label("Pick a file!");
         //If files have been imported and can be chosen from
         } else {
-            //Defaults to last loaded MOC before leaving the user choose which moc he wants to operate on
-            let sel_text: String;
-            if self.picked_file.is_some() {
-                if let Ok(txt) = get_name(self.picked_file.unwrap()).map_err(|e| err(&e)) {
-                    sel_text = txt
-                } else {
-                    self.picked_file = Some(get_last(0).unwrap().0);
-                    sel_text = get_name(self.picked_file.unwrap())
-                        .map_err(|e| err(&e))
-                        .unwrap();
-                }
-            } else {
-                self.picked_file = Some(get_last(0).unwrap().0);
-                sel_text = get_name(self.picked_file.unwrap())
-                    .map_err(|e| err(&e))
-                    .unwrap();
-            }
-
             // The small paragraph before the match sets a grid layout to have every element aligned
             egui::Grid::new("my_grid")
                 .num_columns(2)
@@ -73,7 +55,13 @@ impl View for UnitaryUi {
                 .show(ui, |ui| {
                     //Combo box containing the different files that can be picked from
                     ui.label("MOC : ");
-                    self.make_cbox(ui, sel_text.as_str());
+                    if self.picked_file.is_some() && get_name(self.picked_file.unwrap()).is_ok() {
+                        self.make_cbox(ui, get_name(self.picked_file.unwrap()).unwrap());
+                    } else {
+                        self.picked_file = Some(get_last(0).unwrap().0);
+                        self.make_cbox(ui, "pick a file".to_owned());
+                    }
+
                     ui.end_row();
 
                     self.op_one_ui(ui);
@@ -131,9 +119,9 @@ impl UnitaryUi {
     //  *   ui: Ui, the ui from the app.
     //  *   sel_text: &str, the text to show in the combo box.
     //  *   id: &str, the combobox gui ID.
-    fn make_cbox(&mut self, ui: &mut Ui, sel_text: &str) {
+    fn make_cbox(&mut self, ui: &mut Ui, text: String) {
         egui::ComboBox::from_id_source("file_cbox")
-            .selected_text(sel_text)
+            .selected_text(text)
             .show_ui(ui, |ui| {
                 for file in get_store().read().unwrap().iter() {
                     ui.selectable_value(&mut self.picked_file, Some(*file.0), &file.1 .0);

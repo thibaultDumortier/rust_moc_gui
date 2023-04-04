@@ -5,7 +5,7 @@ use egui_extras::{Column, TableBuilder};
 use moc::storage::u64idx::U64MocStore;
 use std::collections::BTreeSet;
 
-use crate::utils::commons::{err, to_file};
+use crate::utils::commons::{err, to_file, set_open};
 use crate::utils::namestore::{self, get_store, list_ids, rename};
 
 use self::info_window::InfoWindow;
@@ -237,18 +237,6 @@ impl InfoWindows {
             ),
             is_open,
         );
-    }
-}
-
-// -----------------------------------------------------------
-
-fn set_open(open: &mut BTreeSet<String>, key: &'static str, is_open: bool) {
-    if is_open {
-        if !open.contains(key) {
-            open.insert(key.to_owned());
-        }
-    } else {
-        open.remove(key);
     }
 }
 

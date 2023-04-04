@@ -1,6 +1,6 @@
 use crate::utils::namestore::add;
 use moc::storage::u64idx::{common::MocQType, U64MocStore};
-use std::str::from_utf8_unchecked;
+use std::{str::from_utf8_unchecked, collections::BTreeSet};
 
 #[cfg(target_arch = "wasm32")]
 use js_sys::{Array, Uint8Array};
@@ -269,4 +269,14 @@ pub(crate) fn err(msg: &str) {
         .set_title("Error !")
         .set_description(msg);
     m.show();
+}
+
+pub fn set_open(open: &mut BTreeSet<String>, key: &'static str, is_open: bool) {
+    if is_open {
+        if !open.contains(key) {
+            open.insert(key.to_owned());
+        }
+    } else {
+        open.remove(key);
+    }
 }

@@ -3,6 +3,8 @@ use std::{
     sync::{Once, RwLock},
 };
 
+use crate::app::log;
+
 /// Function used only once to init the store
 static NAME_STORE_INIT: Once = Once::new();
 /// The MOC store (a simple hasmap), protected from concurrent access by a RwLock.
@@ -131,7 +133,7 @@ pub(crate) fn get_name(id: usize) -> Result<String, String> {
         .map_err(|_| "Read lock poisoned".to_string())?;
     let name = store
         .get(&id)
-        .ok_or_else(|| format!("MOC '{}' not found (coming from get_name)", id))?;
+        .ok_or_else(|| format!("MOC '{}' not found in get_name", id))?;
 
     Ok(name.0.to_owned())
 }
@@ -150,9 +152,11 @@ pub fn get_len() -> Result<usize, String> {
 //               a MOC before the last one (for example the second to last)
 pub(crate) fn get_last(index: usize) -> Result<(usize, String), String> {
     let len = get_len().unwrap() - (index + 1);
+    log(&format!("{:?}", list_names().unwrap()));
     let binding = get_store()
         .read()
         .map_err(|_| "Read lock poisoned".to_string())?;
+    log(&format!("{:?}",binding.get(&len)));
     let last = binding.get(&len).unwrap();
 
     Ok((len, last.0.to_owned()))

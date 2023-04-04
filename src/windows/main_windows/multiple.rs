@@ -131,7 +131,7 @@ impl View for MultipleUi {
             let sel_text: String;
             let sel_text_2: String;
             if self.picked_file.is_some() {
-                if let Ok(txt) = get_name(self.picked_file.unwrap()).map_err(|e| err(&e)) {
+                if let Ok(txt) = get_name(self.picked_file.unwrap()) {
                     sel_text = txt
                 } else {
                     self.picked_file = Some(get_last(0).unwrap().0);
