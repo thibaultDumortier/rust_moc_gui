@@ -7,18 +7,18 @@ use eframe::egui;
 use egui::{TextEdit, Ui};
 use eq_float::F64;
 
+#[cfg(target_arch = "wasm32")]
+use crate::utils::commons::err;
 use moc::storage::u64idx::U64MocStore;
 #[cfg(target_arch = "wasm32")]
 use rfd::AsyncFileDialog;
-#[cfg(target_arch = "wasm32")]
-use crate::utils::commons::err;
 
 #[cfg(not(target_arch = "wasm32"))]
 use rfd::FileDialog;
 use std::fs::File;
 use std::io::Read;
 
-#[derive(Default, Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct CreationUis {
     name: String,
     depth: u8,
@@ -38,6 +38,29 @@ pub struct CreationUis {
     revese_recursive_descent: bool,
     from_threshold: F64,
     to_threshold: F64,
+}
+impl Default for CreationUis {
+    fn default() -> Self {
+        Self {
+            name: Default::default(),
+            depth: Default::default(),
+            lon_deg_polf1: Default::default(),
+            lat_deg_polf2: Default::default(),
+            radius_a: eq_float::F64(0.00000000001),
+            lon_deg_min_b_int: Default::default(),
+            lat_deg_min_pa: Default::default(),
+            comp: Default::default(),
+            typ: Default::default(),
+            error: Default::default(),
+            density: Default::default(),
+            asc: Default::default(),
+            not_strict: Default::default(),
+            split: Default::default(),
+            revese_recursive_descent: Default::default(),
+            from_threshold: Default::default(),
+            to_threshold: Default::default(),
+        }
+    }
 }
 impl Window for CreationUis {
     fn name(&self) -> &'static str {
@@ -569,7 +592,7 @@ impl CreationUis {
 
     fn depth_builder(&mut self, ui: &mut Ui) {
         ui.label("Depth:");
-        ui.add(egui::Slider::new(&mut self.depth, 0..=26));
+        ui.add(egui::Slider::new(&mut self.depth, 1..=25));
         ui.end_row();
     }
 
@@ -624,7 +647,7 @@ impl CreationUis {
     fn radius_builder(&mut self, ui: &mut Ui) {
         ui.label("Radius:");
         ui.add(
-            egui::Slider::new(&mut self.radius_a.0, 0.0..=180.0)
+            egui::Slider::new(&mut self.radius_a.0, 0.00000000001..=180.0)
                 .suffix("°")
                 .fixed_decimals(11),
         );
