@@ -11,7 +11,7 @@ fn main() {
         ..Default::default()
     };
     let _ = eframe::run_native(
-        "moc app",
+        "Moc app",
         options,
         Box::new(|_| Box::new(rust_moc_gui::FileApp::default())),
     ); // This is supposed to work, if it does not, then there is a greater error, please open an issue.
