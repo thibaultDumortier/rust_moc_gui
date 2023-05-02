@@ -11,7 +11,7 @@ fn main() {
         ..Default::default()
     };
     let _ = eframe::run_native(
-        "fileapp",
+        "moc app",
         options,
         Box::new(|_| Box::new(rust_moc_gui::FileApp::default())),
     ); // This is supposed to work, if it does not, then there is a greater error, please open an issue.
@@ -34,7 +34,7 @@ fn main() {
 
     wasm_bindgen_futures::spawn_local(async {
         eframe::start_web(
-            "filecanvas", // hardcode it
+            "moccanvas", // hardcode it
             web_options,
             Box::new(|_| Box::new(rust_moc_gui::FileApp::default())),
         )
