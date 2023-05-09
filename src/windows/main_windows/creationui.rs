@@ -597,14 +597,14 @@ impl CreationUis {
     }
 
     fn lon_lat_deg_builder(&mut self, ui: &mut Ui) {
-        ui.label("Longitude degradation:");
+        ui.label("Longitude degrees:");
         ui.add(
             egui::Slider::new(&mut self.lon_deg_polf1.0, 0.0..=360.0)
                 .suffix("°")
                 .fixed_decimals(11),
         );
         ui.end_row();
-        ui.label("Latitude degradation:");
+        ui.label("Latitude degrees:");
         ui.add(
             egui::Slider::new(&mut self.lat_deg_polf2.0, -90.0..=90.0)
                 .suffix("°")
@@ -614,28 +614,28 @@ impl CreationUis {
     }
 
     fn lons_lats_builder(&mut self, ui: &mut Ui) {
-        ui.label("Minimal longitude degradation:");
+        ui.label("Minimal longitude degrees:");
         ui.add(
             egui::Slider::new(&mut self.lon_deg_min_b_int.0, 0.0..=self.lon_deg_polf1.0)
                 .suffix("°")
                 .fixed_decimals(11),
         );
         ui.end_row();
-        ui.label("Minimal latitude degradation:");
+        ui.label("Minimal latitude degrees:");
         ui.add(
             egui::Slider::new(&mut self.lat_deg_min_pa.0, -90.0..=self.lat_deg_polf2.0)
                 .suffix("°")
                 .fixed_decimals(11),
         );
         ui.end_row();
-        ui.label("Maximal longitude degradation:");
+        ui.label("Maximal longitude degrees:");
         ui.add(
             egui::Slider::new(&mut self.lon_deg_polf1.0, self.lon_deg_min_b_int.0..=360.0)
                 .suffix("°")
                 .fixed_decimals(11),
         );
         ui.end_row();
-        ui.label("Maximal latitude degradation:");
+        ui.label("Maximal latitude degrees:");
         ui.add(
             egui::Slider::new(&mut self.lat_deg_polf2.0, self.lat_deg_min_pa.0..=90.0)
                 .suffix("°")
@@ -672,21 +672,21 @@ impl CreationUis {
     }
 
     fn degs_builder(&mut self, ui: &mut Ui) {
-        ui.label("A degradation:");
+        ui.label("A degrees:");
         ui.add(
             egui::Slider::new(&mut self.radius_a.0, 0.0..=90.0)
                 .suffix("°")
                 .fixed_decimals(11),
         );
         ui.end_row();
-        ui.label("B degradation:");
+        ui.label("B degrees:");
         ui.add(
             egui::Slider::new(&mut self.lon_deg_min_b_int.0, 0.0..=self.radius_a.0)
                 .suffix("°")
                 .fixed_decimals(11),
         );
         ui.end_row();
-        ui.label("PA degradation:");
+        ui.label("PA degrees:");
         ui.add(
             egui::Slider::new(&mut self.lat_deg_min_pa.0, 0.0..=90.0)
                 .suffix("°")
