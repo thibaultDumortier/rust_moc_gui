@@ -3,7 +3,9 @@ name: Native release
 on:
   push:
     tags:
-      - "v[0-9]+.*" # push events to matching releases
+      - "v[0-9]+.*" # push events to matching 
+  #To activate action manually
+  workflow_dispatch:
 
 jobs:
   create-github-release:
