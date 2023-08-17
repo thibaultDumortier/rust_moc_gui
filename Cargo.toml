@@ -13,7 +13,7 @@ egui = "0.21"
 eframe = { version = "0.21", default-features = false, features = [
     "accesskit",     # Make egui comptaible with screen readers. NOTE: adds a lot of dependencies.
     "default_fonts", # Embed the default egui fonts.
-    "wgpu",          # Use the glow rendering backend. Alternative: "wgpu".
+    "glow",          # Use the glow rendering backend. Alternative: "wgpu".
     "persistence",   # Enable restoring app state when restarting the app.
 ] }
 log = { version = "0.4", features = ["max_level_trace", "release_max_level_warn"] }
