@@ -65,7 +65,7 @@ jobs:
       - name: Install packages (Linux)
         uses: rerun-io/cache-apt-pkgs-action@59534850182063abf1b2c11bb3686722a12a8397
         with:
-          packages: libxcb-render0-dev libspeechd-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev librust-atk-dev libgtk-3-dev fontconfig libfontconfig1-dev libglib2.0-dev glib2.0 cross
+          packages: libxcb-render0-dev libspeechd-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev librust-atk-dev libgtk-3-dev fontconfig libfontconfig1-dev libglib2.0-dev glib2.0 cmake extra-cmake-modules libwayland-dev libxinerama-dev wayland-protocols xorg-dev
           version: 1.0
           execute_install_scripts: true
 
@@ -78,6 +78,12 @@ jobs:
         run: |
           export PKG_CONFIG_SYSROOT_DIR=/
           export PKG_CONFIG_ALLOW_CROSS=1
+
+      - name: Cargo Check
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --all-targets
 
       - name: Build library
         uses: actions-rs/cargo@v1
